@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: %Bundle-Name
+Bundle-SymbolicName: edu.tamu.wala.increpta;singleton:=true
+Bundle-Version: 1.4.4.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Bundle-Vendor: %Bundle-Vendor
+Require-Bundle: com.ibm.wala.util,
+ com.ibm.wala.core,
+ com.ibm.wala.shrike;bundle-version="1.4.4"
+Export-Package: edu.tamu.wala.increpta.callgraph.impl,
+ edu.tamu.wala.increpta.ipa.callgraph.propagation,
+ edu.tamu.wala.increpta.operators,
+ edu.tamu.wala.increpta.parallel,
+ edu.tamu.wala.increpta.util

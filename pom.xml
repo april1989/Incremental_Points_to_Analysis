@@ -25,6 +25,9 @@
     
     <module>com.ibm.wala.core.testdata</module>
     <module>com.ibm.wala.core.tests</module>
+
+    <module>edu.tamu.wala.increpta</module>
+    <module>edu.tamu.wala.increpta.tests</module>
     
     <module>com.ibm.wala.cast</module>
     <module>com.ibm.wala.cast.test</module>
