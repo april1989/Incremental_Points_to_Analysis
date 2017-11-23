@@ -3,9 +3,9 @@
 	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>com.ibm.wala.target</groupId>
+		<groupId>edu.tamu.wala.target</groupId>
 		<artifactId>targets</artifactId>
-		<version>1.4.4-SNAPSHOT</version>
+		<version>0.0.1-SNAPSHOT</version>
 	</parent>
 	<artifactId>e47</artifactId>
 	<packaging>eclipse-target-definition</packaging>

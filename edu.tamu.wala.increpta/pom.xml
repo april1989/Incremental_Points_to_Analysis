@@ -4,11 +4,10 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>WALA</artifactId>
-        <groupId>com.ibm.wala</groupId>
-        <version>1.4.4-SNAPSHOT</version>
+        <artifactId>increpta</artifactId>
+        <groupId>edu.tamu.wala</groupId>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
   <artifactId>edu.tamu.wala.increpta</artifactId>
   <packaging>eclipse-plugin</packaging>
-
 </project>

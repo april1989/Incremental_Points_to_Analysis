@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name
 Bundle-SymbolicName: edu.tamu.wala.increpta.tests
-Bundle-Version: 1.4.4.qualifier
+Bundle-Version: 0.0.1.qualifier
 Bundle-Vendor: %Bundle-Vendor
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: com.ibm.wala.core,
@@ -10,4 +10,4 @@ Require-Bundle: com.ibm.wala.core,
  org.junit;bundle-version="4.12.0",
  com.ibm.wala.util,
  com.ibm.wala.core.testdata;bundle-version="1.4.4",
- edu.tamu.wala.increpta;bundle-version="1.4.4"
+ edu.tamu.wala.increpta;bundle-version="0.0.1"
