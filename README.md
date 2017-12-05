@@ -1,6 +1,52 @@
 ## WALA Subproject: Incremental Points-to Analysis [![Build Status](https://travis-ci.org/april1989/Incremental_Points_to_Analysis.svg?branch=master)](https://travis-ci.org/april1989/Incremental_Points_to_Analysis)
 
-This is the main source repository for the incremental points-to analysis, developed by Automated Software Engineering Research (ASER) Group at Texas A&M University. The source code is in ```edu.tamu.wala.increpta```, and the tests are in ```edu.tamu.wala.increpta.tests```. 
+This is the main source repository for the incremental points-to analysis, developed by Automated Software Engineering Research (ASER) Group at Texas A&M University. Currently, we support context/flow-insensitive and object/field-sensitive points-to analysis. The source code is in ```edu.tamu.wala.increpta```, and the tests are in ```edu.tamu.wala.increpta.tests```. 
+
+### Get Started
+#### Prerequisites:
+- Java >= 1.8
+- Eclipse = Mars 4.5.2
+- Apache Maven >= 3.3.9
+#### Set Up
+1. ```git clone https://github.com/april1989/Incremental_Points_to_Analysis.git```
+2. With Maven: 
+```cd path-to-the-clone-folder```
+```mvn clean install -DskipTests=true```
+3. With Eclipse:
+Import the projects in this repo to a new Eclipse workspace;
+Follow the instructions on the "UserGuide: Getting Started":http://wala.sourceforge.net/wiki/index.php/UserGuide:Getting_Started to set up WALA.
+
+#### Example
+Firstly, we run the points-to analysis for the whole target program, which has the same code structure as provided by WALA points-to analysis framework:
+```java
+//Indicate analysis scope for the target program and excluded packages
+AnalysisScope scope = AnalysisScopeReader.readJavaScope(Scope_File, (new FileProvider()).getFile(Exclusion_Packages), Example.class.getClassLoader());
+ClassHierarchy cha = ClassHierarchyFactory.make(scope);
+//Compute entrypoints in the scope
+Iterable<Entrypoint> entrypoints = Util.makeMainEntrypoints(scope, cha);
+AnalysisOptions options = CallGraphTestUtil.makeAnalysisOptions(scope, entrypoints);
+IAnalysisCacheView cache = new AnalysisCacheImpl();
+//Create incremental call graph/points-to graph builder, and compute the graphs for the whole target program
+IPASSAPropagationCallGraphBuilder builder = IPAUtil.makeIPAZeroCFABuilder(options, cache, cha, scope);
+CallGraph callGraph = builder.makeCallGraph(options, null);
+PointerAnalysis<InstanceKey> pta = builder.getPointerAnalysis();
+```
+where```Exclusion_Packages``` includes all the packages excluded from the analysis, and ```Scope_File``` indicates the target program.
+
+Then, user need to specify two sets: ```delInsts``` to store all the deleted SSAInstructions, ```addInsts``` to store all the added onces, and ```targetNode``` denotes which CGNode the instructions belong to.
+```java
+CGNode targetNode = null;
+HashSet<SSAInstruction> delInsts = new HashSet<>();
+HashSet<SSAInstruction> addInsts = new HashSet<>();
+```
+
+Finally, user call ```updatePointsToAnalysis()``` with the above parameters to run our incremental analysis. Afterwards, user can query the updated points-to sets by ```getPointsToSet()```.
+```java
+//Perform the incremental points-to analysis
+builder.updatePointsToAnalysis(targetNode, delInsts, addInsts);
+//Query the points-to set of pointerKey
+OrdinalSet<InstanceKey> pts = pta.getPointsToSet(pointerKey);
+```
 
 ### Run the Junit Tests
 The JUnit test file is in ```edu.tamu.wala.increpta.tests```. The test cases includeds all the test cases in ```com.ibm.wala.core.testdata/src/demandpa``` for pointer analysis. 
