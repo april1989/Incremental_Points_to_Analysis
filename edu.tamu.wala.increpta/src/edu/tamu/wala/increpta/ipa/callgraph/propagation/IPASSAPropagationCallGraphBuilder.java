@@ -2918,5 +2918,48 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		// return true ? (IPointsToSolver)new PreTransitiveSolver(system,this) : new
 		// StandardSolver(system,this);
 	}
+
+	
+
+	public void updatePointsToAnalysis(CGNode targetNode, HashSet<SSAInstruction> delInsts,
+			HashSet<SSAInstruction> addInsts) throws CancelException {
+		//true -> Indicate we are performing incremental analysis
+	    system.setChange(true);
+	    IR ir = targetNode.getIR();
+	    DefUse du = new DefUse(ir);
+	    ConstraintVisitor v = this.makeVisitor(targetNode);
+	    v.setIR(ir);
+	    v.setDefUse(du);
+	    ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg = ir.getControlFlowGraph();
+
+	    //true -> Perform SSAInstruction Deletion
+	    this.setDelete(true);
+	    for (SSAInstruction delInst : delInsts) {
+	    	ISSABasicBlock basicBlock = cfg.getBlockForInstruction(delInst.iindex);
+	        v.setBasicBlock(basicBlock);
+	        system.setFirstDel(true);
+	        delInst.visit(v);
+	        system.setFirstDel(false);
+	        do{
+	          system.solveDel(null);
+	        }while(!system.emptyWorkList());
+	        system.clearTheRoot();
+	        system.clearChanges();
+		}
+
+	    //false -> Perform SSAInstruction Addition
+	    this.setDelete(false);
+	    for (SSAInstruction addInst : addInsts) {
+	    	ISSABasicBlock basicBlock = cfg.getBlockForInstruction(addInst.iindex);
+	        v.setBasicBlock(basicBlock);
+	        addInst.visit(v);
+	        do{
+	          system.solveAdd(null);
+	          addConstraintsFromNewNodes(null);
+	        } while (!system.emptyWorkList());
+	        system.clearChanges();
+		}
+
+	}
 }
 
