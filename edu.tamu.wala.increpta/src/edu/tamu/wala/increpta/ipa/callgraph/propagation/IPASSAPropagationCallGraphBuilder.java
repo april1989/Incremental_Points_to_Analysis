@@ -1818,7 +1818,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		}
 		caller.addTarget(instruction.getCallSite(), target);
 
-		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
+		if (callGraph.getFakeRootNode().equals(caller)) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.registerEntrypoint(target);
 			}
@@ -1846,7 +1846,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		}
 		((IPACGNode)caller).delTarget(instruction.getCallSite(), target);//bz
 
-		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
+		if (callGraph.getFakeRootNode().equals(caller)) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.deRegisterEntrypoint(target);
 			}
@@ -1946,7 +1946,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 	 */
 	protected void processDelCallingConstraints(CGNode caller, SSAAbstractInvokeInstruction instruction, CGNode target,
 			InstanceKey[][] constParams, PointerKey uniqueCatchKey) {
-		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
+		if (callGraph.getFakeRootNode().equals(caller)) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.deRegisterEntrypoint(target);
 			}
