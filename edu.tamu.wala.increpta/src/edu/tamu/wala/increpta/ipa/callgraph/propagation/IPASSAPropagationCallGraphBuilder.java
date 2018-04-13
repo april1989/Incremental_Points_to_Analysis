@@ -1879,7 +1879,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		// }
 		// } else {
 		// generate contraints from parameter passing
-		int nUses = instruction.getNumberOfParameters();
+		int nUses = instruction.getNumberOfPositionalParameters();
 		int nExpected = target.getMethod().getNumberOfParameters();
 
 		/*
@@ -1897,7 +1897,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		// TODO: we need much more precise filters than cones in order to handle
 		// the various types of dispatch logic. We need a filter that expresses
 		// "the set of types s.t. x.foo resolves to y.foo."
-		for (int i = 0; i < instruction.getNumberOfParameters(); i++) {
+		for (int i = 0; i < instruction.getNumberOfPositionalParameters(); i++) {
 			if (target.getMethod().getParameterType(i).isReferenceType()) {
 				PointerKey formal = getTargetPointerKey(target, i);
 				if (constParams != null && constParams[i] != null) {
@@ -1951,7 +1951,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 				callGraph.deRegisterEntrypoint(target);
 			}
 		}
-		for (int i = 0; i < instruction.getNumberOfParameters(); i++) {
+		for (int i = 0; i < instruction.getNumberOfPositionalParameters(); i++) {
 			if (target.getMethod().getParameterType(i).isReferenceType()) {
 
 				PointerKey formal = getTargetPointerKey(target, i);
