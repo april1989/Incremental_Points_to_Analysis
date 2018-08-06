@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -27,7 +27,7 @@ public class DeletionUtil {
 	public static MutableSharedBitVectorIntSet removeSome(PointsToSetVariable v, IntSet set){
 		MutableSharedBitVectorIntSet removed = new MutableSharedBitVectorIntSetFactory().make();
 		MutableIntSet V = v.getValue();
-		if(V != null && set!=null){
+		if(V != null && set != null){
 			IntIterator iterator = set.intIterator();
 			while(iterator.hasNext()){
 				Integer del = iterator.next();

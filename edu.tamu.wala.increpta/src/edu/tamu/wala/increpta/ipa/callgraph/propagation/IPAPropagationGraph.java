@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -18,17 +18,15 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
-import com.ibm.wala.fixedpoint.impl.GeneralStatement;
 import com.ibm.wala.fixpoint.IFixedPointStatement;
 import com.ibm.wala.fixpoint.IFixedPointSystem;
 import com.ibm.wala.fixpoint.IVariable;
 import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
-import java.util.function.Predicate;
 import com.ibm.wala.util.collections.CompoundIterator;
 import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.FilterIterator;
-import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.SmallMap;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.debug.UnimplementedError;
@@ -47,6 +45,7 @@ import com.ibm.wala.util.intset.IBinaryNaturalRelation;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntPair;
 import com.ibm.wala.util.intset.IntSet;
+import com.ibm.wala.util.intset.IntSetAction;
 
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
@@ -55,6 +54,8 @@ import edu.tamu.wala.increpta.operators.IPAAssignOperator;
 import edu.tamu.wala.increpta.operators.IPAGeneralStatement;
 import edu.tamu.wala.increpta.operators.IPAUnaryOperator;
 import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
+import edu.tamu.wala.increpta.scc.SCCEngine;
+import edu.tamu.wala.increpta.scc.SCCVariable;
 
 /**
  * A dataflow graph implementation specialized for propagation-based pointer analysis
@@ -104,6 +105,40 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * Number of implicit unary equations registered
 	 */
 	private int implicitUnaryCount = 0;
+	//
+	public SCCEngine sccEngine;
+	public void setSCCEngine(SCCEngine engine) {
+		this.sccEngine = engine;
+	}
+
+	public SCCEngine getSCCEngine() {
+		return sccEngine;
+	}
+
+	/**
+	 * run after the whole program analysis
+	 */
+	public void initialRunSCCEngine(){
+		sccEngine.initialSCCDetection();
+	}
+
+	private boolean change = false;
+	/**
+	 * start to incremental change program
+	 * @param change
+	 */
+	public void setChange(boolean change){
+		this.change = change;
+		sccEngine.setChange(change);
+	}
+	////////
+	public DelegateGraph getDelegateGraph(){
+		return delegateGraph;
+	}
+
+	public NumberedNodeManager<INodeWithNumber> getNodeManager(){
+		return nodeManager;
+	}
 
 	/**
 	 * @return a relation in map m corresponding to a key
@@ -140,7 +175,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 *
 	 *         use this with care ...
 	 */
-	private class DelegateGraph extends AbstractNumberedGraph<INodeWithNumber> {
+	 class DelegateGraph extends AbstractNumberedGraph<INodeWithNumber> {
 
 		private int equationCount = 0;
 
@@ -207,11 +242,14 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		PointsToSetVariable lhs = eq.getLHS();
 		if (lhs != null) {
 			delegateGraph.removeEdge(eq, lhs);
+			checkIfDeleteNode(lhs);
 		}
 		for (int i = 0; i < eq.getRHS().length; i++){
 			PointsToSetVariable rhs = eq.getRHS()[i];
-			if(rhs!=null)
+			if(rhs!=null){
 				delegateGraph.removeEdge(rhs, eq);
+				checkIfDeleteNode(rhs);
+			}
 		}
 	}
 
@@ -235,17 +273,30 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 			PointsToSetVariable rhs = eq.getRightHandSide();
 			if (lhs != null) {
 				delegateGraph.removeEdge(eq, lhs);
+				checkIfDeleteNode(lhs);
 			}
 			try{
 				delegateGraph.removeEdge(rhs, eq);
+				checkIfDeleteNode(rhs);
 			}catch(Exception e){
 				e.printStackTrace();
 			}
 		}
 	}
 
+	private void checkIfDeleteNode(PointsToSetVariable v) {
+		int num_of_use = getNumberOfStatementsThatUse(v);
+		int num_of_def = getNumberOfStatementsThatDef(v);
+		if(num_of_def == 0 && num_of_use == 0){
+//			delegateGraph.removeNode(v);//TODO: should be removed to maintain a small graph, but the graph implementation won't support
+			sccEngine.removeNode(v.getGraphNodeId());
+//			System.err.println("delete: " + v.getGraphNodeId());
+		}
+	}
+
 	/**
 	 * @throws IllegalArgumentException if eq is null
+	 * rhs -> eq(op) -> lhs
 	 */
 	public void addStatement(IPAGeneralStatement<PointsToSetVariable> eq) {
 		if (eq == null) {
@@ -269,6 +320,11 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		}
 	}
 
+	/**
+	 *  rhs -> eq(op) -> lhs
+	 * @param eq
+	 * @throws IllegalArgumentException
+	 */
 	public void addStatement(IPAUnaryStatement<PointsToSetVariable> eq) throws IllegalArgumentException {
 		if (eq == null) {
 			throw new IllegalArgumentException("eq == null");
@@ -324,14 +380,24 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 			IBinaryNaturalRelation iR = findOrCreateRelation(invImplicitUnaryMap, eq.getOperator());
 			iR.add(rhs, lhs);
 		}
+		if(change){
+			//process scc
+			boolean isFilter = false;
+			if(eq.getOperator() instanceof IPAPropagationCallGraphBuilder.IPAFilterOperator){
+				isFilter = true;
+			}
+			boolean has_new = sccEngine.addEdge(lhs, rhs, isFilter);
+		}
 	}
 
 	private void removeImplicitStatement(IPAUnaryStatement<PointsToSetVariable> eq) {
 		if (DEBUG) {
 			System.err.println(("removeImplicitStatement " + eq));
 		}
-		int lhs = eq.getLHS().getGraphNodeId();
-		int rhs = eq.getRightHandSide().getGraphNodeId();
+		PointsToSetVariable LHS = eq.getLHS();
+		PointsToSetVariable RHS = eq.getRightHandSide();
+		int lhs = LHS.getGraphNodeId();
+		int rhs = RHS.getGraphNodeId();
 		if (DEBUG) {
 			System.err.println(("lhs rhs " + lhs + " " + rhs));
 		}
@@ -340,6 +406,16 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		IBinaryNaturalRelation iR = findOrCreateRelation(invImplicitUnaryMap, eq.getOperator());
 		iR.remove(rhs, lhs);
 		implicitUnaryCount--;
+		if(change){
+			//process scc
+			boolean isFilter = false;
+			if(eq.getOperator() instanceof IPAPropagationCallGraphBuilder.IPAFilterOperator){
+				isFilter = true;
+			}
+			boolean remove_old = sccEngine.removeEdge(lhs, rhs, isFilter);
+			checkIfDeleteNode(LHS);
+			checkIfDeleteNode(RHS);
+		}
 	}
 
 	@Override
@@ -761,6 +837,34 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		return list.iterator();
 	}
 
+
+	/**
+	 * only return the implicit unary ids
+	 */
+	public ArrayList<IPAAbstractStatement> getImplicitStatementsThatUse(PointsToSetVariable v) {
+		if (v == null) {
+			throw new IllegalArgumentException("v is null");
+		}
+		ArrayList<IPAAbstractStatement> list = new ArrayList<IPAAbstractStatement>();
+		int number = v.getGraphNodeId();
+		if (number == -1) {
+			return list;
+		}
+		Iterator<INodeWithNumber> result = EmptyIterator.instance();
+		for (int i = 0; i < invImplicitUnaryMap.size(); i++) {
+			IPAUnaryOperator op = invImplicitUnaryMap.getKey(i);
+			IBinaryNaturalRelation R = (IBinaryNaturalRelation) invImplicitUnaryMap.getValue(i);
+			IntSet s = R.getRelated(number);
+			if (s != null) {
+				result = new CompoundIterator<INodeWithNumber>(new ImplicitUseIterator(op, v, s), result);
+			}
+		}
+		while (result.hasNext()) {
+			list.add((IPAAbstractStatement) result.next());
+		}
+		return list;
+	}
+
 	@Override
 	@SuppressWarnings("unchecked")
 	public Iterator<IPAAbstractStatement> getStatementsThatDef(PointsToSetVariable v) {
@@ -780,12 +884,77 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 				result = new CompoundIterator<INodeWithNumber>(new ImplicitDefIterator(op, s, v), result);
 			}
 		}
-
 		List<IPAAbstractStatement> list = new ArrayList<IPAAbstractStatement>();
 		while (result.hasNext()) {
 			list.add((IPAAbstractStatement) result.next());
 		}
 		return list.iterator();
+	}
+
+	/**
+	 * only return the implicit unary statatements, do not consider scc
+	 */
+	public ArrayList<IPAAbstractStatement> getImplicitStatementsThatDef(PointsToSetVariable v) {
+		if (v == null) {
+			throw new IllegalArgumentException("v is null");
+		}
+		ArrayList<IPAAbstractStatement> list = new ArrayList<IPAAbstractStatement>();
+		int number = v.getGraphNodeId();
+		if (number == -1) {
+			return list;
+		}
+		Iterator<INodeWithNumber> result = EmptyIterator.instance();
+		for (int i = 0; i < implicitUnaryMap.size(); i++) {
+			IPAUnaryOperator op = implicitUnaryMap.getKey(i);
+			IBinaryNaturalRelation R = (IBinaryNaturalRelation) implicitUnaryMap.getValue(i);
+			IntSet s = R.getRelated(number);
+			if (s != null) {
+				result = new CompoundIterator<INodeWithNumber>(new ImplicitDefIterator(op, s, v), result);
+			}
+		}
+		while (result.hasNext()) {
+			list.add((IPAAbstractStatement) result.next());
+		}
+		return list;
+	}
+
+	/**
+	 * only return the PointsToSetVariables/SCCVariables in its defined implicit unary statatements
+	 * only used for deletion after the initial run, to determine incoming neighbours
+	 */
+	public HashSet<PointsToSetVariable> getPointsToSetVariablesThatDefImplicitly(PointsToSetVariable v) {
+		if (v == null) {
+			throw new IllegalArgumentException("v is null");
+		}
+		HashSet<PointsToSetVariable> list = new HashSet<>();
+		int number = v.getGraphNodeId();
+		if (number == -1) {
+			return list;
+		}
+		for (int i = 0; i < implicitUnaryMap.size(); i++) {
+			IBinaryNaturalRelation R = (IBinaryNaturalRelation) implicitUnaryMap.getValue(i);
+			IntSet s = R.getRelated(number);
+			if (s != null) {
+				s.foreach(new IntSetAction() {
+					@Override
+					public void act(int id) {
+						if(sccEngine.belongToSCC(id)){
+							SCCVariable scc_v = sccEngine.getCorrespondingSCCVariable(id);
+							if(scc_v != null){
+								list.add(scc_v);
+							}else
+								throw new RuntimeException("Cannot locate corresponding SCCVariable for " + id);
+						}else{
+							INodeWithNumber p_v = nodeManager.getNode(id);
+							if(p_v instanceof PointsToSetVariable){
+								list.add((PointsToSetVariable)p_v);
+							}
+						}
+					}
+				});
+			}
+		}
+		return list;
 	}
 
 	/**

@@ -22,6 +22,7 @@ import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Context;
+import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
 import com.ibm.wala.ipa.callgraph.propagation.ReceiverInstanceContext;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
@@ -37,7 +38,6 @@ import com.ibm.wala.util.graph.NumberedNodeManager;
 import com.ibm.wala.util.graph.impl.DelegatingNumberedNodeManager;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.graph.traverse.DFS;
-import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
 
 public abstract class IPABasicCallGraph<T> extends AbstractNumberedGraph<CGNode> implements CallGraph {
 

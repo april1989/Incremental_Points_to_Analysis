@@ -10,10 +10,10 @@
  ******************************************************************************/
 package edu.tamu.wala.increpta.ipa.callgraph.propagation;
 
+import com.ibm.wala.classLoader.ArrayClass;
 import com.ibm.wala.ipa.callgraph.propagation.AbstractFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.ArrayContentsKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
-import com.ibm.wala.classLoader.ArrayClass;
 
 public final class IPAArrayContentsKey extends AbstractFieldPointerKey implements IPAFilteredPointerKey {
 	public IPAArrayContentsKey(InstanceKey instance) {

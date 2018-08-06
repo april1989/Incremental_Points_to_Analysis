@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -21,13 +21,13 @@ import java.util.function.Predicate;
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Context;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
+import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -95,7 +95,7 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	   */
 	  @Override
 	  protected CGNode makeFakeRootNode() throws CancelException {
-	    return findOrCreateNode(Language.JAVA.getFakeRootMethod(cha, options, cache), Everywhere.EVERYWHERE);
+	    return findOrCreateNode(new FakeRootMethod(cha, options, cache), Everywhere.EVERYWHERE);
 	  }
 
 	  /**
@@ -105,7 +105,7 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	   */
 	  @Override
 	  protected CGNode makeFakeWorldClinitNode() throws CancelException {
-	    return findOrCreateNode(new FakeWorldClinitMethod(Language.JAVA.getFakeRootMethod(cha, options, cache).getDeclaringClass(), options, cache), Everywhere.EVERYWHERE);
+	    return findOrCreateNode(new FakeWorldClinitMethod(cha, options, cache), Everywhere.EVERYWHERE);
 	  }
 
 	  /**
@@ -278,7 +278,8 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	    public boolean equals(Object obj) {
 	      // we can use object equality since these objects are canonical as created
 	      // by the governing ExplicitCallGraph
-	      return this == obj;
+//		      return this == obj;
+	    	return this.hashCode() == obj.hashCode();
 	    }
 
 	    @Override

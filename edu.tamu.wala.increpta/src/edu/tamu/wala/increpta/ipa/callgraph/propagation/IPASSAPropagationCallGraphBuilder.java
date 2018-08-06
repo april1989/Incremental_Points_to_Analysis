@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -23,17 +23,17 @@ import java.util.function.Consumer;
 import com.ibm.wala.analysis.reflection.CloneInterpreter;
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.cfg.IBasicBlock;
-import com.ibm.wala.ssa.SSACFG.BasicBlock;
+import com.ibm.wala.classLoader.ArrayClass;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.classLoader.ProgramCounter;
-import com.ibm.wala.classLoader.ArrayClass;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.ContextKey;
+import com.ibm.wala.ipa.callgraph.ContextSelector;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
@@ -46,11 +46,9 @@ import com.ibm.wala.ipa.callgraph.propagation.IPointsToSolver;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointerKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.ZeroLengthArrayInNode;
-import com.ibm.wala.ipa.callgraph.propagation.FilteredPointerKey.TypeFilter;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeBT.ConditionalBranchInstruction;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
@@ -63,6 +61,7 @@ import com.ibm.wala.ssa.SSAAbstractThrowInstruction;
 import com.ibm.wala.ssa.SSAArrayLoadInstruction;
 import com.ibm.wala.ssa.SSAArrayStoreInstruction;
 import com.ibm.wala.ssa.SSACFG;
+import com.ibm.wala.ssa.SSACFG.BasicBlock;
 import com.ibm.wala.ssa.SSACFG.ExceptionHandlerBasicBlock;
 import com.ibm.wala.ssa.SSACheckCastInstruction;
 import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
@@ -102,7 +101,7 @@ import edu.tamu.wala.increpta.callgraph.impl.IPACGNode;
 import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 
-public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBuilder implements IPAHeapModel {
+public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBuilder implements IPAHeapModel {
 
 	private final static boolean DEBUG = false;
 
@@ -586,6 +585,51 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 			}
 		}
 
+		/**bz: reverse
+		 * @param pi
+		 * @param rhsi
+		 */
+		protected void recDel(final int pi, final int rhsi) {
+			//find all keys
+			if (pi == params.length) {
+				f.accept(keys);//remove call graph constraints, first
+			} else {
+				final int p = params[pi];
+				InstanceKey[] ik = invariants != null ? invariants[p] : null;
+				if (ik != null) {
+					if (ik.length > 0) {
+						for (int i = 0; i < ik.length; i++) {
+							system.findOrCreateIndexForInstanceKey(ik[i]);
+							keys[pi] = ik[i];
+							recDel(pi + 1, rhsi);
+						}
+					} /* else {
+	            if (!site.isDispatch() || p != 0) {
+	              keys[pi] = null;
+	              rec(pi + 1, rhsi);
+	            }
+	          } */
+				} else {
+					IntSet s = getParamObjects(pi, rhsi);
+					if (s != null && !s.isEmpty()) {
+						s.foreach(new IntSetAction() {
+							@Override
+							public void act(int x) {
+								keys[pi] = system.getInstanceKey(x);
+								recDel(pi + 1, rhsi + 1);
+							}
+						});
+					} /*else {
+	            if (!site.isDispatch() || p != 0) {
+	              keys[pi] = null;
+	              rec(pi + 1, rhsi + 1);
+	            }
+	          } */
+				}
+			}
+		}
+
+
 		protected IntSet getParamObjects(int paramIndex, @SuppressWarnings("unused") int rhsi) {
 			int paramVn = call.getUse(paramIndex);
 			PointerKey var = getPointerKeyForLocal(caller, paramVn);
@@ -646,7 +690,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 
 			this.callGraph = builder.getCallGraph();
 
-			this.system = builder.getPropagationSystem();
+			this.system = builder.getSystem();
 
 			SSAContextInterpreter interp = builder.getCFAContextInterpreter();
 			this.ir = interp.getIRView(node);
@@ -1275,35 +1319,49 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		 */
 		protected void doDelInvokeInternal(final SSAAbstractInvokeInstruction instruction, InvariantComputer invs) {
 			if (DEBUG) {
-				System.err.println("delInvoke: " + instruction);
+				System.err.println("visitInvoke: " + instruction);
 			}
 
 			PointerKey uniqueCatch = null;
 			if (hasUniqueCatchBlock(instruction, ir)) {
 				uniqueCatch = getBuilder().getUniqueCatchKey(instruction, ir, node);
-				if(DEBUG)
-					System.out.println("---Has unique Catch: " +uniqueCatch.toString());
 			}
+
 			InstanceKey[][] invariantParameters = invs.computeInvariantParameters(instruction);
 
-			if (instruction.getCallSite().isStatic()) {
+			IntSet params = getBuilder().getContextSelector().getRelevantParameters(node, instruction.getCallSite());
+			if (!instruction.getCallSite().isStatic() && !params.contains(0) && (invariantParameters == null || invariantParameters[0] == null)) {
+				params = IntSetUtil.makeMutableCopy(params);
+				((MutableIntSet)params).add(0);
+			}
+
+			if (invariantParameters != null) {
+				for(int i = 0; i < invariantParameters.length; i++) {
+					if (invariantParameters[i] != null) {
+						params = IntSetUtil.makeMutableCopy(params);
+						((MutableIntSet)params).remove(i);
+					}
+				}
+			}
+			if (params.isEmpty()) {
 				for (CGNode n : getBuilder().getTargetsForCall(node, instruction, invariantParameters)) {
 					getBuilder().processDelCall(node, instruction, n, invariantParameters, uniqueCatch);
+					if (DEBUG) {
+						System.err.println("visitInvoke class init " + n);
+					}
+
+					// side effect of invoke: may call class initializer
+//					processClassInitializer(n.getMethod().getDeclaringClass());
 				}
 			} else {
-				IntSet params = getBuilder().getContextSelector().getRelevantParameters(node, instruction.getCallSite());
-				if (! params.contains(0)) {
-					params = IntSetUtil.makeMutableCopy(params);
-					((MutableIntSet)params).add(0);
-				}
-				//vns has the same size as relevant parameters
+				// Add a side effect that will fire when we determine a value
+				// for a dispatch parameter. This side effect will create a new node
+				// and new constraints based on the new callee context.
 				final int vns[] = new int[ params.size() ];
 				params.foreach(new IntSetAction() {
 					private int i = 0;
 					@Override
 					public void act(int x) {
-						if(DEBUG)
-							System.out.println(x + " th" + " parameter is V"+instruction.getUse(x));
 						vns[i++] = instruction.getUse(x);
 					}
 				});
@@ -1311,10 +1369,12 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 				if (contentsAreInvariant(symbolTable, du, vns)) {
 					for(CGNode n : getBuilder().getTargetsForCall(node, instruction, invariantParameters)) {
 						getBuilder().processDelCall(node, instruction, n, invariantParameters, uniqueCatch);
+						// side effect of invoke: may call class initializer
+//						processClassInitializer(n.getMethod().getDeclaringClass());
 					}
 				} else {
 					if (DEBUG) {
-						System.err.println("del side effect, dispatch to " + instruction + " for " + params);
+						System.err.println("Add side effect, dispatch to " + instruction + " for " + params);
 					}
 
 					final List<PointerKey> pks = new ArrayList<PointerKey>(params.size());
@@ -1818,7 +1878,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		}
 		caller.addTarget(instruction.getCallSite(), target);
 
-		if (callGraph.getFakeRootNode().equals(caller)) {
+		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.registerEntrypoint(target);
 			}
@@ -1846,7 +1906,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		}
 		((IPACGNode)caller).delTarget(instruction.getCallSite(), target);//bz
 
-		if (callGraph.getFakeRootNode().equals(caller)) {
+		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.deRegisterEntrypoint(target);
 			}
@@ -1879,7 +1939,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		// }
 		// } else {
 		// generate contraints from parameter passing
-		int nUses = instruction.getNumberOfPositionalParameters();
+		int nUses = instruction.getNumberOfParameters();
 		int nExpected = target.getMethod().getNumberOfParameters();
 
 		/*
@@ -1892,12 +1952,13 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 			return;
 		}
 
+		// generate contraints from parameter.
 		// we're a little sloppy for now ... we don't filter calls to
 		// java.lang.Object.
 		// TODO: we need much more precise filters than cones in order to handle
 		// the various types of dispatch logic. We need a filter that expresses
 		// "the set of types s.t. x.foo resolves to y.foo."
-		for (int i = 0; i < instruction.getNumberOfPositionalParameters(); i++) {
+		for (int i = 0; i < instruction.getNumberOfParameters(); i++) {
 			if (target.getMethod().getParameterType(i).isReferenceType()) {
 				PointerKey formal = getTargetPointerKey(target, i);
 				if (constParams != null && constParams[i] != null) {
@@ -1925,6 +1986,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 			PointerKey ret = getPointerKeyForReturnValue(target);
 			system.newConstraint(result, assignOperator, ret);
 		}
+
 		// generate constraints from exception return value.
 		PointerKey e = getPointerKeyForLocal(caller, instruction.getException());
 		PointerKey er = getPointerKeyForExceptionalReturnValue(target);
@@ -1946,12 +2008,12 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 	 */
 	protected void processDelCallingConstraints(CGNode caller, SSAAbstractInvokeInstruction instruction, CGNode target,
 			InstanceKey[][] constParams, PointerKey uniqueCatchKey) {
-		if (callGraph.getFakeRootNode().equals(caller)) {
+		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.deRegisterEntrypoint(target);
 			}
 		}
-		for (int i = 0; i < instruction.getNumberOfPositionalParameters(); i++) {
+		for (int i = 0; i < instruction.getNumberOfParameters(); i++) {
 			if (target.getMethod().getParameterType(i).isReferenceType()) {
 
 				PointerKey formal = getTargetPointerKey(target, i);
@@ -2201,6 +2263,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		}
 
 		/**bz*/
+		@SuppressWarnings("unused")
 		private void delAllReceivers(MutableIntSet receiverVals, InstanceKey[] keys, MutableBoolean sideEffect) {
 			assert keys[0] == null;
 			IntIterator receiverIter = receiverVals.intIterator();
@@ -2242,6 +2305,7 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 						// process the newly discovered target for this call
 						sideEffect.b = true;
 						processDelCall(node, call, target, constParams, uniqueCatch);
+
 						//	            if (!haveAlreadyVisited(target)) {
 						//	              if(DEBUG)
 						//	                System.out.println("--- discover new node from handleAllReceivers: "+ target.toString());
@@ -2253,110 +2317,73 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 			keys[0] = null;
 		}
 
+		/**
+		 * bz
+		 * @param rhs
+		 * @return
+		 */
+		private byte cpaDel(final PointsToSetVariable[] rhs) {
+			final MutableBoolean changed = new MutableBoolean();
+			for(int rhsIndex = 0; rhsIndex < rhs.length; rhsIndex++) {
+				final int y = rhsIndex;
+				IntSet removeObjs = rhs[rhsIndex].getValue();
+				if (removeObjs != null) {
+					final IntSet oldObjs = previousPtrs[rhsIndex];
+					removeObjs.foreach(new IntSetAction() {
+						@Override
+						public void act(final int x) {
+							new CrossProductRec(constParams, call, node,
+									new Consumer<InstanceKey[]>() {
+										@Override
+										public void accept(InstanceKey[] v) {
+											IClass recv = null;
+											if (call.getCallSite().isDispatch()) {
+												recv = v[0].getConcreteType();
+											}
+											CGNode target = getTargetForCall(node, call.getCallSite(), recv, v);
+											if (target != null) {
+												changed.b = true;
+												processDelCall(node, call, target, constParams, uniqueCatch);
+											}
+										}
+									}) {
+
+								{
+									recDel(0, 0);
+								}
+
+								@Override
+								protected IntSet getParamObjects(int paramVn, int rhsi) {
+									if (rhsi == y) {
+										return IntSetUtil.make(new int[]{ x });
+									} else {
+										return previousPtrs[rhsi];
+									}
+								}
+							};
+						}
+					});
+					removeObjs.foreach(new IntSetAction() {
+						@Override
+						public void act(int x) {
+							previousPtrs[y].remove(x);
+						}
+					});
+				}
+			}
+
+			byte sideEffectMask = changed.b ? (byte) SIDE_EFFECT_MASK : 0;
+			return (byte) (NOT_CHANGED | sideEffectMask);
+		}
+
+
 		/**bz:
 		 */
 		@Override
 		public byte evaluateDel(PointsToSetVariable lhs, final PointsToSetVariable[] rhs){
 			assert dispatchIndices.length >= rhs.length : "bad operator at " + call;
-			final MutableBoolean delAllTarget = new MutableBoolean();
 
-			final MutableIntSet receiverDelVals;
-			if (constParams != null && constParams[0] != null) {
-				receiverDelVals = IntSetUtil.make();
-				for(InstanceKey ik : constParams[0]) {
-					receiverDelVals.add(system.getInstanceIndex(ik));
-				}
-			} else {
-				if(rhs[0]==null)
-					return NOT_CHANGED;//JEFF
-				receiverDelVals = rhs[0].getValue();
-			}
-
-			if (receiverDelVals == null) {
-				// this constraint was put on the work list, probably by
-				// initialization,
-				// even though the right-hand-side is empty.
-				// TODO: be more careful about what goes on the worklist to
-				// avoid this.
-				if (DEBUG) {
-					System.err.println("Del EVAL dispatch with value null");
-				}
-				return NOT_CHANGED;
-
-			}
-			// we handle the parameter positions one by one, rather than enumerating
-			// the cartesian product of possibilities. this disallows
-			// context-sensitivity policies like true CPA, but is necessary for
-			// performance.
-			InstanceKey keys[] = new InstanceKey[constParams == null? dispatchIndices[dispatchIndices.length-1]+1: constParams.length];
-			// determine whether we're handling a new receiver; used later
-			// to check for redundancy
-			//--- always false
-			boolean newDelReceiver = !receiverDelVals.isSubset(previousPtrs[0]);
-
-			// keep separate rhsIndex, since it doesn't advance for constant
-			// parameters
-			//???
-			int rhsIndex = (constParams != null && constParams[0] != null)? 0: 1;
-			// this flag is set to true if we ever call handleAllReceivers() in the
-			// loop below. we need to catch the case where we have a new receiver, but
-			// there are no other dispatch indices with new values
-			boolean propagatedDelReceivers = false;
-			// we start at index 1 since we need to handle the receiver specially; see
-			// below
-			for (int index = 1; index < dispatchIndices.length; index++) {
-				try {
-					MonitorUtil.throwExceptionIfCanceled(monitor);
-				} catch (CancelException e) {
-					//	          throw new CancelRuntimeException(e);
-				}
-				int paramIndex = dispatchIndices[index];
-				assert keys[paramIndex] == null;
-				final MutableIntSet prevAtIndex = previousPtrs[index];
-				if (constParams != null && constParams[paramIndex] != null) {
-					// we have a constant parameter.  only need to propagate again if we've  done it before or if we have a new receiver
-					//--- new receiver seems impossible when deleting
-					if (newDelReceiver || !prevAtIndex.isEmpty()) {
-						for(int i = 0; i < constParams[paramIndex].length; i++) {
-							keys[paramIndex] = constParams[paramIndex][i];
-							delAllReceivers(receiverDelVals,keys, delAllTarget);
-							propagatedDelReceivers = true;
-							//int ii = system.instanceKeys.getMappedIndex(constParams[paramIndex][i]);
-							//prevAtIndex.add(ii);
-							prevAtIndex.clear();
-						}
-					}
-				} else { // non-constant parameter
-					PointsToSetVariable v = rhs[rhsIndex];
-					if (v.getValue() != null) {
-						IntIterator ptrs = v.getValue().intIterator();
-						while (ptrs.hasNext()) {
-							int ptr = ptrs.next();
-							if (newDelReceiver || prevAtIndex.contains(ptr)) {
-								keys[paramIndex] = system.getInstanceKey(ptr);
-								delAllReceivers(receiverDelVals,keys, delAllTarget);
-								propagatedDelReceivers = true;
-								//prevAtIndex.add(ptr);
-							}
-							prevAtIndex.clear();
-						}
-					}
-					rhsIndex++;
-				}
-				keys[paramIndex] = null;
-			}
-			if (newDelReceiver) {
-				if (!propagatedDelReceivers) {
-					// we have a new receiver value, and it wasn't propagated at all,
-					// so propagate it now
-					delAllReceivers(receiverDelVals,keys, delAllTarget);
-				}
-				// clear receiver cache
-				previousPtrs[0].clear();
-			}
-
-			byte sideEffectMask = delAllTarget.b ? (byte) SIDE_EFFECT_MASK : 0;
-			return (byte) (NOT_CHANGED | sideEffectMask);
+			return cpaDel(rhs);
 		}
 
 		@SuppressWarnings("unused")
@@ -2914,12 +2941,8 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 	@Override
 	protected IPointsToSolver makeSolver() {
 		return new IPAStandardSolver(system, this);
-		// return usePreTransitiveSolver ? (IPointsToSolver) new PreTransitiveSolver(system, this) : new StandardSolver(system, this);
-		// return true ? (IPointsToSolver)new PreTransitiveSolver(system,this) : new
-		// StandardSolver(system,this);
 	}
 
-	
 
 	public void updatePointsToAnalysis(CGNode targetNode, HashSet<SSAInstruction> delInsts,
 			HashSet<SSAInstruction> addInsts) throws CancelException {
@@ -2943,7 +2966,6 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 	        do{
 	          system.solveDel(null);
 	        }while(!system.emptyWorkList());
-	        system.clearTheRoot();
 	        system.clearChanges();
 		}
 
@@ -2961,5 +2983,6 @@ public class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBu
 		}
 
 	}
+
 }
 

@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -589,5 +589,15 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 	@Override
 	public IClassHierarchy getClassHierarchy() {
 		return builder.getClassHierarchy();
+	}
+
+	public int getNumOfPointerKeys() {
+		int size = 0;
+		Iterator<PointerKey> iter = pointsToMap.iterateKeys();
+		while(iter.hasNext()){
+			iter.next();
+			size++;
+		}
+		return size;
 	}
 }

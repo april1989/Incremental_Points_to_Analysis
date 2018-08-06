@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -84,10 +84,6 @@ VerboseAction{
 	/**
 	 * bz: flags
 	 */
-	public boolean updatechange = false;
-	public void setUpdateChange(boolean p){
-		updatechange = p;
-	}
 	public boolean isChange = false;
 	public void setChange(boolean p){
 		isChange = p;
@@ -117,16 +113,6 @@ VerboseAction{
 		}
 	}
 
-	/**
-	 * bz: a set to record the root changed pointer keys
-	 */
-	public static HashSet<IVariable> theRoot = new HashSet<IVariable>();
-	public void setTheRoot(IVariable root){
-		theRoot.add(root);
-	}
-	public void clearTheRoot(){
-		theRoot.clear();
-	}
 
 	/**
 	 * worklist for the iterative solver
@@ -209,6 +195,7 @@ VerboseAction{
 		return globalChange;
 	}
 
+
 	@SuppressWarnings("unchecked")
 	public boolean solveDel(IProgressMonitor monitor) throws CancelException {
 		boolean globalChange = false;
@@ -219,13 +206,6 @@ VerboseAction{
 
 			// duplicate insertion detection
 			IPAAbstractStatement s = workList.takeStatement();
-
-			if(s.getLHS() != null && theRoot != null){
-				IVariable lhs = s.getLHS();
-				if(theRoot.contains(lhs))
-					continue;
-			}
-
 			byte code = s.evaluateDel();
 			if (verbose) {
 				nEvaluated++;
@@ -262,13 +242,6 @@ VerboseAction{
 
 			// duplicate insertion detection
 			IPAAbstractStatement s = workList.takeStatement();
-
-			if(s.getLHS() != null && theRoot != null){
-				IVariable lhs = s.getLHS();
-				if(theRoot.contains(lhs))
-					continue;
-			}
-
 			byte code = s.evaluate();
 			if (verbose) {
 				nEvaluated++;
@@ -476,8 +449,9 @@ VerboseAction{
 		// add to the list of graph
 		IPAUnaryStatement<T> s = operator.makeEquation(lhs, rhs);
 		if (getFixedPointSystem().containsStatement(s)) {
-			return false;
+			return false;//should not contain a new statement
 		}
+
 		if (lhs != null) {
 			lhs.setOrderNumber(nextOrderNumber++);
 		}

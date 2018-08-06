@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -46,7 +46,6 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
-import com.ibm.wala.ipa.callgraph.propagation.PropagationCallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.ZeroLengthArrayInNode;
 import com.ibm.wala.ipa.callgraph.propagation.rta.RTAContextInterpreter;
@@ -127,6 +126,10 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	 * Set of nodes that have already been traversed for constraints
 	 */
 	final private Set<CGNode> alreadyVisited = HashSetFactory.make();
+
+	public Set<CGNode> getAlreadyVisited(){
+		return alreadyVisited;
+	}
 
 	/**
 	 * At any given time, the set of nodes that have been discovered but not yet processed for constraints
@@ -721,7 +724,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 		@Override
 		public String toString() {
-			return "Filter ";
+			return "Filter";
 		}
 
 		@Override
@@ -768,10 +771,6 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	@Override
 	public PointerAnalysis<InstanceKey> getPointerAnalysis() {
 		return system.extractPointerAnalysis(this);
-	}
-
-	public IPAPropagationSystem getPropagationSystem() {
-		return system;
 	}
 
 	public PointerKeyFactory getPointerKeyFactory() {
@@ -1945,9 +1944,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		SSAInstruction[] insts = ir.getInstructions();
 		int size = insts.length;
 
-		//	    for(int i=size;i>0;i--){
 		for(int i=0; i<size; i++){
-			//	      SSAInstruction inst = insts[i-1];
 			SSAInstruction inst = insts[i];
 
 			if(inst==null)
@@ -1957,7 +1954,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			ISSABasicBlock bb = cfg.getBlockForInstruction(inst.iindex);
 			//delete
 			try{
-				System.out.println("........ Deleting SSAInstruction:      "+ inst.toString());
+				System.out.println("... Deleting SSAInstruction:      "+ inst.toString());
 				this.setDelete(true);
 				system.setFirstDel(true);
 				v.setBasicBlock(bb);
@@ -1967,36 +1964,35 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				do{
 					system.solveDel(null);
 				}while(!system.emptyWorkList());
-				system.clearTheRoot();
 
 				setDelete(false);
 				long delete_time = System.currentTimeMillis() - start_delete;
+				HashSet<IVariable> temp = new HashSet<>();
+				temp.addAll(IPAAbstractFixedPointSolver.changes);
 				system.clearChanges();
 
 				//add
-				System.out.println("........ Adding SSAInstruction:      "+ inst.toString());
+				System.out.println("... Adding SSAInstruction:      "+ inst.toString());
 				long start_add = System.currentTimeMillis();
 				inst.visit(v);
 				do{
 					system.solveAdd(null);
 					addConstraintsFromNewNodes(null);
 				} while (!system.emptyWorkList());
+				system.clearChanges();
 
 				long add_time = System.currentTimeMillis() - start_add;
 
-				HashSet<IVariable> results = IPAAbstractFixedPointSolver.changes;
-
 				boolean nochange = true;
-
-				Iterator<IVariable> it = results.iterator();
+				Iterator<IVariable> it = temp.iterator();
 				while(it.hasNext()){
 					PointsToSetVariable var = (PointsToSetVariable) it.next();
 					if(var != null){
-						PointerKey key = var.getPointerKey();
 						MutableIntSet update = var.getValue();
+						PointerKey key = var.getPointerKey();
 						MutableIntSet origin = var_pts_map.get(key);
-						if(update != null){
-							if(inst instanceof SSAInvokeInstruction){//new instance created, different id
+						if(update != null && origin != null){
+							if(inst instanceof SSAInvokeInstruction){//new instance created, different id, only test the size of pts
 								if(update.size() != origin.size()){
 									nochange = false;
 									correct = false;
@@ -2007,19 +2003,22 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 									correct = false;
 								}
 							}
+						}else if ((update == null && origin != null)){//(update != null && origin == null)
+							nochange = false;
+							correct = false;
 						}
 					}
 				}
 
 
 				if(nochange){
-					System.out.println(".......... points-to sets are the same before deleting inst and after adding back inst. ");
+					System.out.println("...... points-to sets are the same before deleting inst and after adding back inst. ");
 				}else{
-					System.err.println("********** points-to sets are different before deleting inst and after adding back inst. ");
+					throw new RuntimeException("****** points-to sets are different before deleting inst and after adding back inst. ");
 				}
 
 				if(measurePerformance){
-					System.out.println("----------> use " + delete_time + "ms to delete the inst, use " + add_time +"ms to add the inst back.");
+					System.out.println("------> use " + delete_time + "ms to delete the inst, use " + add_time +"ms to add the inst back.");
 					total_del = total_del + delete_time;
 					total_add = total_add + add_time;
 				}
