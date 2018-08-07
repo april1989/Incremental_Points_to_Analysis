@@ -11,13 +11,13 @@
 package com.ibm.wala.ipa.callgraph.propagation.rta;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 
 import com.ibm.wala.analysis.reflection.ReflectionContextInterpreter;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.fixpoint.UnaryOperator;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
@@ -45,7 +45,7 @@ import com.ibm.wala.ipa.callgraph.propagation.cfa.DefaultSSAInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.DelegatingSSAContextInterpreter;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
-import com.ibm.wala.ssa.SSAInvokeInstruction;
+import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.FieldReference;
@@ -54,6 +54,7 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Abstract superclass of various RTA flavors
@@ -99,7 +100,7 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
 
   protected AbstractRTABuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache,
       ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter) {
-    super(cha, options, cache, new DefaultPointerKeyFactory());
+    super(Language.JAVA.getFakeRootMethod(cha, options, cache), options, cache, new DefaultPointerKeyFactory());
     setInstanceKeys(new ClassBasedInstanceKeys(options, cha));
     setContextSelector(makeContextSelector(appContextSelector));
     setContextInterpreter(makeContextInterpreter(appContextInterpreter));
@@ -136,8 +137,7 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
    * Add a constraint for each allocate
    */
   private void addNewConstraints(CGNode node) {
-    for (Iterator it = getRTAContextInterpreter().iterateNewSites(node); it.hasNext();) {
-      NewSiteReference n = (NewSiteReference) it.next();
+    for (NewSiteReference n : Iterator2Iterable.make(getRTAContextInterpreter().iterateNewSites(node))) {
       visitNew(node, n);
     }
   }
@@ -146,8 +146,7 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
    * Add a constraint for each invoke
    */
   private void addCallConstraints(CGNode node) {
-    for (Iterator it = getRTAContextInterpreter().iterateCallSites(node); it.hasNext();) {
-      CallSiteReference c = (CallSiteReference) it.next();
+    for (CallSiteReference c : Iterator2Iterable.make(getRTAContextInterpreter().iterateCallSites(node))) {
       visitInvoke(node, c);
     }
   }
@@ -156,12 +155,10 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
    * Handle accesses to static fields
    */
   private void addFieldConstraints(CGNode node) {
-    for (Iterator it = getRTAContextInterpreter().iterateFieldsRead(node); it.hasNext();) {
-      FieldReference f = (FieldReference) it.next();
+    for (FieldReference f : Iterator2Iterable.make(getRTAContextInterpreter().iterateFieldsRead(node))) {
       processFieldAccess(f);
     }
-    for (Iterator it = getRTAContextInterpreter().iterateFieldsWritten(node); it.hasNext();) {
-      FieldReference f = (FieldReference) it.next();
+    for (FieldReference f : Iterator2Iterable.make(getRTAContextInterpreter().iterateFieldsWritten(node))) {
       processFieldAccess(f);
     }
   }
@@ -201,7 +198,7 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
       if (targetMethod != null) {
         CGNode target = callGraph.getNode(targetMethod, Everywhere.EVERYWHERE);
         if (target == null) {
-          SSAInvokeInstruction s = fakeWorldClinitMethod.addInvocation(null, site);
+          SSAAbstractInvokeInstruction s = fakeWorldClinitMethod.addInvocation(null, site);
           try {
             target = callGraph.findOrCreateNode(targetMethod, Everywhere.EVERYWHERE);
             processResolvedCall(callGraph.getFakeWorldClinitNode(), s.getCallSite(), target);
@@ -285,7 +282,7 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
     }
     caller.addTarget(site, target);
 
-    if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
+    if (caller.equals(callGraph.getFakeRootNode())) {
       if (entrypointCallSites.contains(site)) {
         callGraph.registerEntrypoint(target);
       }
@@ -349,8 +346,8 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
 
     FakeRootMethod m = (FakeRootMethod) getCallGraph().getFakeRootNode().getMethod();
 
-    for (int i = 0; i < PRE_ALLOC.length; i++) {
-      SSANewInstruction n = m.addAllocation(PRE_ALLOC[i]);
+    for (TypeReference element : PRE_ALLOC) {
+      SSANewInstruction n = m.addAllocation(element);
       // visit now to ensure java.lang.Object is visited first
       visitNew(getCallGraph().getFakeRootNode(), n.getNewSite());
     }
@@ -399,8 +396,8 @@ public abstract class AbstractRTABuilder extends PropagationCallGraphBuilder {
   }
 
   @Override
-  protected ExplicitCallGraph createEmptyCallGraph(IClassHierarchy cha, AnalysisOptions options) {
-    return new DelegatingExplicitCallGraph(cha, options, getAnalysisCache());
+  protected ExplicitCallGraph createEmptyCallGraph(IMethod fakeRootClass, AnalysisOptions options) {
+    return new DelegatingExplicitCallGraph(fakeRootClass, options, getAnalysisCache());
   }
 
   /*

@@ -10,6 +10,7 @@
  *******************************************************************************/
 package com.ibm.wala.cast.ir.translator;
 
+import java.util.Collection;
 import java.util.Map;
 
 import com.ibm.wala.cast.tree.CAst;
@@ -17,12 +18,13 @@ import com.ibm.wala.cast.tree.CAstControlFlowMap;
 import com.ibm.wala.cast.tree.CAstNode;
 import com.ibm.wala.cast.tree.impl.CAstOperator;
 import com.ibm.wala.cast.tree.rewrite.CAstBasicRewriter;
+import com.ibm.wala.cast.tree.rewrite.CAstBasicRewriter.NonCopyingContext;
 import com.ibm.wala.util.collections.Pair;
 
-public abstract class ConstantFoldingRewriter extends CAstBasicRewriter {
+public abstract class ConstantFoldingRewriter extends CAstBasicRewriter<NonCopyingContext> {
 
   protected ConstantFoldingRewriter(CAst Ast) {
-    super(Ast, true);
+    super(Ast, new NonCopyingContext(), true);
   }
 
   protected abstract Object eval(CAstOperator op, Object lhs, Object rhs);
@@ -70,11 +72,17 @@ public abstract class ConstantFoldingRewriter extends CAstBasicRewriter {
       for (int i = 0; i < children.length; i++) {
         children[i] = copyNodes(root.getChild(i), cfg, context, nodeMap);
       }
-      for(Object label: cfg.getTargetLabels(root)) {
-        if (label instanceof CAstNode) {
-          copyNodes((CAstNode)label, cfg, context, nodeMap);
+      if (cfg != null) {
+        Collection<Object> labels = cfg.getTargetLabels(root);
+        if (labels != null) {
+          for(Object label: labels) {
+            if (label instanceof CAstNode) {
+              copyNodes((CAstNode)label, cfg, context, nodeMap);
+            } 
+          }
         }
       }
+      
       CAstNode copy = Ast.makeNode(root.getKind(), children);
       result = copy;
     }

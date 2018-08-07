@@ -77,7 +77,7 @@ import com.ibm.wala.util.ssa.SSAValue.WeaklyNamedKey;
  *  If you want to alter the values of the incoming parameters you may also want to use the ParameterManager
  *  which tracks the changes.
  *
- *  @author Tobias Blaschke <code@tobiasblaschke.de>
+ *  @author Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
  *  @since  2013-10-19
  */
 public class ParameterAccessor {
@@ -142,7 +142,7 @@ public class ParameterAccessor {
      *
      *  Use .getNumber() to access the associated SSA-Value.
      *
-     *  @author Tobias Blaschke <code@tobiasblaschke.de>
+     *  @author Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
      *  @since  2013-10-19
      */
     public static class Parameter extends SSAValue {
@@ -310,10 +310,10 @@ public class ParameterAccessor {
         if (targets.size() < 1) {
             warn("Unable to look up the method {} starting extensive search...", mRef);
 
-            targets = new HashSet<IMethod>();
+            targets = new HashSet<>();
             final TypeReference mClass = mRef.getDeclaringClass();
             final Selector mSel = mRef.getSelector();
-            final Set<IClass> testClasses = new HashSet<IClass>();
+            final Set<IClass> testClasses = new HashSet<>();
 
             // Look up all classes matching exactly
             for (IClassLoader loader : cha.getLoaders()) {
@@ -531,7 +531,7 @@ public class ParameterAccessor {
      */
     public List<Parameter> all() {
         // TODO: Cache!
-        List<Parameter> all = new ArrayList<Parameter>(this.getNumberOfParameters());
+        List<Parameter> all = new ArrayList<>(this.getNumberOfParameters());
 
         if (this.getNumberOfParameters() == 0) {
             return all;
@@ -1278,10 +1278,10 @@ public class ParameterAccessor {
             defaults = Collections.EMPTY_SET;
         }
         if (callee.getNumberOfParameters() == 0) {
-            return new ArrayList<SSAValue>(0);
+            return new ArrayList<>(0);
         }
         
-        final List<SSAValue> assigned = new ArrayList<SSAValue>(); // TODO: Set initial size
+        final List<SSAValue> assigned = new ArrayList<>(); // TODO: Set initial size
         final List<Parameter> calleeParams = callee.all();
         final List<Parameter> thisParams = all();
 
@@ -1582,7 +1582,7 @@ public class ParameterAccessor {
     }
 
     /**
-     *  Shorthand for forInvokeStatic(final List<? extends Parameter> args, final ParameterAccessor target, final IClassHierarchy cha).
+     *  Shorthand for forInvokeStatic(final List&lt;? extends Parameter&gt; args, final ParameterAccessor target, final IClassHierarchy cha).
      *
      *  Generates a new ParameterAccessor for target and hands the call through.
      */
@@ -1591,7 +1591,7 @@ public class ParameterAccessor {
     }
 
     /**
-     *  Shorthand for forInvokeVirtual(final int self, final List<? extends Parameter> args, final ParameterAccessor target, final IClassHierarchy cha).
+     *  Shorthand for forInvokeVirtual(final int self, final List&lt;? extends Parameter&gt; args, final ParameterAccessor target, final IClassHierarchy cha).
      *
      *  Generates a new ParameterAccessor for target and hands the call through.
      */

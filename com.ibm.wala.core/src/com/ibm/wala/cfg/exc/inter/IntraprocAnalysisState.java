@@ -31,18 +31,18 @@ import com.ibm.wala.util.graph.GraphIntegrity.UnsoundGraphException;
  * This class has been developed as part of a student project "Studienarbeit" by Markus Herhoffer.
  * It has been adapted and integrated into the WALA project by Juergen Graf.
  * 
- * @author Markus Herhoffer <markus.herhoffer@student.kit.edu>
- * @author Juergen Graf <graf@kit.edu>
+ * @author Markus Herhoffer &lt;markus.herhoffer@student.kit.edu&gt;
+ * @author Juergen Graf &lt;graf@kit.edu&gt;
  * 
  */
 final class IntraprocAnalysisState implements ExceptionPruningAnalysis<SSAInstruction, IExplodedBasicBlock> {
 
   private final ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg;
   private final HashMap<IExplodedBasicBlock, NullPointerState> statesOfSsaVars =
-      new HashMap<IExplodedBasicBlock, NullPointerState>();
-  private final HashMap<IExplodedBasicBlock, Object[]> valuesOfSsaVars = new HashMap<IExplodedBasicBlock, Object[]>();
+      new HashMap<>();
+  private final HashMap<IExplodedBasicBlock, Object[]> valuesOfSsaVars = new HashMap<>();
   private final HashMap<IExplodedBasicBlock, int[]> numbersOfSsaVarsThatAreParemerters =
-      new HashMap<IExplodedBasicBlock, int[]>();
+      new HashMap<>();
   private final boolean noAnalysisPossible;
   private final int deletedEdges;
   private boolean throwsException = true;

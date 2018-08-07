@@ -70,7 +70,7 @@ import com.ibm.wala.util.strings.Atom;
  *  @see    com.ibm.wala.dalvik.ipa.callgraph.androidModel.AndroidModel
  *  @see    com.ibm.wala.dalvik.util.AndroidEntryPointManager
  *
- *  @author Tobias Blaschke <code@tobiasblaschke.de>
+ *  @author Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
  *  @since  2013-10-23
  */
 public class AndroidBoot {
@@ -177,7 +177,6 @@ public class AndroidBoot {
      *
      *  @see    android.app.ContextImpl.createPackageContextAsUser
      */
-    @SuppressWarnings("javadoc")
 	private SSAValue createSystemContext(SSAValue mainThread) {
         final SSAValue systemContext = this.pm.getUnmanaged(AndroidTypes.ContextImpl, "systemContextImpl");
         { // Call ContextImpl.getSystemContext()
@@ -210,7 +209,6 @@ public class AndroidBoot {
      *
      *  @see    android.app.ContextImpl.createPackageContextAsUser
      */
-    @SuppressWarnings("javadoc")
 	private SSAValue createPackageContext(final SSAValue mainThread) {
         final SSAValue packageContext = this.pm.getUnmanaged(AndroidTypes.ContextImpl, "packageContextImpl");
         { // New-Site

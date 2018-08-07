@@ -11,8 +11,6 @@
 package com.ibm.wala.util.ref;
 
 import java.lang.ref.WeakReference;
-import java.util.Iterator;
-
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.ShrikeCTMethod;
@@ -37,7 +35,7 @@ public class ReferenceCleanser {
   private static WeakReference<AnalysisCacheImpl> cache;
 
   public static void registerClassHierarchy(IClassHierarchy cha) {
-    ReferenceCleanser.cha = new WeakReference<IClassHierarchy>(cha);
+    ReferenceCleanser.cha = new WeakReference<>(cha);
   }
 
   private static IClassHierarchy getClassHierarchy() {
@@ -50,7 +48,7 @@ public class ReferenceCleanser {
 
   public static void registerCache(IAnalysisCacheView cache) {
     if (cache instanceof AnalysisCacheImpl) {
-      ReferenceCleanser.cache = new WeakReference<AnalysisCacheImpl>((AnalysisCacheImpl) cache);
+      ReferenceCleanser.cache = new WeakReference<>((AnalysisCacheImpl) cache);
     }
   }
 
@@ -81,10 +79,11 @@ public class ReferenceCleanser {
           ShrikeClass c = (ShrikeClass) klass;
           c.clearSoftCaches();
         } else {
-          for (Iterator it2 = klass.getDeclaredMethods().iterator(); it2.hasNext(); ) {
-            IMethod m = (IMethod)it2.next();
-            if (m instanceof ShrikeCTMethod) {
-              ((ShrikeCTMethod)m).clearCaches();
+          if (klass.getDeclaredMethods() != null) {
+            for (IMethod m : klass.getDeclaredMethods()) {
+              if (m instanceof ShrikeCTMethod) {
+                ((ShrikeCTMethod)m).clearCaches();
+              }
             }
           }
         }

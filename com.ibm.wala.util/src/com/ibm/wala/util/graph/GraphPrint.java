@@ -10,8 +10,7 @@
  *******************************************************************************/
 package com.ibm.wala.util.graph;
 
-import java.util.Iterator;
-
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.graph.impl.SlowSparseNumberedGraph;
 
 /**
@@ -24,13 +23,11 @@ public class GraphPrint {
       throw new IllegalArgumentException("G is null");
     }
     SlowSparseNumberedGraph<T> sg = SlowSparseNumberedGraph.make();
-    for (Iterator<? extends T> it = G.iterator(); it.hasNext(); ) {
-      sg.addNode(it.next());
+    for (T name : G) {
+      sg.addNode(name);
     }
-    for (Iterator<? extends T> it = G.iterator(); it.hasNext(); ) {
-      T n = it.next();
-      for (Iterator<? extends T> it2 = G.getSuccNodes(n); it2.hasNext(); ) {
-        T d = it2.next();
+    for (T n : G) {
+      for (T d : Iterator2Iterable.make(G.getSuccNodes(n))) {
         sg.addEdge(n,d);
       }
     }

@@ -296,17 +296,22 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
       computeSuperclass();
     }
     if (superClass == null && !getReference().equals(TypeReference.JavaLangObject)) {
-      throw new IllegalStateException("No superclass found for " + this + " Superclass name " + superName);
+      throw new NoSuperclassFoundException("No superclass found for " + this + " Superclass name " + superName);
     }
     return superClass;
   }
+
+  public TypeName getSuperName() {
+    return TypeName.findOrCreate(superName);
+  }
+
 
   /*
    * @see com.ibm.wala.classLoader.IClass#getAllFields()
    */
   @Override
   public Collection<IField> getAllFields() {
-    Collection<IField> result = new LinkedList<IField>();
+    Collection<IField> result = new LinkedList<>();
     result.addAll(getAllInstanceFields());
     result.addAll(getAllStaticFields());
     return result;
@@ -359,7 +364,7 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
    */
   @Override
   public Collection<IField> getAllInstanceFields() {
-    Collection<IField> result = new LinkedList<IField>(getDeclaredInstanceFields());
+    Collection<IField> result = new LinkedList<>(getDeclaredInstanceFields());
     IClass s = getSuperclass();
     while (s != null) {
       result.addAll(s.getDeclaredInstanceFields());
@@ -373,7 +378,7 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
    */
   @Override
   public Collection<IField> getAllStaticFields() {
-    Collection<IField> result = new LinkedList<IField>(getDeclaredStaticFields());
+    Collection<IField> result = new LinkedList<>(getDeclaredStaticFields());
     IClass s = getSuperclass();
     while (s != null) {
       result.addAll(s.getDeclaredStaticFields());
@@ -387,7 +392,7 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
    */
   @Override
   public Collection<IMethod> getAllMethods() {
-    Collection<IMethod> result = new LinkedList<IMethod>();
+    Collection<IMethod> result = new LinkedList<>();
     Iterator<IMethod> declaredMethods = getDeclaredMethods().iterator();
     while (declaredMethods.hasNext()) {
       result.add(declaredMethods.next());
@@ -405,7 +410,7 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
     }
     IClass s = getSuperclass();
     while (s != null) {
-      Iterator<IMethod> superDeclaredMethods = s.getDeclaredMethods().iterator();
+      Iterator<? extends IMethod> superDeclaredMethods = s.getDeclaredMethods().iterator();
       while (superDeclaredMethods.hasNext()) {
         result.add(superDeclaredMethods.next());
       }
@@ -453,13 +458,14 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
     }
 
     // check parent, caching if found
-    if (!selector.equals(MethodReference.clinitSelector) && !selector.equals(MethodReference.initSelector)) {
+    if (!selector.equals(MethodReference.clinitSelector) 
+        && !selector.getName().equals(MethodReference.initAtom)) {
       IClass superclass = getSuperclass();
       if (superclass != null) {
         IMethod inherit = superclass.getMethod(selector);
         if (inherit != null) {
           if (inheritCache == null) {
-            inheritCache = new BimodalMap<Selector, IMethod>(5);
+            inheritCache = new BimodalMap<>(5);
           }
           inheritCache.put(selector, inherit);
           return inherit;
@@ -473,7 +479,7 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
       for(IMethod m : iface.getDeclaredMethods()) {
         if (!m.isAbstract() && m.getSelector().equals(selector)) {          
           if (inheritCache == null) {
-            inheritCache = new BimodalMap<Selector, IMethod>(5);
+            inheritCache = new BimodalMap<>(5);
           }
           inheritCache.put(selector, m);
 
@@ -484,7 +490,7 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
     
     // no method found
     if (inheritCache == null) {
-      inheritCache = new BimodalMap<Selector, IMethod>(5);
+      inheritCache = new BimodalMap<>(5);
     }
     inheritCache.put(selector, null);
     return null;
@@ -503,8 +509,7 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
   protected Collection<IClass> computeAllInterfacesAsCollection() {
     Collection<? extends IClass> c = getDirectInterfaces();
     Set<IClass> result = HashSetFactory.make();
-    for (Iterator<? extends IClass> it = c.iterator(); it.hasNext();) {
-      IClass klass = it.next();
+    for (IClass klass : c) {
       if (klass.isInterface()) {
         result.add(klass);
       } else {
@@ -537,9 +542,8 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
    *         classes can not be loaded
    */
   private Collection<IClass> array2IClassSet(ImmutableByteArray[] interfaces) {
-    ArrayList<IClass> result = new ArrayList<IClass>(interfaces.length);
-    for (int i = 0; i < interfaces.length; i++) {
-      ImmutableByteArray name = interfaces[i];
+    ArrayList<IClass> result = new ArrayList<>(interfaces.length);
+    for (ImmutableByteArray name : interfaces) {
       IClass klass = null;
       klass = loader.lookupClass(TypeName.findOrCreate(name));
       if (klass == null) {
@@ -553,20 +557,20 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
 
   protected List<IField> findDeclaredField(Atom name) {
     
-    List<IField> result = new ArrayList<IField>(1);
+    List<IField> result = new ArrayList<>(1);
     
     if (instanceFields != null) {
-      for (int i = 0; i < instanceFields.length; i++) {
-        if (instanceFields[i].getName() == name) {
-          result.add(instanceFields[i]);
+      for (IField instanceField : instanceFields) {
+        if (instanceField.getName() == name) {
+          result.add(instanceField);
         }
       }
     }
 
     if (staticFields != null) {
-      for (int i = 0; i < staticFields.length; i++) {
-        if (staticFields[i].getName() == name) {
-          result.add(staticFields[i]);
+      for (IField staticField : staticFields) {
+        if (staticField.getName() == name) {
+          result.add(staticField);
         }
       }
     }
@@ -601,10 +605,9 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
           if (methods.length > 5) {
             tmpMethodMap = HashMapFactory.make(methods.length);
           } else {
-            tmpMethodMap= new SmallMap<Selector, IMethod>();
+            tmpMethodMap= new SmallMap<>();
           }
-          for (int i = 0; i < methods.length; i++) {
-            IMethod m = methods[i];
+          for (IMethod m : methods) {
             tmpMethodMap.put(m.getReference().getSelector(), m);
           }
           

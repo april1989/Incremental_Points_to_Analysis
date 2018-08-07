@@ -133,7 +133,7 @@ public class GetMethodContextInterpreter implements SSAContextInterpreter {
     GetMethodContext context = (GetMethodContext) node.getContext();
     TypeReference tr = context.getType().getTypeReference();
     if (tr != null) {
-      return new NonNullSingletonIterator<NewSiteReference>(NewSiteReference.make(0, tr));
+      return new NonNullSingletonIterator<>(NewSiteReference.make(0, tr));
     }
     return EmptyIterator.instance();
   }
@@ -168,7 +168,7 @@ public class GetMethodContextInterpreter implements SSAContextInterpreter {
    */
   private static Collection<IMethod> getAllNormalPublicMethods(IClass cls,Atom name) {
     Collection<IMethod> result = HashSetFactory.make();
-    Collection<IMethod> allMethods = null;
+    Collection<? extends IMethod> allMethods = null;
     allMethods = cls.getAllMethods();
     for (IMethod m : allMethods) {
       if (!m.isInit() && !m.isClinit() && m.isPublic() && m.getSelector().getName().equals(name)) {
@@ -193,7 +193,7 @@ public class GetMethodContextInterpreter implements SSAContextInterpreter {
         GetMethodContext context,
         Map<Integer, ConstantValue> constants
        ) {
-    ArrayList<SSAInstruction> statements = new ArrayList<SSAInstruction>();
+    ArrayList<SSAInstruction> statements = new ArrayList<>();
     int nextLocal = ref.getNumberOfParameters() + 2;
     IClass cls = context.getType().getType();
     SSAInstructionFactory insts = context.getType().getType().getClassLoader().getInstructionFactory();

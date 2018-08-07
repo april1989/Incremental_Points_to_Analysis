@@ -455,27 +455,22 @@ implements IFlowFunctionMap<BasicBlockInContext<E>> {
 //		}
 
 		final Map<CodeElement,CodeElement> parameterMap = HashMapFactory.make();
-		for (int i = 0; i < instruction.getNumberOfParameters(); i++) {
+		for (int i = 0; i < instruction.getNumberOfPositionalParameters(); i++) {
 			Set<CodeElement> elements = CodeElement.valueElements(instruction.getUse(i));
 			for(CodeElement e: elements) {
 				parameterMap.put(e, new LocalElement(i+1));
 			}
 		}
 
-		return new IUnaryFlowFunction() {
-
-			@Override
-			public IntSet getTargets(int d1) {
-				BitVectorIntSet set = new BitVectorIntSet();
-				if(d1 == 0 || !(domain.getMappedObject(d1).codeElement instanceof LocalElement)) {
-					set.add(d1);
-				}
-				DomainElement de = domain.getMappedObject(d1);
-				if(de!=null && parameterMap.containsKey(de.codeElement))
-					set.add(domain.getMappedIndex(new DomainElement(parameterMap.get(de.codeElement),de.taintSource)));
-				return set;
+		return d1 -> {
+			BitVectorIntSet set = new BitVectorIntSet();
+			if(d1 == 0 || !(domain.getMappedObject(d1).codeElement instanceof LocalElement)) {
+				set.add(d1);
 			}
-
+			DomainElement de = domain.getMappedObject(d1);
+			if(de!=null && parameterMap.containsKey(de.codeElement))
+				set.add(domain.getMappedIndex(new DomainElement(parameterMap.get(de.codeElement),de.taintSource)));
+			return set;
 		};
 	}
 

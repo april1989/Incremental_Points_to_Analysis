@@ -12,7 +12,6 @@ package com.ibm.wala.ipa.callgraph.propagation.cfa;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,6 +34,7 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Flexible class to create {@link InstanceKey}s depending on various policies ranging from class-based (i.e. 0-CFA) to
@@ -86,8 +86,8 @@ public class ZeroXInstanceKeys implements InstanceKeyFactory {
   public static final int SMUSH_PRIMITIVE_HOLDERS = 8;
 
   /**
-   * This variant counts the N, number of allocation sites of a particular type T in each method. If N > SMUSH_LIMIT, then these N
-   * allocation sites are NOT distinguished ... instead there is a single abstract allocation site for <N,T>
+   * This variant counts the N, number of allocation sites of a particular type T in each method. If N &gt; SMUSH_LIMIT, then these N
+   * allocation sites are NOT distinguished ... instead there is a single abstract allocation site for &lt;N,T&gt;
    * 
    * Probably the best choice in many cases.
    */
@@ -134,7 +134,7 @@ public class ZeroXInstanceKeys implements InstanceKeyFactory {
   final private RTAContextInterpreter contextInterpreter;
 
   /**
-   * a Map from CGNode->Set<IClass> that should be smushed.
+   * a Map from CGNode-&gt;Set&lt;IClass&gt; that should be smushed.
    */
   protected final Map<CGNode, Set<IClass>> smushMap = HashMapFactory.make();
 
@@ -214,8 +214,7 @@ public class ZeroXInstanceKeys implements InstanceKeyFactory {
     if (s == null) {
       Map<IClass, Integer> count = countAllocsByType(node);
       HashSet<IClass> smushees = HashSetFactory.make(5);
-      for (Iterator<Map.Entry<IClass, Integer>> it = count.entrySet().iterator(); it.hasNext();) {
-        Map.Entry<IClass, Integer> e = it.next();
+      for (Map.Entry<IClass, Integer> e : count.entrySet()) {
         Integer i = e.getValue();
         if (i.intValue() > SMUSH_LIMIT) {
           smushees.add(e.getKey());
@@ -232,15 +231,14 @@ public class ZeroXInstanceKeys implements InstanceKeyFactory {
    */
   private Map<IClass, Integer> countAllocsByType(CGNode node) {
     Map<IClass, Integer> count = HashMapFactory.make();
-    for (Iterator it = contextInterpreter.iterateNewSites(node); it.hasNext();) {
-      NewSiteReference n = (NewSiteReference) it.next();
+    for (NewSiteReference n : Iterator2Iterable.make(contextInterpreter.iterateNewSites(node))) {
       IClass alloc = cha.lookupClass(n.getDeclaredType());
       if (alloc != null) {
         Integer old = count.get(alloc);
         if (old == null) {
-          count.put(alloc, new Integer(1));
+          count.put(alloc, Integer.valueOf(1));
         } else {
-          count.put(alloc, new Integer(old.intValue() + 1));
+          count.put(alloc, Integer.valueOf(old.intValue() + 1));
         }
       }
     }
@@ -262,7 +260,7 @@ public class ZeroXInstanceKeys implements InstanceKeyFactory {
       throw new IllegalArgumentException("null type");
     }
     if (disambiguateConstants() || isReflectiveType(type)) {
-      return new ConstantKey<T>(S, getClassHierarchy().lookupClass(type));
+      return new ConstantKey<>(S, getClassHierarchy().lookupClass(type));
     } else {
       return classBased.getInstanceKeyForConstant(type, S);
     }
@@ -336,8 +334,7 @@ public class ZeroXInstanceKeys implements InstanceKeyFactory {
       if (c.getReference().equals(TypeReference.JavaLangObject)) {
         return true;
       } else {
-        for (Iterator<IField> it = c.getDeclaredInstanceFields().iterator(); it.hasNext();) {
-          IField f = it.next();
+        for (IField f : c.getDeclaredInstanceFields()) {
           if (f.getReference().getFieldType().isReferenceType()) {
             return false;
           }

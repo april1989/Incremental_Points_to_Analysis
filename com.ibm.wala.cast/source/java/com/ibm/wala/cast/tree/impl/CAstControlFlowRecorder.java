@@ -12,7 +12,6 @@ package com.ibm.wala.cast.tree.impl;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -106,8 +105,9 @@ public class CAstControlFlowRecorder implements CAstControlFlowMap {
 
   @Override
   public Collection<Object> getTargetLabels(CAstNode from) {
-    if (labelMap.containsKey(CAstToNode.get(from))) {
-      return labelMap.get(CAstToNode.get(from));
+    Object node = CAstToNode.get(from);
+    if (labelMap.containsKey(node)) {
+      return labelMap.get(node);
     } else {
       return Collections.emptySet();
     }
@@ -127,8 +127,7 @@ public class CAstControlFlowRecorder implements CAstControlFlowMap {
     Collection<CAstNode> nodes = cachedMappedNodes;
     if (nodes == null) {
       nodes = new LinkedHashSet<>();
-      for (Iterator<Key> keys = table.keySet().iterator(); keys.hasNext();) {
-        Key key = keys.next();
+      for (Key key : table.keySet()) {
         nodes.add(nodeToCAst.get(key.from));
         nodes.add(nodeToCAst.get(table.get(key)));
       }

@@ -12,6 +12,7 @@ package com.ibm.wala.core.tests.callGraph;
 
 import java.io.IOException;
 
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -40,6 +41,8 @@ public class CallGraphTestUtil {
   }
 
   public static String REGRESSION_EXCLUSIONS = "Java60RegressionExclusions.txt";
+
+  public static String REGRESSION_EXCLUSIONS_FOR_GUI = "Java60RegressionExclusionsForGUI.txt";
 
   /**
    * should we check the heap footprint before and after CG construction?
@@ -81,7 +84,7 @@ public class CallGraphTestUtil {
       S.start();
     }
 
-    SSAPropagationCallGraphBuilder builder = Util.makeZeroCFABuilder(options, cache, cha, scope);
+    SSAPropagationCallGraphBuilder builder = Util.makeZeroCFABuilder(Language.JAVA, options, cache, cha, scope);
     CallGraph cg = builder.makeCallGraph(options, null);
     if (testPAtoString) {
       builder.getPointerAnalysis().toString();
@@ -102,7 +105,7 @@ public class CallGraphTestUtil {
       S.start();
     }
 
-    CallGraphBuilder<InstanceKey> builder = Util.makeVanillaZeroOneCFABuilder(options, cache, cha, scope);
+    CallGraphBuilder<InstanceKey> builder = Util.makeVanillaZeroOneCFABuilder(Language.JAVA, options, cache, cha, scope);
     CallGraph cg = builder.makeCallGraph(options, null);
 
     if (CHECK_FOOTPRINT) {
@@ -120,7 +123,7 @@ public class CallGraphTestUtil {
       S.start();
     }
 
-    CallGraphBuilder<InstanceKey> builder = Util.makeZeroOneCFABuilder(options, cache, cha, scope);
+    CallGraphBuilder<InstanceKey> builder = Util.makeZeroOneCFABuilder(Language.JAVA, options, cache, cha, scope);
     CallGraph cg = builder.makeCallGraph(options, null);
     if (testPAtoString) {
       builder.getPointerAnalysis().toString();

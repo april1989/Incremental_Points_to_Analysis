@@ -16,7 +16,7 @@ import java.util.Set;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
+import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
@@ -27,8 +27,8 @@ import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
  * This class has been developed as part of a student project "Studienarbeit" by Markus Herhoffer.
  * It has been adapted and integrated into the WALA project by Juergen Graf.
  *
- * @author Markus Herhoffer <markus.herhoffer@student.kit.edu>
- * @author Juergen Graf <graf@kit.edu>
+ * @author Markus Herhoffer &lt;markus.herhoffer@student.kit.edu&gt;
+ * @author Juergen Graf &lt;graf@kit.edu&gt;
  */
 public final class AnalysisUtil {
 
@@ -43,8 +43,8 @@ public final class AnalysisUtil {
    *          the node to check
    * @return true if node is FakeRoot
    */
-  public static boolean isFakeRoot(CGNode node) {
-    return (node.getMethod().getName().equals(FakeRootMethod.rootMethod.getName()));
+  public static boolean isFakeRoot(CallGraph CG, CGNode node) {
+    return (node.equals(CG.getFakeRootNode()));
   }
   
   /**
@@ -57,7 +57,7 @@ public final class AnalysisUtil {
    *         including the this pointer.
    */
   public static int[] getParameterNumbers(SSAAbstractInvokeInstruction invokeInstruction) {
-    final int number = invokeInstruction.getNumberOfParameters();
+    final int number = invokeInstruction.getNumberOfPositionalParameters();
     final int[] parameterNumbers = new int[number];
     assert (parameterNumbers.length == invokeInstruction.getNumberOfUses());
 
@@ -76,7 +76,7 @@ public final class AnalysisUtil {
    * @return a Set of all blocks that contain an invoke
    */
   public static Set<IExplodedBasicBlock> extractInvokeBlocks(final ControlFlowGraph<SSAInstruction, IExplodedBasicBlock> cfg) {
-    final HashSet<IExplodedBasicBlock> invokeBlocks = new HashSet<IExplodedBasicBlock>();
+    final HashSet<IExplodedBasicBlock> invokeBlocks = new HashSet<>();
 
     for (final IExplodedBasicBlock block : cfg) {
       if (block.getInstruction() instanceof SSAAbstractInvokeInstruction) {

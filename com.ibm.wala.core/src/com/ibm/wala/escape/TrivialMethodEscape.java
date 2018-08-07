@@ -11,7 +11,6 @@
 package com.ibm.wala.escape;
 
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Set;
 
 import com.ibm.wala.analysis.pointers.HeapGraph;
@@ -25,6 +24,7 @@ import com.ibm.wala.ipa.callgraph.propagation.ReturnValueKey;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Trivial method-level escape analysis.
@@ -69,7 +69,7 @@ public class TrivialMethodEscape implements IMethodEscapeAnalysis, INodeEscapeAn
     }
 
     // allocN := set of call graph nodes representing method allocMethod
-    Set allocN = cg.getNodes(allocMethod);
+    Set<CGNode> allocN = cg.getNodes(allocMethod);
     if (allocN.size() == 0) {
       throw new WalaException("could not find call graph node for allocation method " + allocMethod);
     }
@@ -89,11 +89,10 @@ public class TrivialMethodEscape implements IMethodEscapeAnalysis, INodeEscapeAn
    *         { nodes }
    * @throws WalaException
    */
-  private boolean mayEscape(Set allocN, int allocPC, Set nodes) throws WalaException {
+  private boolean mayEscape(Set<CGNode> allocN, int allocPC, Set nodes) throws WalaException {
     Set<InstanceKey> instances = HashSetFactory.make();
     // instances := set of instance key allocated at &lt;allocMethod, allocPC>
-    for (Iterator it = allocN.iterator(); it.hasNext();) {
-      CGNode n = (CGNode) it.next();
+    for (CGNode n : allocN) {
       NewSiteReference site = findAlloc(n, allocPC);
       InstanceKey ik = hg.getHeapModel().getInstanceKeyForAllocation(n, site);
       if (ik == null) {
@@ -102,10 +101,9 @@ public class TrivialMethodEscape implements IMethodEscapeAnalysis, INodeEscapeAn
       instances.add(ik);
     }
 
-    for (Iterator<InstanceKey> it = instances.iterator(); it.hasNext();) {
-      InstanceKey ik = it.next();
-      for (Iterator it2 = hg.getPredNodes(ik); it2.hasNext();) {
-        PointerKey p = (PointerKey) it2.next();
+    for (InstanceKey ik : instances) {
+      for (Object o : Iterator2Iterable.make(hg.getPredNodes(ik))) {
+        PointerKey p = (PointerKey) o;
         if (!(p instanceof AbstractLocalPointerKey)) {
           // a pointer from the heap. give up.
           return true;
@@ -136,8 +134,7 @@ public class TrivialMethodEscape implements IMethodEscapeAnalysis, INodeEscapeAn
     if (n == null) {
       throw new IllegalArgumentException("null n");
     }
-    for (Iterator it = n.iterateNewSites(); it.hasNext();) {
-      NewSiteReference site = (NewSiteReference) it.next();
+    for (NewSiteReference site : Iterator2Iterable.make(n.iterateNewSites())) {
       if (site.getProgramCounter() == allocPC) {
         return site;
       }

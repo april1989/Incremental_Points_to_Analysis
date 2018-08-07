@@ -11,7 +11,6 @@ package com.ibm.wala.util.io;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -61,12 +60,12 @@ public class FileUtil {
       return Collections.emptyList();
     }
     HashSet<File> result = HashSetFactory.make();
-    for (int i = 0; i < files.length; i++) {
-      if (p == null || p.matcher(files[i].getAbsolutePath()).matches()) {
-        result.add(files[i]);
+    for (File file : files) {
+      if (p == null || p.matcher(file.getAbsolutePath()).matches()) {
+        result.add(file);
       }
-      if (recurse && files[i].isDirectory()) {
-        result.addAll(listFiles(files[i], recurse, p));
+      if (recurse && file.isDirectory()) {
+        result.addAll(listFiles(file, recurse, p));
       }
     }
     return result;
@@ -192,12 +191,7 @@ public class FileUtil {
 
   public static void recurseFiles(Consumer<File> action, final Predicate<File> filter, File top) {
   	if (top.isDirectory()) {
-  		for(File f : top.listFiles(new FileFilter() {
-  			@Override
-  			public boolean accept(File file) {
-  				return filter.test(file) || file.isDirectory();
-  			}	
-  		})) {
+  		for(File f : top.listFiles(file -> filter.test(file) || file.isDirectory())) {
   			recurseFiles(action, filter, f);
   		}
   	} else {

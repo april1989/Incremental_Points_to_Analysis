@@ -10,8 +10,6 @@
  *****************************************************************************/
 package com.ibm.wala.cast.js.callgraph.fieldbased;
 
-import java.util.Iterator;
-
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.FlowGraph;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.FuncVertex;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.VertexFactory;
@@ -30,6 +28,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SymbolTable;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Call graph builder for building pessimistic call graphs, where inter-procedural flows are not
@@ -103,15 +102,14 @@ public class PessimisticCallGraphBuilder extends FieldBasedCallGraphBuilder {
 				FuncVertex callee = factory.makeFuncVertex(fnClass);
 				
 				// look at all uses
-				for(Iterator<SSAInstruction> uses = du.getUses(defn);uses.hasNext();) {
-					SSAInstruction use = uses.next();
+				for(SSAInstruction use : Iterator2Iterable.make(du.getUses(defn))) {
 					
 					// check whether this is a local call
 					if(use instanceof JavaScriptInvoke && ((JavaScriptInvoke)use).getFunction() == defn) {
 						JavaScriptInvoke use_invk = (JavaScriptInvoke)use;
 						
 						// yes, so add edges from arguments to parameters...
-						for(int i=2;i<use_invk.getNumberOfParameters();++i)
+						for(int i=2;i<use_invk.getNumberOfPositionalParameters();++i)
 							flowgraph.addEdge(factory.makeVarVertex(caller, use_invk.getUse(i)), factory.makeParamVertex(callee, i));
 						
 						// ...and from return to result
@@ -131,7 +129,7 @@ public class PessimisticCallGraphBuilder extends FieldBasedCallGraphBuilder {
 				
 				// if it's not a local call, add flows from/to unknown
 				if(!(def instanceof JavaScriptInvoke) || !isFunctionConstructorInvoke((JavaScriptInvoke)def)) {
-					for(int i=1;i<invk.getNumberOfParameters();++i)
+					for(int i=1;i<invk.getNumberOfPositionalParameters();++i)
 						flowgraph.addEdge(factory.makeVarVertex(caller, invk.getUse(i)), factory.makeUnknownVertex());
 					flowgraph.addEdge(factory.makeUnknownVertex(), factory.makeVarVertex(caller, invk.getDef()));
 				}

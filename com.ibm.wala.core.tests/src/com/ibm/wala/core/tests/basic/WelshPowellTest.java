@@ -10,13 +10,13 @@
  *******************************************************************************/
 package com.ibm.wala.core.tests.basic;
 
-import java.util.Iterator;
 import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.ibm.wala.util.collections.HashMapFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.NumberedGraph;
 import com.ibm.wala.util.graph.impl.DelegatingNumberedGraph;
@@ -28,15 +28,13 @@ public class WelshPowellTest {
 
   public static <T> void assertColoring(Graph<T> G, Map<T,Integer> colors, boolean fullColor) {
     for(T n : G) {
-      for(Iterator<T> ss = G.getSuccNodes(n); ss.hasNext(); ) {
-        T succ = ss.next();
+      for(T succ : Iterator2Iterable.make(G.getSuccNodes(n))) {
         if (!fullColor &&  (!colors.containsKey(n) || !colors.containsKey(succ)) ) {
           continue;
         }
         Assert.assertTrue(n + " and succ: " + succ + " have same color: " + colors.get(n).intValue(), colors.get(n).intValue() != colors.get(succ).intValue()); 
       }
-      for(Iterator<T> ps = G.getPredNodes(n); ps.hasNext(); ) {
-        T pred = ps.next();
+      for(T pred : Iterator2Iterable.make(G.getPredNodes(n))) {
         if (!fullColor && (!colors.containsKey(n) || !colors.containsKey(pred)) ) {
           continue;
         }
@@ -61,14 +59,14 @@ public class WelshPowellTest {
   private <T> NumberedGraph<TypedNode<T>> buildGraph(T[][] data) {
     DelegatingNumberedGraph<TypedNode<T>> G = new DelegatingNumberedGraph<>();
     Map<T,TypedNode<T>> nodes = HashMapFactory.make();
-    for(int i = 0; i < data.length; i++) {
-      TypedNode<T> n = new TypedNode<>(data[i][0]);
-      nodes.put(data[i][0], n);
+    for (T[] element : data) {
+      TypedNode<T> n = new TypedNode<>(element[0]);
+      nodes.put(element[0], n);
       G.addNode(n);
     }
-    for(int i = 0; i < data.length; i++) {
-      for(int j = 1; j < data[i].length; j++) {
-        G.addEdge(nodes.get(data[i][0]), nodes.get(data[i][j]));
+    for (T[] element : data) {
+      for(int j = 1; j < element.length; j++) {
+        G.addEdge(nodes.get(element[0]), nodes.get(element[j]));
       }
     }
     

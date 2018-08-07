@@ -17,13 +17,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.cfg.IBasicBlock;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.util.collections.FilterIterator;
 import com.ibm.wala.util.collections.Iterator2Collection;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.graph.AbstractNumberedGraph;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.NumberedEdgeManager;
@@ -52,7 +52,7 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
     if (cfg == null) {
       throw new IllegalArgumentException("cfg is null");
     }
-    return new PrunedCFG<I, T>(cfg, filter);
+    return new PrunedCFG<>(cfg, filter);
   }
 
   private static class FilteredCFGEdges<I, T extends IBasicBlock<I>> implements NumberedEdgeManager<T> {
@@ -69,44 +69,24 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
     }
 
     public Iterator<T> getExceptionalSuccessors(final T N) {
-      return new FilterIterator<T>(cfg.getExceptionalSuccessors(N).iterator(), new Predicate<T>() {
-        @Override public boolean test(T o) {
-          return currentCFGNodes.containsNode(o) && filter.hasExceptionalEdge(N, o);
-        }
-      });
+      return new FilterIterator<>(cfg.getExceptionalSuccessors(N).iterator(), o -> currentCFGNodes.containsNode(o) && filter.hasExceptionalEdge(N, o));
     }
 
     public Iterator<T> getNormalSuccessors(final T N) {
-      return new FilterIterator<T>(cfg.getNormalSuccessors(N).iterator(), new Predicate<T>() {
-        @Override public boolean test(T o) {
-          return currentCFGNodes.containsNode(o) && filter.hasNormalEdge(N, o);
-        }
-      });
+      return new FilterIterator<>(cfg.getNormalSuccessors(N).iterator(), o -> currentCFGNodes.containsNode(o) && filter.hasNormalEdge(N, o));
     }
 
     public Iterator<T> getExceptionalPredecessors(final T N) {
-      return new FilterIterator<T>(cfg.getExceptionalPredecessors(N).iterator(), new Predicate<T>() {
-        @Override public boolean test(T o) {
-          return currentCFGNodes.containsNode(o) && filter.hasExceptionalEdge(o, N);
-        }
-      });
+      return new FilterIterator<>(cfg.getExceptionalPredecessors(N).iterator(), o -> currentCFGNodes.containsNode(o) && filter.hasExceptionalEdge(o, N));
     }
 
     public Iterator<T> getNormalPredecessors(final T N) {
-      return new FilterIterator<T>(cfg.getNormalPredecessors(N).iterator(), new Predicate<T>() {
-        @Override public boolean test(T o) {
-          return currentCFGNodes.containsNode(o) && filter.hasNormalEdge(o, N);
-        }
-      });
+      return new FilterIterator<>(cfg.getNormalPredecessors(N).iterator(), o -> currentCFGNodes.containsNode(o) && filter.hasNormalEdge(o, N));
     }
 
     @Override
     public Iterator<T> getSuccNodes(final T N) {
-      return new FilterIterator<T>(cfg.getSuccNodes(N), new Predicate<T>() {
-        @Override public boolean test(T o) {
-          return currentCFGNodes.containsNode(o) && (filter.hasNormalEdge(N, o) || filter.hasExceptionalEdge(N, o));
-        }
-      });
+      return new FilterIterator<>(cfg.getSuccNodes(N), o -> currentCFGNodes.containsNode(o) && (filter.hasNormalEdge(N, o) || filter.hasExceptionalEdge(N, o)));
     }
 
     @Override
@@ -117,8 +97,8 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
     @Override
     public IntSet getSuccNodeNumbers(T N) {
       MutableIntSet bits = IntSetUtil.make();
-      for (Iterator<T> EE = getSuccNodes(N); EE.hasNext();) {
-        bits.add(EE.next().getNumber());
+      for (T EE : Iterator2Iterable.make(getSuccNodes(N))) {
+        bits.add(EE.getNumber());
       }
 
       return bits;
@@ -126,11 +106,7 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
 
     @Override
     public Iterator<T> getPredNodes(final T N) {
-      return new FilterIterator<T>(cfg.getPredNodes(N), new Predicate<T>() {
-        @Override public boolean test(T o) {
-          return currentCFGNodes.containsNode(o) && (filter.hasNormalEdge(o, N) || filter.hasExceptionalEdge(o, N));
-        }
-      });
+      return new FilterIterator<>(cfg.getPredNodes(N), o -> currentCFGNodes.containsNode(o) && (filter.hasNormalEdge(o, N) || filter.hasExceptionalEdge(o, N)));
     }
 
     @Override
@@ -141,8 +117,8 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
     @Override
     public IntSet getPredNodeNumbers(T N) {
       MutableIntSet bits = IntSetUtil.make();
-      for (Iterator<T> EE = getPredNodes(N); EE.hasNext();) {
-        bits.add(EE.next().getNumber());
+      for (T EE : Iterator2Iterable.make(getPredNodes(N))) {
+        bits.add(EE.getNumber());
       }
 
       return bits;
@@ -150,8 +126,8 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
 
     @Override
     public boolean hasEdge(T src, T dst) {
-      for (Iterator EE = getSuccNodes(src); EE.hasNext();) {
-        if (EE.next().equals(dst)) {
+      for (T EE : Iterator2Iterable.make(getSuccNodes(src))) {
+        if (EE.equals(dst)) {
           return true;
         }
       }
@@ -215,8 +191,7 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
     @Override
     public int getMaxNumber() {
       int max = -1;
-      for (Iterator<? extends T> NS = nodes.iterator(); NS.hasNext();) {
-        T N = NS.next();
+      for (T N : nodes) {
         if (subset.contains(N) && getNumber(N) > max) {
           max = getNumber(N);
         }
@@ -225,12 +200,8 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
       return max;
     }
 
-    private Iterator<T> filterNodes(Iterator nodeIterator) {
-      return new FilterIterator<T>(nodeIterator, new Predicate() {
-        @Override public boolean test(Object o) {
-          return subset.contains(o);
-        }
-      });
+    private Iterator<T> filterNodes(Iterator<T> nodeIterator) {
+      return new FilterIterator<>(nodeIterator, subset::contains);
     }
 
     @Override
@@ -273,7 +244,7 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
   private PrunedCFG(final ControlFlowGraph<I, T> cfg, final EdgeFilter<T> filter) {
     this.cfg = cfg;
     Graph<T> temp = new AbstractNumberedGraph<T>() {
-      private final NumberedEdgeManager<T> edges = new FilteredCFGEdges<I, T>(cfg, cfg, filter);
+      private final NumberedEdgeManager<T> edges = new FilteredCFGEdges<>(cfg, cfg, filter);
 
       @Override
       protected NumberedNodeManager<T> getNodeManager() {
@@ -292,8 +263,8 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
     reachable.add(cfg.entry());
     reachable.add(cfg.exit());
         
-    this.nodes = new FilteredNodes<T>(cfg, reachable);
-    this.edges = new FilteredCFGEdges<I, T>(cfg, nodes, filter);
+    this.nodes = new FilteredNodes<>(cfg, reachable);
+    this.edges = new FilteredCFGEdges<>(cfg, nodes, filter);
   }
 
   @Override
@@ -308,9 +279,9 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
 
   @Override
   public List<T> getExceptionalSuccessors(final T N) {
-    ArrayList<T> result = new ArrayList<T>();
-    for (Iterator<T> it = edges.getExceptionalSuccessors(N); it.hasNext();) {
-      result.add(it.next());
+    ArrayList<T> result = new ArrayList<>();
+    for (T s : Iterator2Iterable.make(edges.getExceptionalSuccessors(N))) {
+      result.add(s);
     }
     return result;
   }
@@ -380,10 +351,11 @@ public class PrunedCFG<I, T extends IBasicBlock<I>> extends AbstractNumberedGrap
 
     int i = 0;
     MutableIntSet valid = IntSetUtil.make();
-    for (Iterator<? extends T> pbs = cfg.getPredNodes(bb); pbs.hasNext(); i++) {
-      if (nodes.containsNode(pbs.next())) {
+    for (T pb : Iterator2Iterable.make(cfg.getPredNodes(bb))) {
+      if (nodes.containsNode(pb)) {
         valid.add(i);
       }
+      ++i;
     }
 
     return valid;

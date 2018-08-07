@@ -17,6 +17,7 @@ import java.util.Iterator;
 
 import org.junit.Assert;
 
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.core.tests.demandpa.AbstractPtrTest;
 import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
@@ -69,7 +70,7 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 		AnalysisOptions options = CallGraphTestUtil.makeAnalysisOptions(scope, entrypoints);
 		IAnalysisCacheView cache = new AnalysisCacheImpl();
 		//works for different call graph/ptg builders
-		IPASSAPropagationCallGraphBuilder builder = IPAUtil.makeIPAZeroCFABuilder(options, cache, cha, scope);
+		IPASSAPropagationCallGraphBuilder builder = IPAUtil.makeIPAZeroCFABuilder(Language.JAVA, options, cache, cha, scope);
 		//SSAPropagationCallGraphBuilder builder = Util.makeZeroOneContainerCFABuilder(options, cache, cha, scope);
 		//SSAPropagationCallGraphBuilder builder = Util.makeVanillaZeroOneCFABuilder(options, cache, cha, scope);
 

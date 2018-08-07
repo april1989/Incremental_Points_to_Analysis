@@ -10,8 +10,6 @@
  *******************************************************************************/
 package com.ibm.wala.ssa;
 
-import java.util.Iterator;
-
 import com.ibm.wala.analysis.stackMachine.AbstractIntStackMachine;
 import com.ibm.wala.cfg.IBasicBlock;
 import com.ibm.wala.cfg.ShrikeCFG;
@@ -89,7 +87,7 @@ public class SSABuilder extends AbstractIntStackMachine {
   final private SymbolTable symbolTable;
 
   /**
-   * A logical mapping from <bcIndex, valueNumber> -> local number if null, don't build it.
+   * A logical mapping from &lt;bcIndex, valueNumber&gt; -&gt; local number if null, don't build it.
    */
   private final SSA2LocalMap localMap;
 
@@ -144,9 +142,9 @@ public class SSABuilder extends AbstractIntStackMachine {
       }
 
       if (allTheSame(rhs)) {
-        for (int i = 0; i < rhs.length; i++) {
-          if (rhs[i] != TOP) {
-            return rhs[i];
+        for (int rh : rhs) {
+          if (rh != TOP) {
+            return rh;
           }
         }
         // didn't find anything but TOP
@@ -178,9 +176,9 @@ public class SSABuilder extends AbstractIntStackMachine {
     @Override
     public int meetLocal(int n, int[] rhs, BasicBlock bb) {
       if (allTheSame(rhs)) {
-        for (int i = 0; i < rhs.length; i++) {
-          if (rhs[i] != TOP) {
-            return rhs[i];
+        for (int rh : rhs) {
+          if (rh != TOP) {
+            return rh;
           }
         }
         // didn't find anything but TOP
@@ -782,8 +780,8 @@ public class SSABuilder extends AbstractIntStackMachine {
       }
 
       private void doIndirectReads(int[] locals) {
-        for(int i = 0; i < locals.length; i++) {
-          ssaIndirections.setUse(getCurrentInstructionIndex(), new ShrikeLocalName(locals[i]), workingState.getLocal(locals[i]));
+        for (int local : locals) {
+          ssaIndirections.setUse(getCurrentInstructionIndex(), new ShrikeLocalName(local), workingState.getLocal(local));
         }
       }
       
@@ -798,13 +796,13 @@ public class SSABuilder extends AbstractIntStackMachine {
       }
 
       private void doIndirectWrites(int[] locals, int rval) {
-        for(int i = 0; i < locals.length; i++) {
-          ShrikeLocalName name = new ShrikeLocalName(locals[i]);
+        for (int local : locals) {
+          ShrikeLocalName name = new ShrikeLocalName(local);
           int idx = getCurrentInstructionIndex();
           if (ssaIndirections.getDef(idx, name) == -1) {
             ssaIndirections.setDef(idx, name, rval==-1? symbolTable.newSymbol(): rval);
           }
-          workingState.setLocal(locals[i], ssaIndirections.getDef(idx, name));
+          workingState.setLocal(local, ssaIndirections.getDef(idx, name));
         }        
       }
       
@@ -925,7 +923,7 @@ public class SSABuilder extends AbstractIntStackMachine {
   }
   
   /**
-   * A logical mapping from <pc, valueNumber> -> local number Note: make sure this class remains static: this persists as part of
+   * A logical mapping from &lt;pc, valueNumber&gt; -&gt; local number Note: make sure this class remains static: this persists as part of
    * the IR!!
    */
   private static class SSA2LocalMap implements com.ibm.wala.ssa.IR.SSA2LocalMap {
@@ -933,7 +931,7 @@ public class SSABuilder extends AbstractIntStackMachine {
     private final ShrikeCFG shrikeCFG;
 
     /**
-     * Mapping Integer -> IntPair where p maps to (vn,L) iff we've started a range at pc p where value number vn corresponds to
+     * Mapping Integer -&gt; IntPair where p maps to (vn,L) iff we've started a range at pc p where value number vn corresponds to
      * local L
      */
     private final IntPair[] localStoreMap;
@@ -965,8 +963,7 @@ public class SSABuilder extends AbstractIntStackMachine {
      * Finish populating the map of local variable information
      */
     private void finishLocalMap(SSABuilder builder) {
-      for (Iterator it = shrikeCFG.iterator(); it.hasNext();) {
-        ShrikeCFG.BasicBlock bb = (ShrikeCFG.BasicBlock) it.next();
+      for (BasicBlock bb : shrikeCFG) {
         MachineState S = builder.getIn(bb);
         int number = bb.getNumber();
         block2LocalState[number] = S.getLocals();
@@ -1053,8 +1050,8 @@ public class SSABuilder extends AbstractIntStackMachine {
     private static int[] extractIndices(int[] x, int y) {
       assert x != null;
       int count = 0;
-      for (int i = 0; i < x.length; i++) {
-        if (x[i] == y) {
+      for (int element : x) {
+        if (element == y) {
           count++;
         }
       }

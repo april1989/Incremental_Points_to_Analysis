@@ -15,8 +15,21 @@ import java.util.Set;
 
 import com.ibm.wala.analysis.typeInference.PrimitiveType;
 import com.ibm.wala.analysis.typeInference.TypeInference;
+import com.ibm.wala.cfg.InducedCFG;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.Context;
+import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
+import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
+import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
+import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
+import com.ibm.wala.ipa.modref.ExtendedHeapModel;
+import com.ibm.wala.ipa.modref.ModRef;
+import com.ibm.wala.ipa.modref.ModRef.RefVisitor;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
+import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInstructionFactory;
 import com.ibm.wala.ssa.SSALoadMetadataInstruction;
 import com.ibm.wala.types.MethodReference;
@@ -145,4 +158,16 @@ public interface Language {
    */
   boolean methodsHaveDeclaredParameterTypes();
    
+  AbstractRootMethod getFakeRootMethod(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache);
+ 
+  InducedCFG makeInducedCFG(SSAInstruction[] instructions, IMethod method, Context context);
+  
+  boolean modelConstant(Object o);
+  
+  <T extends InstanceKey> RefVisitor<T, ? extends ExtendedHeapModel> makeRefVisitor(CGNode n, Collection<PointerKey> result,
+      PointerAnalysis<T> pa, ExtendedHeapModel h);
+  
+  <T extends InstanceKey> ModRef.ModVisitor<T, ? extends ExtendedHeapModel> makeModVisitor(CGNode n,
+      Collection<PointerKey> result, PointerAnalysis<T> pa, ExtendedHeapModel h,
+      boolean ignoreAllocHeapDefs);
 }

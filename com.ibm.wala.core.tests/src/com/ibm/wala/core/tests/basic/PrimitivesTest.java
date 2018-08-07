@@ -12,7 +12,6 @@ package com.ibm.wala.core.tests.basic;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +22,7 @@ import com.ibm.wala.core.tests.util.WalaTestCase;
 import com.ibm.wala.util.collections.BimodalMap;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.Iterator2Collection;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.SmallMap;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.NumberedGraph;
@@ -601,21 +601,21 @@ public class PrimitivesTest extends WalaTestCase {
 
   @Test public void testSmallMap() {
     SmallMap<Integer, Integer> M = new SmallMap<>();
-    Integer I1 = new Integer(1);
-    Integer I2 = new Integer(2);
-    Integer I3 = new Integer(3);
+    Integer I1 = Integer.valueOf(1);
+    Integer I2 = Integer.valueOf(2);
+    Integer I3 = Integer.valueOf(3);
     M.put(I1, I1);
     M.put(I2, I2);
     M.put(I3, I3);
 
-    Integer I = M.get(new Integer(2));
+    Integer I = M.get(Integer.valueOf(2));
     Assert.assertTrue(I != null);
     Assert.assertTrue(I.equals(I2));
 
-    I = M.get(new Integer(4));
+    I = M.get(Integer.valueOf(4));
     Assert.assertTrue(I == null);
 
-    I = M.put(new Integer(2), new Integer(3));
+    I = M.put(Integer.valueOf(2), Integer.valueOf(3));
     Assert.assertTrue(I.equals(I2));
     I = M.get(I2);
     Assert.assertTrue(I.equals(I3));
@@ -623,24 +623,24 @@ public class PrimitivesTest extends WalaTestCase {
 
   @Test public void testBimodalMap() {
     Map<Integer, Integer> M = new BimodalMap<>(3);
-    Integer I1 = new Integer(1);
-    Integer I2 = new Integer(2);
-    Integer I3 = new Integer(3);
-    Integer I4 = new Integer(4);
-    Integer I5 = new Integer(5);
-    Integer I6 = new Integer(6);
+    Integer I1 = Integer.valueOf(1);
+    Integer I2 = Integer.valueOf(2);
+    Integer I3 = Integer.valueOf(3);
+    Integer I4 = Integer.valueOf(4);
+    Integer I5 = Integer.valueOf(5);
+    Integer I6 = Integer.valueOf(6);
     M.put(I1, I1);
     M.put(I2, I2);
     M.put(I3, I3);
 
-    Integer I = M.get(new Integer(2));
+    Integer I = M.get(Integer.valueOf(2));
     Assert.assertTrue(I != null);
     Assert.assertTrue(I.equals(I2));
 
-    I = M.get(new Integer(4));
+    I = M.get(Integer.valueOf(4));
     Assert.assertTrue(I == null);
 
-    I = M.put(new Integer(2), new Integer(3));
+    I = M.put(Integer.valueOf(2), Integer.valueOf(3));
     Assert.assertTrue(I.equals(I2));
     I = M.get(I2);
     Assert.assertTrue(I.equals(I3));
@@ -648,14 +648,14 @@ public class PrimitivesTest extends WalaTestCase {
     M.put(I4, I4);
     M.put(I5, I5);
     M.put(I6, I6);
-    I = M.get(new Integer(4));
+    I = M.get(Integer.valueOf(4));
     Assert.assertTrue(I != null);
     Assert.assertTrue(I.equals(I4));
 
-    I = M.get(new Integer(7));
+    I = M.get(Integer.valueOf(7));
     Assert.assertTrue(I == null);
 
-    I = M.put(new Integer(2), new Integer(6));
+    I = M.put(Integer.valueOf(2), Integer.valueOf(6));
     Assert.assertTrue(I.equals(I3));
     I = M.get(I2);
     Assert.assertTrue(I.equals(I6));
@@ -714,7 +714,7 @@ public class PrimitivesTest extends WalaTestCase {
     // add 10 nodes
     Integer[] nodes = new Integer[10];
     for (int i = 0; i < nodes.length; i++)
-      G.addNode(nodes[i] = new Integer(i));
+      G.addNode(nodes[i] = Integer.valueOf(i));
 
     // edges to i-1, i+1, i+2
     for (int i = 0; i < nodes.length; i++) {
@@ -738,7 +738,7 @@ public class PrimitivesTest extends WalaTestCase {
     // add nodes
     Object[] nodes = new Object[11];
     for (int i = 0; i < nodes.length; i++)
-      G.addNode(nodes[i] = new Integer(i));
+      G.addNode(nodes[i] = Integer.valueOf(i));
 
     // add edges
     G.addEdge(nodes[10], nodes[0]);
@@ -761,13 +761,12 @@ public class PrimitivesTest extends WalaTestCase {
     // Assert.assertions
     int i = 0;
     Object[] desired4 = new Object[] { nodes[4], nodes[7], nodes[8], nodes[5], nodes[10] };
-    for (Iterator<Object> d4 = D.dominators(nodes[4]); d4.hasNext();)
-      Assert.assertTrue(d4.next() == desired4[i++]);
+    for (Object d4 : Iterator2Iterable.make(D.dominators(nodes[4])))
+      Assert.assertTrue(d4 == desired4[i++]);
 
     int j = 0;
     Object[] desired5 = new Object[] { nodes[8] };
-    for (Iterator<? extends Object> t4 = D.dominatorTree().getSuccNodes(nodes[5]); t4.hasNext();) {
-      Object o4 = t4.next();
+    for (Object o4 : Iterator2Iterable.make(D.dominatorTree().getSuccNodes(nodes[5]))) {
       Object d = desired5[j++];
       boolean ok = (o4.equals(d));
       if (!ok) {
@@ -790,8 +789,8 @@ public class PrimitivesTest extends WalaTestCase {
     R.add(3, 11);
     R.add(5, 1);
     int count = 0;
-    for (Iterator<IntPair> it = R.iterator(); it.hasNext();) {
-      System.err.println(it.next());
+    for (IntPair intPair : R) {
+      System.err.println(intPair);
       count++;
     }
     Assert.assertTrue(count == 5);
@@ -862,7 +861,7 @@ public class PrimitivesTest extends WalaTestCase {
   private static int countEquivalenceClasses(IntegerUnionFind uf) {
     HashSet<Integer> s = HashSetFactory.make();
     for (int i = 0; i < uf.size(); i++) {
-      s.add(new Integer(uf.find(i)));
+      s.add(Integer.valueOf(uf.find(i)));
     }
     return s.size();
   }

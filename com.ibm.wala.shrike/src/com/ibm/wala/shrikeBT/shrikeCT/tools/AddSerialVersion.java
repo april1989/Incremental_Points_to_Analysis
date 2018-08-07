@@ -19,7 +19,6 @@ import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.Comparator;
 
 import com.ibm.wala.shrikeBT.Util;
 import com.ibm.wala.shrikeCT.ClassConstants;
@@ -103,8 +102,8 @@ public class AddSerialVersion {
         // step 3
         String[] interfaces = r.getInterfaceNames();
         Arrays.sort(interfaces);
-        for (int i = 0; i < interfaces.length; i++) {
-          out.writeUTF(interfaces[i]);
+        for (String interface1 : interfaces) {
+          out.writeUTF(interface1);
         }
   
         // step 4
@@ -114,18 +113,15 @@ public class AddSerialVersion {
         for (int f = 0; f < fields.length; f++) {
           int flags = r.getFieldAccessFlags(f);
           if ((flags & ClassConstants.ACC_PRIVATE) == 0 || (flags & (ClassConstants.ACC_STATIC | ClassConstants.ACC_TRANSIENT)) == 0) {
-            fields[fieldCount] = new Integer(f);
+            fields[fieldCount] = Integer.valueOf(f);
             fieldNames[f] = r.getFieldName(f);
             fieldCount++;
           }
         }
-        Arrays.sort(fields, 0, fieldCount, new Comparator<Integer>() {
-          @Override
-          public int compare(Integer o1, Integer o2) {
-            String name1 = fieldNames[o1.intValue()];
-            String name2 = fieldNames[o2.intValue()];
-            return name1.compareTo(name2);
-          }
+        Arrays.sort(fields, 0, fieldCount, (o1, o2) -> {
+          String name1 = fieldNames[o1.intValue()];
+          String name2 = fieldNames[o2.intValue()];
+          return name1.compareTo(name2);
         });
         for (int i = 0; i < fieldCount; i++) {
           int f = fields[i].intValue();
@@ -143,7 +139,7 @@ public class AddSerialVersion {
           String name = r.getMethodName(m);
           int flags = r.getMethodAccessFlags(m);
           if (name.equals("<clinit>") || (flags & ClassConstants.ACC_PRIVATE) == 0) {
-            methods[methodCount] = new Integer(m);
+            methods[methodCount] = Integer.valueOf(m);
             methodSigs[m] = name + r.getMethodType(m);
             if (name.equals("<clinit>")) {
               methodKinds[m] = 0;
@@ -155,18 +151,15 @@ public class AddSerialVersion {
             methodCount++;
           }
         }
-        Arrays.sort(methods, 0, methodCount, new Comparator<Integer>() {
-          @Override
-          public int compare(Integer o1, Integer o2) {
-            int m1 = o1.intValue();
-            int m2 = o2.intValue();
-            if (methodKinds[m1] != methodKinds[m2]) {
-              return methodKinds[m1] - methodKinds[m2];
-            }
-            String name1 = methodSigs[m1];
-            String name2 = methodSigs[m2];
-            return name1.compareTo(name2);
+        Arrays.sort(methods, 0, methodCount, (o1, o2) -> {
+          int m1 = o1.intValue();
+          int m2 = o2.intValue();
+          if (methodKinds[m1] != methodKinds[m2]) {
+            return methodKinds[m1] - methodKinds[m2];
           }
+          String name1 = methodSigs[m1];
+          String name2 = methodSigs[m2];
+          return name1.compareTo(name2);
         });
         for (int i = 0; i < methodCount; i++) {
           int m = methods[i].intValue();

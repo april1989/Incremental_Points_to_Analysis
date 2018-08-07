@@ -26,6 +26,7 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.CompoundIterator;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.BasicNaturalRelation;
 import com.ibm.wala.util.intset.IntIterator;
@@ -124,10 +125,10 @@ public abstract class IR implements IRView {
           callSiteMapping.add(((SSAAbstractInvokeInstruction) x).getCallSite().getProgramCounter(), i);
         }
         if (x instanceof SSANewInstruction) {
-          newSiteMapping.put(((SSANewInstruction) x).getNewSite(), new Integer(i));
+          newSiteMapping.put(((SSANewInstruction) x).getNewSite(), Integer.valueOf(i));
         }
         if (x.isPEI()) {
-           peiMapping.put(new ProgramCounter(cfg.getProgramCounter(i)), new Integer(i));
+           peiMapping.put(new ProgramCounter(cfg.getProgramCounter(i)), Integer.valueOf(i));
         }
       }
     }
@@ -167,8 +168,7 @@ public abstract class IR implements IRView {
         result.append(")");
       }
       result.append("\n");
-      for (Iterator it = bb.iteratePhis(); it.hasNext();) {
-        SSAPhiInstruction phi = (SSAPhiInstruction) it.next();
+      for (SSAPhiInstruction phi : Iterator2Iterable.make(bb.iteratePhis())) {
         if (phi != null) {
           result.append("           " + phi.toString(symbolTable)).append("\n");
         }
@@ -234,8 +234,7 @@ public abstract class IR implements IRView {
           }
         }
       }
-      for (Iterator it = bb.iteratePis(); it.hasNext();) {
-        SSAPiInstruction pi = (SSAPiInstruction) it.next();
+      for (SSAPiInstruction pi : Iterator2Iterable.make(bb.iteratePis())) {
         if (pi != null) {
           result.append("           " + pi.toString(symbolTable)).append("\n");
         }
@@ -463,18 +462,18 @@ public abstract class IR implements IRView {
   /**
    * visit each normal (non-phi, non-pi, non-catch) instruction in this IR
    */
-  public void visitNormalInstructions(SSAInstruction.Visitor v) {
-    for (Iterator i = iterateNormalInstructions(); i.hasNext();) {
-      ((SSAInstruction) i.next()).visit(v);
+  public void visitNormalInstructions(SSAInstruction.IVisitor v) {
+    for (SSAInstruction inst : Iterator2Iterable.make(iterateNormalInstructions())) {
+      inst.visit(v);
     }
   }
 
   /**
    * visit each instruction in this IR
    */
-  public void visitAllInstructions(SSAInstruction.Visitor v) {
-    for (Iterator i = iterateAllInstructions(); i.hasNext();) {
-      ((SSAInstruction) i.next()).visit(v);
+  public void visitAllInstructions(SSAInstruction.IVisitor v) {
+    for (SSAInstruction inst : Iterator2Iterable.make(iterateAllInstructions())) {
+      inst.visit(v);
     }
   }
 
@@ -526,8 +525,8 @@ public abstract class IR implements IRView {
    * @return an {@link Iterator} of all instructions (Normal, Phi, and Catch)
    */
   public Iterator<SSAInstruction> iterateAllInstructions() {
-    return new CompoundIterator<SSAInstruction>(iterateNormalInstructions(), new CompoundIterator<SSAInstruction>(
-        iterateCatchInstructions(), new CompoundIterator<SSAInstruction>(iteratePhis(), iteratePis())));
+    return new CompoundIterator<>(iterateNormalInstructions(), new CompoundIterator<>(
+        iterateCatchInstructions(), new CompoundIterator<>(iteratePhis(), iteratePis())));
   }
 
   /**
@@ -699,8 +698,8 @@ public abstract class IR implements IRView {
     if (instructions == null)
       return true;
 
-    for (int i = 0; i < instructions.length; i++)
-      if (instructions[i] != null)
+    for (SSAInstruction instruction : instructions)
+      if (instruction != null)
         return false;
 
     return true;

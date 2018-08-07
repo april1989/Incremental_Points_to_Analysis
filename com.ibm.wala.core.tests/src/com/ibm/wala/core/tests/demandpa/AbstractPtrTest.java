@@ -39,12 +39,11 @@ package com.ibm.wala.core.tests.demandpa;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Iterator;
-
 import org.junit.AfterClass;
 import org.junit.Assert;
 
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.demandpa.alg.DemandRefinementPointsTo;
@@ -105,8 +104,7 @@ public abstract class AbstractPtrTest {
   public static CGNode findMainMethod(CallGraph cg) {
     Descriptor d = Descriptor.findOrCreateUTF8("([Ljava/lang/String;)V");
     Atom name = Atom.findOrCreateUnicodeAtom("main");
-    for (Iterator<? extends CGNode> it = cg.getSuccNodes(cg.getFakeRootNode()); it.hasNext();) {
-      CGNode n = it.next();
+    for (CGNode n : Iterator2Iterable.make(cg.getSuccNodes(cg.getFakeRootNode()))) {
       if (n.getMethod().getName().equals(name) && n.getMethod().getDescriptor().equals(d)) {
         return n;
       }
@@ -116,8 +114,7 @@ public abstract class AbstractPtrTest {
   }
 
   public static CGNode findStaticMethod(CallGraph cg, Atom name, Descriptor args) {
-    for (Iterator<? extends CGNode> it = cg.iterator(); it.hasNext();) {
-      CGNode n = it.next();
+    for (CGNode n : cg) {
       // System.err.println(n.getMethod().getName() + " " +
       // n.getMethod().getDescriptor());
       if (n.getMethod().getName().equals(name) && n.getMethod().getDescriptor().equals(args)) {
@@ -129,8 +126,7 @@ public abstract class AbstractPtrTest {
   }
 
   public static CGNode findInstanceMethod(CallGraph cg, IClass declaringClass, Atom name, Descriptor args) {
-    for (Iterator<? extends CGNode> it = cg.iterator(); it.hasNext();) {
-      CGNode n = it.next();
+    for (CGNode n : cg) {
       // System.err.println(n.getMethod().getDeclaringClass() + " " +
       // n.getMethod().getName() + " " + n.getMethod().getDescriptor());
       if (n.getMethod().getDeclaringClass().equals(declaringClass) && n.getMethod().getName().equals(name)
@@ -144,8 +140,7 @@ public abstract class AbstractPtrTest {
 
   public static PointerKey getParam(CGNode n, String methodName, HeapModel heapModel) {
     IR ir = n.getIR();
-    for (Iterator<SSAInstruction> it = ir.iterateAllInstructions(); it.hasNext();) {
-      SSAInstruction s = it.next();
+    for (SSAInstruction s : Iterator2Iterable.make(ir.iterateAllInstructions())) {
       if (s instanceof SSAInvokeInstruction) {
         SSAInvokeInstruction call = (SSAInvokeInstruction) s;
         if (call.getCallSite().getDeclaredTarget().getName().toString().equals(methodName)) {
@@ -236,14 +231,14 @@ public abstract class AbstractPtrTest {
     AnalysisOptions options = CallGraphTestUtil.makeAnalysisOptions(scope, entrypoints);
 
     final IAnalysisCacheView analysisCache = new AnalysisCacheImpl();
-    CallGraphBuilder<InstanceKey> cgBuilder = Util.makeZeroCFABuilder(options, analysisCache, cha, scope);
+    CallGraphBuilder<InstanceKey> cgBuilder = Util.makeZeroCFABuilder(Language.JAVA, options, analysisCache, cha, scope);
     final CallGraph cg = cgBuilder.makeCallGraph(options, null);
     // System.err.println(cg.toString());
 
     // MemoryAccessMap mam = new SimpleMemoryAccessMap(cg,
     // cgBuilder.getPointerAnalysis().getHeapModel(), false);
     MemoryAccessMap mam = new PABasedMemoryAccessMap(cg, cgBuilder.getPointerAnalysis());
-    SSAPropagationCallGraphBuilder builder = Util.makeVanillaZeroOneCFABuilder(options, analysisCache, cha, scope);
+    SSAPropagationCallGraphBuilder builder = Util.makeVanillaZeroOneCFABuilder(Language.JAVA, options, analysisCache, cha, scope);
     DemandRefinementPointsTo fullDemandPointsTo = DemandRefinementPointsTo.makeWithDefaultFlowGraph(cg, builder, mam, cha, options,
         getStateMachineFactory());
 
@@ -255,7 +250,6 @@ public abstract class AbstractPtrTest {
 
   /**
    * @param scope
-   * @return
    * @throws ClassHierarchyException
    */
   private static IClassHierarchy findOrCreateCHA(AnalysisScope scope) throws ClassHierarchyException {
@@ -267,7 +261,6 @@ public abstract class AbstractPtrTest {
 
   /**
    * @param scopeFile
-   * @return
    * @throws IOException
    */
   private AnalysisScope findOrCreateAnalysisScope() throws IOException {

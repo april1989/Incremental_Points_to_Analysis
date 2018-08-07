@@ -71,7 +71,7 @@ public abstract class AbstractReflectionInterpreter implements SSAContextInterpr
   protected int getLocalForType(TypeReference T) {
     Integer I = typeIndexMap.get(T);
     if (I == null) {
-      typeIndexMap.put(T, I = new Integer(indexLocal += 2));
+      typeIndexMap.put(T, I = Integer.valueOf(indexLocal += 2));
     }
     return I.intValue();
   }
@@ -176,17 +176,17 @@ public abstract class AbstractReflectionInterpreter implements SSAContextInterpr
     /**
      * List of synthetic allocation statements we model for this specialized instance
      */
-    final protected ArrayList<SSAInstruction> allocations = new ArrayList<SSAInstruction>();
+    final protected ArrayList<SSAInstruction> allocations = new ArrayList<>();
 
     /**
      * List of synthetic invoke instructions we model for this specialized instance.
      */
-    final protected ArrayList<SSAInstruction> calls = new ArrayList<SSAInstruction>();
+    final protected ArrayList<SSAInstruction> calls = new ArrayList<>();
 
     /**
      * List of all instructions
      */
-    protected final ArrayList<SSAInstruction> allInstructions = new ArrayList<SSAInstruction>();
+    protected final ArrayList<SSAInstruction> allInstructions = new ArrayList<>();
 
     private final SSAInstructionFactory insts = declaringClass.getClassLoader().getInstructionFactory();
     

@@ -159,10 +159,9 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
    */
   private static class FunctionContext extends JavaScriptTranslatorToCAst.FunctionContext<WalkContext,Node> implements WalkContext {
     FunctionContext(WalkContext parent, Node s) {
-		super(parent, s);
-	}
-
-   }
+      super(parent, s);
+    }
+  }
 
   /**
    * context used for top-level script declarations
@@ -191,25 +190,40 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 
   private static class BreakContext extends JavaScriptTranslatorToCAst.BreakContext<WalkContext, Node> implements WalkContext {
 
+    @Override
+    public WalkContext getParent() {
+      return (WalkContext) super.getParent();
+    }
+
     BreakContext(WalkContext parent, Node breakTo, String label) {
       super(parent, breakTo, label);
     }
 
   }
 
-  private static class LoopContext extends JavaScriptTranslatorToCAst.LoopContext<WalkContext, Node> implements WalkContext {
+  private static class LoopContext extends TranslatorToCAst.LoopContext<WalkContext, Node> implements WalkContext {
 
 	LoopContext(WalkContext parent, Node breakTo, Node continueTo, String label) {
 		super(parent, breakTo, continueTo, label);
 	}
 
+  @Override
+  public WalkContext getParent() {
+    return (WalkContext) super.getParent();
   }
 
-  private static class TryCatchContext extends JavaScriptTranslatorToCAst.TryCatchContext<WalkContext, Node> implements WalkContext {
+  }
+
+  private static class TryCatchContext extends TranslatorToCAst.TryCatchContext<WalkContext, Node> implements WalkContext {
 
 	TryCatchContext(WalkContext parent, CAstNode catchNode) {
 		super(parent, catchNode);
 	}
+
+  @Override
+  public WalkContext getParent() {
+    return (WalkContext) super.getParent();
+  }
 
   }
 
@@ -379,7 +393,7 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
    * Used to represent a script or function in the CAst; see walkEntity().
    * 
    */
-  private static class ScriptOrFnEntity implements CAstEntity {
+  private class ScriptOrFnEntity implements CAstEntity {
     private final String[] arguments;
 
     private final String name;
@@ -396,6 +410,8 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
     
     private final Position entityPosition;
     
+    private final Position[] paramPositions;
+    
     private ScriptOrFnEntity(AstNode n, Map<CAstNode, Collection<CAstEntity>> subs, CAstNode ast, CAstControlFlowMap map, CAstSourcePositionMap pos, String name) {
       this.name = name;
       this.entityPosition = pos.getPosition(ast);
@@ -410,7 +426,15 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
         for (int j = 0; j < f.getParamCount(); j++) {
           arguments[i++] = f.getParamOrVarName(j);
         }
+   
+        List<AstNode> params = f.getParams();
+        paramPositions = new Position[ params.size() ];
+        for(int pi = 0; pi < params.size(); pi++) {
+          paramPositions[pi] = makePosition(params.get(pi));
+        }
+        
       } else {
+        paramPositions = new Position[0];
         arguments = new String[0];
       }
       kind = (n instanceof FunctionNode) ? CAstEntity.FUNCTION_ENTITY : CAstEntity.SCRIPT_ENTITY;
@@ -509,6 +533,11 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
     public CAstType getType() {
       return JSAstTranslator.Any;
     }
+
+    @Override
+    public Position getPosition(int arg) {
+      return paramPositions[arg];
+    }
   }
 
   private CAstEntity walkEntity(final AstNode n, List<CAstNode> body, String name, WalkContext child) {
@@ -554,15 +583,7 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
     return pos;
   }
 
-  private void pushSourcePosition(WalkContext context, CAstNode n, Position p) {
-	  if (context.pos().getPosition(n) == null && !(n.getKind()==CAstNode.FUNCTION_EXPR || n.getKind()==CAstNode.FUNCTION_STMT)) {
-	      context.pos().setPosition(n, p);
-	      for(int i = 0; i < n.getChildCount(); i++) {
-	    	  pushSourcePosition(context, n.getChild(i), p);
-	      }
-	  }
-  }
-  private CAstNode noteSourcePosition(WalkContext context, CAstNode n, AstNode p) {
+  protected CAstNode noteSourcePosition(WalkContext context, CAstNode n, AstNode p) {
     if (p.getLineno() != -1 && context.pos().getPosition(n) == null) {
       pushSourcePosition(context, n, makePosition(p));
     }
@@ -834,6 +855,8 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 	
 	@Override
 	public CAstNode visitForInLoop(ForInLoop node, WalkContext arg) {		
+	  CAstNode loop;
+	  CAstNode get;
 	  // TODO: fix the correlation-tracking rewriters, and kill the old for..in translation
 	  if (useNewForIn) {
 	    // set up 		
@@ -881,7 +904,7 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 	        visit(node.getBody(), loopContext),
 	        garbageLabel);
 
-	    CAstNode loop = Ast.makeNode(CAstNode.LOCAL_SCOPE,
+	    loop = Ast.makeNode(CAstNode.LOCAL_SCOPE,
 	        Ast.makeNode(CAstNode.BLOCK_STMT,
 	            loopHeader[0],
 	            loopHeader[1],
@@ -893,14 +916,13 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 	                    Ast.makeNode(CAstNode.BLOCK_EXPR,
 	                        Ast.makeNode(CAstNode.ASSIGN, 
 	                            Ast.makeNode(CAstNode.VAR, Ast.makeConstant(name)),
-	                            Ast.makeNode(CAstNode.EACH_ELEMENT_GET,   
+	                            get = Ast.makeNode(CAstNode.EACH_ELEMENT_GET,   
 	                                Ast.makeNode(CAstNode.VAR, Ast.makeConstant(tempName)),
 	                                readName(arg, null, name))),
 	                        readName(arg, null, name))),
 	                body),
 	            breakLabel));
 	    arg.cfg().map(node, loop);
-	    return loop;
 	  } else {
 	    CAstNode object = visit(node.getIteratedObject(), arg);
 	    String tempName = "for in loop temp";   
@@ -918,7 +940,7 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 	      initNode = 
 	          Ast.makeNode(CAstNode.ASSIGN, 
 	              Ast.makeNode(CAstNode.VAR, Ast.makeConstant(name)),
-	              Ast.makeNode(CAstNode.EACH_ELEMENT_GET, 
+	              get = Ast.makeNode(CAstNode.EACH_ELEMENT_GET, 
 	                  Ast.makeNode(CAstNode.VAR, Ast.makeConstant(tempName)),
 	                  readName(arg, null, name)));
 
@@ -941,10 +963,18 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 	      initNode = 
 	          Ast.makeNode(CAstNode.ASSIGN, 
 	              Ast.makeNode(CAstNode.VAR, Ast.makeConstant(name)),
-	              Ast.makeNode(CAstNode.EACH_ELEMENT_GET, 
+	              get = Ast.makeNode(CAstNode.EACH_ELEMENT_GET, 
 	                  Ast.makeNode(CAstNode.VAR, Ast.makeConstant(tempName)),
 	                  readName(arg, null, name)));
 
+	    }
+
+      arg.cfg().map(get, get);
+	    CAstNode ctch = arg.getCatchTarget();
+	    if (ctch != null) {
+	      arg.cfg().add(get, ctch, JavaScriptTypes.ReferenceError);
+	    } else {
+	      arg.cfg().add(get, CAstControlFlowMap.EXCEPTION_TO_EXIT, JavaScriptTypes.ReferenceError);       
 	    }
 
 	    // body
@@ -962,7 +992,7 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 	        visit(node.getBody(), loopContext),
 	        garbageLabel);
 
-	    CAstNode loop = Ast.makeNode(CAstNode.LOCAL_SCOPE,
+	    loop = Ast.makeNode(CAstNode.LOCAL_SCOPE,
 	        Ast.makeNode(CAstNode.BLOCK_STMT,
 	            loopHeader[0],
 	            loopHeader[1],
@@ -971,15 +1001,24 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
 	                Ast.makeNode(CAstNode.BINARY_EXPR,
 	                    CAstOperator.OP_NE,
 	                    Ast.makeConstant(null),
-	                    Ast.makeNode(CAstNode.EACH_ELEMENT_GET, 
+	                    get = Ast.makeNode(CAstNode.EACH_ELEMENT_GET, 
 	                        Ast.makeNode(CAstNode.VAR, Ast.makeConstant(tempName)),
 	                        readName(arg, null, name))),
 	                body),
 	            breakLabel));
 	    arg.cfg().map(node, loop);
-	    return loop;
 	  }
-	}
+    
+    arg.cfg().map(get, get);
+    CAstNode ctch = arg.getCatchTarget();
+    if (ctch != null) {
+      arg.cfg().add(get, ctch, JavaScriptTypes.ReferenceError);
+    } else {
+      arg.cfg().add(get, CAstControlFlowMap.EXCEPTION_TO_EXIT, JavaScriptTypes.ReferenceError);       
+    }
+
+	  return loop;
+  }
 
 	@Override
 	public CAstNode visitForLoop(ForLoop node, WalkContext arg) {
@@ -1696,8 +1735,8 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
       if (finallyNode != null) {
         int i = 0;
         CAstNode[] finallyAsts = new CAstNode[finallyList.size()];
-        for (Iterator<Node> fns = finallyList.iterator(); fns.hasNext();) {
-          finallyAsts[i++] = walkNodes(fns.next(), context);
+        for (Node fn : finallyList) {
+          finallyAsts[i++] = walkNodes(fn, context);
         }
         finallyBlock = Ast.makeNode(CAstNode.BLOCK_STMT, finallyAsts);
       }
@@ -1707,8 +1746,8 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
         int i = 0;
         WalkContext catchChild = new CatchBlockContext(context);
         CAstNode[] catchAsts = new CAstNode[catchList.size()];
-        for (Iterator<Node> cns = catchList.iterator(); cns.hasNext();) {
-          catchAsts[i++] = walkNodes(cns.next(), catchChild);
+        for (Node cn : catchList.iterator()) {
+          catchAsts[i++] = walkNodes(cn, catchChild);
         }
         CAstNode catchBlock = Ast.makeNode(CAstNode.CATCH, Ast.makeConstant(catchChild.getCatchVar()),
             Ast.makeNode(CAstNode.BLOCK_STMT, catchAsts));
@@ -1717,8 +1756,8 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
         i = 0;
         WalkContext tryChild = new TryBlockContext(context, catchBlock);
         CAstNode[] tryAsts = new CAstNode[tryList.size()];
-        for (Iterator<Node> tns = tryList.iterator(); tns.hasNext();) {
-          tryAsts[i++] = walkNodes(tns.next(), tryChild);
+        for (Node tn : tryList) {
+          tryAsts[i++] = walkNodes(tn, tryChild);
         }
         CAstNode tryBlock = Ast.makeNode(CAstNode.BLOCK_STMT, tryAsts);
 
@@ -1732,8 +1771,8 @@ public class RhinoToAstTranslator implements TranslatorToCAst {
       } else {
         int i = 0;
         CAstNode[] tryAsts = new CAstNode[tryList.size()];
-        for (Iterator<Node> tns = tryList.iterator(); tns.hasNext();) {
-          tryAsts[i++] = walkNodes(tns.next(), context);
+        for (Node tn : tryList) {
+          tryAsts[i++] = walkNodes(tn, context);
         }
         CAstNode tryBlock = Ast.makeNode(CAstNode.BLOCK_STMT, tryAsts);
 

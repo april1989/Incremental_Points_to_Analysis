@@ -11,7 +11,6 @@
 package com.ibm.wala.core.tests.callGraph;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.Set;
 
 import org.junit.Assert;
@@ -34,6 +33,7 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Check properties of a call to clone() in RTA
@@ -56,15 +56,14 @@ public class CloneTest extends WalaTestCase {
 
     // Check there's exactly one target for each super call in
     // MessageFormat.clone()
-    for (Iterator<CallSiteReference> i = node.iterateCallSites(); i.hasNext();) {
-      CallSiteReference site = i.next();
+    for (CallSiteReference site : Iterator2Iterable.make(node.iterateCallSites())) {
       if (site.isSpecial()) {
         if (site.getDeclaredTarget().getDeclaringClass().equals(TypeReference.JavaLangObject)) {
           Set<CGNode> targets = cg.getPossibleTargets(node, site);
           if (targets.size() != 1) {
             System.err.println(targets.size() + " targets found for " + site);
-            for (Iterator<CGNode> k = targets.iterator(); k.hasNext();) {
-              System.err.println("  " + k.next());
+            for (CGNode cgNode : targets) {
+              System.err.println("  " + cgNode);
             }
             Assert.fail("found " + targets.size() + " targets for " + site + " in " + node);
           }

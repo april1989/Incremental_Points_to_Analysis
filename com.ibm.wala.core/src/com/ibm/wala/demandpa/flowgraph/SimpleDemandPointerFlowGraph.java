@@ -65,6 +65,7 @@ import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.debug.UnimplementedError;
 import com.ibm.wala.util.graph.impl.SlowSparseNumberedGraph;
@@ -80,13 +81,13 @@ import com.ibm.wala.util.ref.ReferenceCleanser;
  * 
  * The edges represent
  * <ul>
- * <li>flow from local -> local representing assignment (i.e. phi,pi)
- * <li>flow from instancekey -> local for news
- * <li>flow from formal -> actual parameter
- * <li>flow from return value -> local
+ * <li>flow from local -&gt; local representing assignment (i.e. phi,pi)
+ * <li>flow from instancekey -&gt; local for news
+ * <li>flow from formal -&gt; actual parameter
+ * <li>flow from return value -&gt; local
  * <li>match edges
- * <li>local -> local edges representing loads/stores (e.g. x = y.f will have a edge x->y, labelled with f) for a getstatic x = Y.f,
- * we have an edge from x -> Y.f.
+ * <li>local -&gt; local edges representing loads/stores (e.g. x = y.f will have a edge x-&gt;y, labelled with f) for a getstatic x = Y.f,
+ * we have an edge from x -&gt; Y.f.
  * </ul>
  * 
  * N.B: Edges go OPPOSITE the flow of values.
@@ -118,20 +119,20 @@ public class SimpleDemandPointerFlowGraph extends SlowSparseNumberedGraph<Object
   final BitVectorIntSet cgNodesVisited = new BitVectorIntSet();
 
   /**
-   * Map: LocalPointerKey -> IField. if we have (x,f), that means x was def'fed by a getfield on f.
+   * Map: LocalPointerKey -&gt; IField. if we have (x,f), that means x was def'fed by a getfield on f.
    */
   final Map<PointerKey, IField> getFieldDefs = HashMapFactory.make();
 
   final Collection<PointerKey> arrayDefs = HashSetFactory.make();
 
   /**
-   * Map: LocalPointerKey -> SSAInvokeInstruction. If we have (x, foo()), that means that x was def'fed by the return value from a
+   * Map: LocalPointerKey -&gt; SSAInvokeInstruction. If we have (x, foo()), that means that x was def'fed by the return value from a
    * call to foo()
    */
   final Map<PointerKey, SSAInvokeInstruction> callDefs = HashMapFactory.make();
 
   /**
-   * Map: LocalPointerKey -> CGNode. If we have (x, foo), then x is a parameter of method foo. For now, we have to re-discover the
+   * Map: LocalPointerKey -&gt; CGNode. If we have (x, foo), then x is a parameter of method foo. For now, we have to re-discover the
    * parameter position.
    */
   final Map<PointerKey, CGNode> params = HashMapFactory.make();
@@ -301,12 +302,10 @@ public class SimpleDemandPointerFlowGraph extends SlowSparseNumberedGraph<Object
       // as the argument
       addSubgraphForNode(caller);
       IR ir = caller.getIR();
-      for (Iterator<CallSiteReference> iterator = ir.iterateCallSites(); iterator.hasNext();) {
-        CallSiteReference call = iterator.next();
+      for (CallSiteReference call : Iterator2Iterable.make(ir.iterateCallSites())) {
         if (cg.getPossibleTargets(caller, call).contains(node)) {
           SSAAbstractInvokeInstruction[] callInstrs = ir.getCalls(call);
-          for (int i = 0; i < callInstrs.length; i++) {
-            SSAAbstractInvokeInstruction callInstr = callInstrs[i];
+          for (SSAAbstractInvokeInstruction callInstr : callInstrs) {
             PointerKey actualPk = heapModel.getPointerKeyForLocal(caller, callInstr.getUse(paramPos));
             assert containsNode(actualPk);
             assert containsNode(pk);
@@ -483,8 +482,7 @@ public class SimpleDemandPointerFlowGraph extends SlowSparseNumberedGraph<Object
     v.setBasicBlock(b);
 
     // visit each instruction in the basic block.
-    for (Iterator<SSAInstruction> it = b.iterator(); it.hasNext();) {
-      SSAInstruction s = it.next();
+    for (SSAInstruction s : b) {
       if (s != null) {
         s.visit(v);
       }
@@ -496,8 +494,7 @@ public class SimpleDemandPointerFlowGraph extends SlowSparseNumberedGraph<Object
   private void addPhiConstraints(CGNode node, ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg, ISSABasicBlock b) {
 
     // visit each phi instruction in each successor block
-    for (Iterator<? extends IBasicBlock> sbs = cfg.getSuccNodes(b); sbs.hasNext();) {
-      ISSABasicBlock sb = (ISSABasicBlock) sbs.next();
+    for (ISSABasicBlock sb : Iterator2Iterable.make(cfg.getSuccNodes(b))) {
       if (sb.isExitBlock()) {
         // an optimization based on invariant that exit blocks should have no
         // phis.
@@ -505,14 +502,14 @@ public class SimpleDemandPointerFlowGraph extends SlowSparseNumberedGraph<Object
       }
       int n = 0;
       // set n to be whichPred(this, sb);
-      for (Iterator<? extends IBasicBlock> back = cfg.getPredNodes(sb); back.hasNext(); n++) {
-        if (back.next() == b) {
+      for (IBasicBlock back : Iterator2Iterable.make(cfg.getPredNodes(sb))) {
+        if (back == b) {
           break;
         }
+        ++n;
       }
       assert n < cfg.getPredNodeCount(sb);
-      for (Iterator<SSAPhiInstruction> phis = sb.iteratePhis(); phis.hasNext();) {
-        SSAPhiInstruction phi = phis.next();
+      for (SSAPhiInstruction phi : Iterator2Iterable.make(sb.iteratePhis())) {
         if (phi == null) {
           continue;
         }

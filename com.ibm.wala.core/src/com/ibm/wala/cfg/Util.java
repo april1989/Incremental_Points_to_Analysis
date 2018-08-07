@@ -10,13 +10,12 @@
  *******************************************************************************/
 package com.ibm.wala.cfg;
 
-import java.util.Iterator;
-
 import com.ibm.wala.shrikeBT.ConditionalBranchInstruction;
 import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSASwitchInstruction;
 import com.ibm.wala.ssa.SymbolTable;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.debug.Assertions;
 
 /**
@@ -90,8 +89,7 @@ public class Util {
       throw new IllegalArgumentException(b.toString() + " does not end with a conditional branch");
     }
     T fs = getNotTakenSuccessor(G, b);
-    for (Iterator<? extends T> ss = G.getSuccNodes(b); ss.hasNext();) {
-      T s = ss.next();
+    for (T s : Iterator2Iterable.make(G.getSuccNodes(b))) {
       if (s != fs)
         return s;
     }
@@ -155,7 +153,7 @@ public class Util {
    * constants c1 and c2, respectively.
    * 
    * Callers must resolve the constant values from the {@link SymbolTable}
-   * before calling this method. These integers are <bf>not</bf> value numbers;
+   * before calling this method. These integers are <b>not</b> value numbers;
    */
   public static <I, T extends IBasicBlock<I>> T resolveBranch(ControlFlowGraph<I, T> G, T bb, int c1, int c2) {
     SSAConditionalBranchInstruction c = (SSAConditionalBranchInstruction) getLastInstruction(G, bb);
@@ -214,8 +212,8 @@ public class Util {
       throw new IllegalArgumentException("b is null");
     }
     int i = 0;
-    for (Iterator it = cfg.getPredNodes(b); it.hasNext();) {
-      if (it.next().equals(a)) {
+    for (T p : Iterator2Iterable.make(cfg.getPredNodes(b))) {
+      if (p.equals(a)) {
         return i;
       }
       i++;

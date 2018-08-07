@@ -13,7 +13,6 @@ package com.ibm.wala.examples.analysis;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 import java.util.jar.JarFile;
@@ -23,6 +22,7 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.JarFileModule;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.client.AbstractAnalysisEngine;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
@@ -74,7 +74,7 @@ import com.ibm.wala.util.intset.OrdinalSet;
  * 
  * @author Julian Dolby
  */
-public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceKey> {
+public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceKey, CallGraphBuilder<InstanceKey>, Void> {
 
   private final Set<JarFile> applicationJarFiles;
 
@@ -90,7 +90,7 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
 
   @Override
   protected CallGraphBuilder<InstanceKey> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache) {
-    return Util.makeZeroCFABuilder(options, cache, cha, scope);
+    return Util.makeZeroCFABuilder(Language.JAVA, options, cache, cha, scope);
   }
 
   /**
@@ -99,8 +99,8 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
   private void collectJars(File f, Set<JarFile> result) throws IOException {
     if (f.isDirectory()) {
       File[] files = f.listFiles();
-      for (int i = 0; i < files.length; i++) {
-        collectJars(files[i], result);
+      for (File file : files) {
+        collectJars(file, result);
       }
     } else if (f.getAbsolutePath().endsWith(".jar")) {
       try (final JarFile jar = new JarFile(f, false)) {
@@ -148,8 +148,8 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
    */
   private Set<JarFileModule> getModuleFiles() {
     Set<JarFileModule> result = HashSetFactory.make();
-    for (Iterator<JarFile> jars = applicationJarFiles.iterator(); jars.hasNext();) {
-      result.add(new JarFileModule(jars.next()));
+    for (JarFile jarFile : applicationJarFiles) {
+      result.add(new JarFileModule(jarFile));
     }
 
     return result;
@@ -205,7 +205,7 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
     // extract data for analysis
     //
     CallGraph cg = getCallGraph();
-    PointerAnalysis<InstanceKey> pa = getPointerAnalysis();
+    PointerAnalysis<? extends InstanceKey> pa = getPointerAnalysis();
 
     //
     // collect all places where objects can escape their creating thread:
@@ -218,8 +218,7 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
     // 1) static fields
     for (IClass cls : cha) {
       Collection<IField> staticFields = cls.getDeclaredStaticFields();
-      for (Iterator<IField> sfs = staticFields.iterator(); sfs.hasNext();) {
-        IField sf = sfs.next();
+      for (IField sf : staticFields) {
         if (sf.getFieldTypeReference().isReferenceType()) {
           escapeAnalysisRoots.add(heapModel.getPointerKeyForStaticField(sf));
         }
@@ -232,14 +231,11 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
     // reachable from fields of types in these pointer keys, and all
     // Thread objects must be constructed somewhere)
     Collection<IClass> threads = cha.computeSubClasses(TypeReference.JavaLangThread);
-    for (Iterator<IClass> clss = threads.iterator(); clss.hasNext();) {
-      IClass cls = clss.next();
-      for (Iterator<IMethod> ms = cls.getDeclaredMethods().iterator(); ms.hasNext();) {
-        IMethod m = ms.next();
+    for (IClass cls : threads) {
+      for (IMethod m : cls.getDeclaredMethods()) {
         if (m.isInit()) {
           Set<CGNode> nodes = cg.getNodes(m.getReference());
-          for (Iterator<CGNode> ns = nodes.iterator(); ns.hasNext();) {
-            CGNode n = ns.next();
+          for (CGNode n : nodes) {
             escapeAnalysisRoots.add(heapModel.getPointerKeyForLocal(n, 1));
           }
         }
@@ -255,11 +251,9 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
     //
     // pass 1: get abstract objects (instance keys) for escaping locations
     //
-    for (Iterator<PointerKey> rts = escapeAnalysisRoots.iterator(); rts.hasNext();) {
-      PointerKey root = rts.next();
-      OrdinalSet<InstanceKey> objects = pa.getPointsToSet(root);
-      for (Iterator<InstanceKey> objs = objects.iterator(); objs.hasNext();) {
-        InstanceKey obj = objs.next();
+    for (PointerKey root : escapeAnalysisRoots) {
+      OrdinalSet<? extends InstanceKey> objects = pa.getPointsToSet(root);
+      for (InstanceKey obj : objects) {
         escapingInstanceKeys.add(obj);
       }
     }
@@ -270,16 +264,14 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
     Set<InstanceKey> newKeys = HashSetFactory.make();
     do {
       newKeys.clear();
-      for (Iterator<InstanceKey> keys = escapingInstanceKeys.iterator(); keys.hasNext();) {
-        InstanceKey key = keys.next();
+      for (InstanceKey key : escapingInstanceKeys) {
         IClass type = key.getConcreteType();
         if (type.isReferenceType()) {
           if (type.isArrayClass()) {
             if (((ArrayClass) type).getElementClass() != null) {
               PointerKey fk = heapModel.getPointerKeyForArrayContents(key);
-              OrdinalSet<InstanceKey> fobjects = pa.getPointsToSet(fk);
-              for (Iterator<InstanceKey> fobjs = fobjects.iterator(); fobjs.hasNext();) {
-                InstanceKey fobj = fobjs.next();
+              OrdinalSet<? extends InstanceKey> fobjects = pa.getPointsToSet(fk);
+              for (InstanceKey fobj : fobjects) {
                 if (!escapingInstanceKeys.contains(fobj)) {
                   newKeys.add(fobj);
                 }
@@ -287,13 +279,11 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
             }
           } else {
             Collection<IField> fields = type.getAllInstanceFields();
-            for (Iterator<IField> fs = fields.iterator(); fs.hasNext();) {
-              IField f = fs.next();
+            for (IField f : fields) {
               if (f.getFieldTypeReference().isReferenceType()) {
                 PointerKey fk = heapModel.getPointerKeyForInstanceField(key, f);
-                OrdinalSet<InstanceKey> fobjects = pa.getPointsToSet(fk);
-                for (Iterator<InstanceKey> fobjs = fobjects.iterator(); fobjs.hasNext();) {
-                  InstanceKey fobj = fobjs.next();
+                OrdinalSet<? extends InstanceKey> fobjects = pa.getPointsToSet(fk);
+                for (InstanceKey fobj : fobjects) {
                   if (!escapingInstanceKeys.contains(fobj)) {
                     newKeys.add(fobj);
                   }
@@ -310,8 +300,7 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
     // get set of types from set of instance keys
     //
     Set<IClass> escapingTypes = HashSetFactory.make();
-    for (Iterator<InstanceKey> keys = escapingInstanceKeys.iterator(); keys.hasNext();) {
-      InstanceKey key = keys.next();
+    for (InstanceKey key : escapingInstanceKeys) {
       escapingTypes.add(key.getConcreteType());
     }
 
@@ -336,11 +325,9 @@ public class SimpleThreadEscapeAnalysis extends AbstractAnalysisEngine<InstanceK
 
     Set<IClass> escapingTypes = (new SimpleThreadEscapeAnalysis(jars, mainClassName)).gatherThreadEscapingClasses();
 
-    for (Iterator<IClass> types = escapingTypes.iterator(); types.hasNext();) {
-      IClass cls = types.next();
+    for (IClass cls : escapingTypes) {
       if (!cls.isArrayClass()) {
-        for (Iterator<IField> fs = cls.getAllFields().iterator(); fs.hasNext();) {
-          IField f = fs.next();
+        for (IField f : cls.getAllFields()) {
           if (!f.isVolatile() && !f.isFinal()) {
             System.err.println(f.getReference());
           }

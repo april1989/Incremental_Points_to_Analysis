@@ -31,6 +31,7 @@ import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Simple utilities to scan {@link IMethod}s to gather information without building an IR.
@@ -161,7 +162,7 @@ public class CodeScanner {
    * @throws InvalidClassFileException
    * @throws IllegalArgumentException if m is null
    */
-  public static Iterator iterateCastTypes(IMethod m) throws InvalidClassFileException {
+  public static Iterator<TypeReference> iterateCastTypes(IMethod m) throws InvalidClassFileException {
     if (m == null) {
       throw new IllegalArgumentException("m is null");
     }
@@ -173,7 +174,7 @@ public class CodeScanner {
     }
   }
 
-  private static Iterator iterateShrikeBTCastTypes(ShrikeCTMethod wrapper) throws InvalidClassFileException {
+  private static Iterator<TypeReference> iterateShrikeBTCastTypes(ShrikeCTMethod wrapper) throws InvalidClassFileException {
     return wrapper.getCastTypes();
   }
 
@@ -182,8 +183,7 @@ public class CodeScanner {
   }
 
   private static boolean hasShrikeBTObjectArrayStore(ShrikeCTMethod M) throws InvalidClassFileException {
-    for (Iterator it = M.getArraysWritten(); it.hasNext();) {
-      TypeReference t = (TypeReference) it.next();
+    for (TypeReference t : Iterator2Iterable.make(M.getArraysWritten())) {
       if (t.isReferenceType()) {
         return true;
       }
@@ -206,35 +206,34 @@ public class CodeScanner {
 
   private static List<FieldReference> getFieldsReadFromShrikeBT(ShrikeCTMethod M) throws InvalidClassFileException {
     // TODO move the logic here from ShrikeCTMethodWrapper
-    LinkedList<FieldReference> result = new LinkedList<FieldReference>();
-    for (Iterator<FieldReference> it = M.getFieldsRead(); it.hasNext();) {
-      result.add(it.next());
+    LinkedList<FieldReference> result = new LinkedList<>();
+    for (FieldReference fr : Iterator2Iterable.make(M.getFieldsRead())) {
+      result.add(fr);
     }
     return result;
   }
 
   private static List<FieldReference> getFieldsWrittenFromShrikeBT(ShrikeCTMethod M) throws InvalidClassFileException {
     // TODO move the logic here from ShrikeCTMethodWrapper
-    LinkedList<FieldReference> result = new LinkedList<FieldReference>();
-    for (Iterator<FieldReference> it = M.getFieldsWritten(); it.hasNext();) {
-      result.add(it.next());
+    LinkedList<FieldReference> result = new LinkedList<>();
+    for (FieldReference fr : Iterator2Iterable.make(M.getFieldsWritten())) {
+      result.add(fr);
     }
     return result;
   }
 
   private static List<TypeReference> getArraysWrittenFromShrikeBT(ShrikeCTMethod M) throws InvalidClassFileException {
     // TODO move the logic here from ShrikeCTMethodWrapper
-    List<TypeReference> result = new LinkedList<TypeReference>();
-    for (Iterator<TypeReference> it = M.getArraysWritten(); it.hasNext();) {
-      result.add(it.next());
+    List<TypeReference> result = new LinkedList<>();
+    for (TypeReference tr : Iterator2Iterable.make(M.getArraysWritten())) {
+      result.add(tr);
     }
     return result;
   }
 
   private static boolean hasShrikeBTObjectArrayLoad(ShrikeCTMethod M) throws InvalidClassFileException {
-    for (Iterator it = M.getArraysRead(); it.hasNext();) {
-      TypeReference t = (TypeReference) it.next();
-      if (t.isReferenceType()) {
+    for (TypeReference tr : Iterator2Iterable.make(M.getArraysRead())) {
+      if (tr.isReferenceType()) {
         return true;
       }
     }
@@ -257,8 +256,7 @@ public class CodeScanner {
         result.addAll(t);
       }
     };
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }
@@ -274,10 +272,10 @@ public class CodeScanner {
       throw new IllegalArgumentException("statements == null");
     }
     final HashSet<TypeReference> result = HashSetFactory.make(10);
-    for (int i = 0; i < statements.length; i++) {
-      if (statements[i] != null) {
-        if (statements[i] instanceof SSACheckCastInstruction) {
-          SSACheckCastInstruction c = (SSACheckCastInstruction) statements[i];
+    for (SSAInstruction statement : statements) {
+      if (statement != null) {
+        if (statement instanceof SSACheckCastInstruction) {
+          SSACheckCastInstruction c = (SSACheckCastInstruction) statement;
           for(TypeReference t : c.getDeclaredResultTypes()) {
             result.add(t);
           }
@@ -292,15 +290,14 @@ public class CodeScanner {
    * @return List of InvokeInstruction
    */
   private static List<CallSiteReference> getCallSites(SSAInstruction[] statements) {
-    final List<CallSiteReference> result = new LinkedList<CallSiteReference>();
+    final List<CallSiteReference> result = new LinkedList<>();
     Visitor v = new Visitor() {
       @Override
       public void visitInvoke(SSAInvokeInstruction instruction) {
         result.add(instruction.getCallSite());
       }
     };
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }
@@ -313,15 +310,14 @@ public class CodeScanner {
    * @return List of InvokeInstruction
    */
   private static List<NewSiteReference> getNewSites(SSAInstruction[] statements) {
-    final List<NewSiteReference> result = new LinkedList<NewSiteReference>();
+    final List<NewSiteReference> result = new LinkedList<>();
     Visitor v = new Visitor() {
       @Override
       public void visitNew(SSANewInstruction instruction) {
         result.add(instruction.getNewSite());
       }
     };
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }
@@ -338,15 +334,14 @@ public class CodeScanner {
     if (statements == null) {
       throw new IllegalArgumentException("statements == null");
     }
-    final List<FieldReference> result = new LinkedList<FieldReference>();
+    final List<FieldReference> result = new LinkedList<>();
     Visitor v = new Visitor() {
       @Override
       public void visitGet(SSAGetInstruction instruction) {
         result.add(instruction.getDeclaredField());
       }
     };
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }
@@ -363,15 +358,14 @@ public class CodeScanner {
     if (statements == null) {
       throw new IllegalArgumentException("statements == null");
     }
-    final List<FieldReference> result = new LinkedList<FieldReference>();
+    final List<FieldReference> result = new LinkedList<>();
     Visitor v = new Visitor() {
       @Override
       public void visitPut(SSAPutInstruction instruction) {
         result.add(instruction.getDeclaredField());
       }
     };
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }
@@ -388,7 +382,7 @@ public class CodeScanner {
     if (statements == null) {
       throw new IllegalArgumentException("statements == null");
     }
-    final List<TypeReference> result = new LinkedList<TypeReference>();
+    final List<TypeReference> result = new LinkedList<>();
     Visitor v = new Visitor() {
 
       @Override
@@ -397,8 +391,7 @@ public class CodeScanner {
       }
       
     };
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }
@@ -422,8 +415,7 @@ public class CodeScanner {
       }
     }
     ScanVisitor v = new ScanVisitor();
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }
@@ -450,8 +442,7 @@ public class CodeScanner {
       }
     }
     ScanVisitor v = new ScanVisitor();
-    for (int i = 0; i < statements.length; i++) {
-      SSAInstruction s = statements[i];
+    for (SSAInstruction s : statements) {
       if (s != null) {
         s.visit(v);
       }

@@ -13,8 +13,8 @@
 	<property name="javacVerbose" value="false"/>
 	<property name="logExtension" value=".log"/>
 	<property name="compilerArg" value=""/>
-	<property name="javacSource" value="1.5"/>
-	<property name="javacTarget" value="1.5"/>
+	<property name="javacSource" value="1.8"/>
+	<property name="javacTarget" value="1.8"/>
 	<!-- This property has been updated to correspond to the paths used by the latest Java update
 	on Mac OS X 10.6 (Java version 1.6.0_22).  If you are not using this version of Mac OS X or Java,
 	try changing the value of the property to "${java.home}/../../../Classes" -->
@@ -36,7 +36,10 @@
 	<property name="bundleJavacTarget" value="${javacTarget}"/>
 	<property name="bundleBootClasspath" value="${bootclasspath}"/>
 
-	<property environment="env"/>
+	<property environment="env" /> 
+	<condition property="androiddir" value="${env.ANDROID_HOME}"> 
+          <isset property="env.ANDROID_HOME" /> 
+	</condition> 
 
      <target name="sampleLexPresent" depends="init">
         <available file="${plugin.destination}/data/sample.lex" property="sample.lex.present"/>
@@ -62,14 +65,12 @@
      <available file="${plugin.destination}/data/android.jar" property="android.jar.present"/>
    </target>
 
-	<target name="fetchDxJar" depends="dxJarPresent" unless="dx.jar.present">
+	<target name="fetchDxJar">
 		<mkdir dir="${basedir}/lib/"/>
-		<get src="http://central.maven.org/maven2/com/google/android/tools/dx/1.7/dx-1.7.jar" dest="${basedir}/lib/dx.jar" />
+		<copy
+		    file="${androiddir}/build-tools/26.0.2/lib/dx.jar"
+		    tofile="${basedir}/lib/dx.jar" force="true"/>
 	</target>
-
-   <target name="dxJarPresent" depends="init">
-	<available file="${basedir}/lib/dx.jar" property="dx.jar.present"/>
-   </target>
 
 	<target name="getJars" depends="fetchSampleLex,fetchSampleCup,fetchAndroidJar,fetchDxJar" />
 

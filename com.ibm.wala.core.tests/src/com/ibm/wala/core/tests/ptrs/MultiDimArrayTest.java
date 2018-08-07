@@ -11,11 +11,10 @@
 package com.ibm.wala.core.tests.ptrs;
 
 import java.io.IOException;
-import java.util.Iterator;
-
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.core.tests.util.TestConstants;
 import com.ibm.wala.core.tests.util.WalaTestCase;
@@ -64,7 +63,7 @@ public class MultiDimArrayTest extends WalaTestCase {
         .makeMainEntrypoints(scope, cha, TestConstants.MULTI_DIM_MAIN);
     AnalysisOptions options = CallGraphTestUtil.makeAnalysisOptions(scope, entrypoints);
 
-    CallGraphBuilder<InstanceKey> builder = Util.makeVanillaZeroOneCFABuilder(options, new AnalysisCacheImpl(),cha, scope);
+    CallGraphBuilder<InstanceKey> builder = Util.makeVanillaZeroOneCFABuilder(Language.JAVA, options, new AnalysisCacheImpl(),cha, scope);
     CallGraph cg = builder.makeCallGraph(options, null);
     PointerAnalysis<InstanceKey> pa = builder.getPointerAnalysis();
     
@@ -75,8 +74,7 @@ public class MultiDimArrayTest extends WalaTestCase {
   }
   
   private final static CGNode findDoNothingNode(CallGraph cg) {
-    for (Iterator<? extends CGNode> it = cg.iterator(); it.hasNext(); ) {
-      CGNode n = it.next();
+    for (CGNode n : cg) {
       if (n.getMethod().getName().toString().equals("doNothing")) {
         return n;
       }

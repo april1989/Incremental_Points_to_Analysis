@@ -10,4 +10,6 @@ Require-Bundle: com.ibm.wala.core,
  org.junit;bundle-version="4.12.0",
  com.ibm.wala.util,
  com.ibm.wala.core.testdata;bundle-version="1.4.4",
- edu.tamu.wala.increpta;bundle-version="0.0.1"
+ edu.tamu.wala.increpta;bundle-version="0.0.1.qualifier",
+ com.ibm.wala.shrike;bundle-version="1.5.0"
+Export-Package: edu.tamu.wala.increpta.tests.basic

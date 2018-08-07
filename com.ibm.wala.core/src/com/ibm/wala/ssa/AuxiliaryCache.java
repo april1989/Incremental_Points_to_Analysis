@@ -12,8 +12,8 @@ package com.ibm.wala.ssa;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.Context;
@@ -26,19 +26,19 @@ import com.ibm.wala.util.ref.CacheReference;
 /**
  * A cache for auxiliary information based on an SSA representation
  * 
- * A mapping from (IMethod,Context) -> SSAOptions -> SoftReference -> something
+ * A mapping from (IMethod,Context) -&gt; SSAOptions -&gt; SoftReference -&gt; something
  * 
  * This doesn't work very well ... GCs don't do such a great job with SoftReferences ... revamp it.
  */
 public class AuxiliaryCache implements IAuxiliaryCache {
 
   /**
-   * A mapping from IMethod -> SSAOptions -> SoftReference -> IR
+   * A mapping from IMethod -&gt; SSAOptions -&gt; SoftReference -&gt; IR
    */
   private HashMap<Pair<IMethod, Context>, Map<SSAOptions, Object>> dictionary = HashMapFactory.make();
 
   /**
-   * Help out the garbage collector: clear this cache when the number of items is > RESET_THRESHOLD
+   * Help out the garbage collector: clear this cache when the number of items is &gt; RESET_THRESHOLD
    */
   final private static int RESET_THRESHOLD = 2000;
 
@@ -64,26 +64,23 @@ public class AuxiliaryCache implements IAuxiliaryCache {
     dictionary = HashMapFactory.make();
     nItems = 0;
 
-    for (Iterator<Map.Entry<Pair<IMethod, Context>, Map<SSAOptions, Object>>> it = oldDictionary.entrySet().iterator(); it
-        .hasNext();) {
-      Map.Entry<Pair<IMethod, Context>, Map<SSAOptions, Object>> e = it.next();
-      Map<SSAOptions, Object> m = e.getValue();
-      HashSet<Object> toRemove = HashSetFactory.make();
-      for (Iterator it2 = m.entrySet().iterator(); it2.hasNext();) {
-        Map.Entry e2 = (Map.Entry) it2.next();
-        Object key = e2.getKey();
-        Object val = e2.getValue();
-        if (CacheReference.get(val) == null) {
-          toRemove.add(key);
-        }
-      }
-      for (Iterator<Object> it2 = toRemove.iterator(); it2.hasNext();) {
-        m.remove(it2.next());
-      }
-      if (m.size() > 0) {
-        dictionary.put(e.getKey(), m);
-      }
+    for (Entry<Pair<IMethod, Context>, Map<SSAOptions, Object>> e : oldDictionary.entrySet()) {
+   Map<SSAOptions, Object> m = e.getValue();
+   HashSet<Object> toRemove = HashSetFactory.make();
+   for (Entry<SSAOptions, Object> e2 : m.entrySet()) {
+    Object key = e2.getKey();
+    Object val = e2.getValue();
+    if (CacheReference.get(val) == null) {
+      toRemove.add(key);
     }
+   }
+   for (Object object : toRemove) {
+    m.remove(object);
+   }
+   if (m.size() > 0) {
+    dictionary.put(e.getKey(), m);
+   }
+  }
   }
 
   /* 

@@ -42,7 +42,7 @@ import java.util.Iterator;
 
 public class BasicsGenerics {
 	
-	static ArrayList<String> strs = new ArrayList<String>();
+	static ArrayList<String> strs = new ArrayList<>();
 	static ArrayList<Integer> ints = new ArrayList<>();
 	
 	public BasicsGenerics() {
@@ -64,7 +64,7 @@ public class BasicsGenerics {
 		System.out.println(frenchy);
 		System.out.println(sicilian);
 		strs.add("hello");
-		ints.add(new Integer(3));
+		ints.add(Integer.valueOf(3));
 		
 		String qqq;
 		

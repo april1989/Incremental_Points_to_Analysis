@@ -12,7 +12,6 @@ package com.ibm.wala.client;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.jar.JarFile;
 
 import com.ibm.wala.analysis.pointers.BasicHeapGraph;
@@ -31,6 +30,7 @@ import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
+import com.ibm.wala.ipa.callgraph.propagation.PropagationCallGraphBuilder;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -52,7 +52,7 @@ import com.ibm.wala.util.io.FileProvider;
  * Some clients choose to build on this, but many don't. I usually don't in new code; I usually don't find the re-use enabled by
  * this class compelling. I would probably nuke this except for some legacy code that uses it.
  */
-public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements AnalysisEngine {
+public abstract class AbstractAnalysisEngine<I extends InstanceKey, X extends CallGraphBuilder<I>, Y> implements AnalysisEngine {
 
   public interface EntrypointBuilder {
     Iterable<Entrypoint> createEntrypoints(AnalysisScope scope, IClassHierarchy cha);
@@ -118,25 +118,20 @@ public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements A
   /**
    * Results of pointer analysis
    */
-  protected PointerAnalysis<I> pointerAnalysis;
+  protected PointerAnalysis<? super I> pointerAnalysis;
 
   /**
    * Graph view of flow of pointers between heap abstractions
    */
   private HeapGraph heapGraph;
 
-  private EntrypointBuilder entrypointBuilder = new EntrypointBuilder() {
-    @Override
-    public Iterable<Entrypoint> createEntrypoints(AnalysisScope scope, IClassHierarchy cha) {
-      return makeDefaultEntrypoints(scope, cha);
-    }
-  };
+  private EntrypointBuilder entrypointBuilder = this::makeDefaultEntrypoints;
 
-  protected abstract CallGraphBuilder<I> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache2);
+  protected abstract CallGraphBuilder<? super I> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache2);
 
-  protected CallGraphBuilder buildCallGraph(IClassHierarchy cha, AnalysisOptions options, boolean savePointerAnalysis,
+  protected CallGraphBuilder<? super I> buildCallGraph(IClassHierarchy cha, AnalysisOptions options, boolean savePointerAnalysis,
       IProgressMonitor monitor) throws IllegalArgumentException, CancelException {
-    CallGraphBuilder<I> builder = getCallGraphBuilder(cha, options, cache);
+    CallGraphBuilder<? super I> builder = getCallGraphBuilder(cha, options, cache);
 
     cg = builder.makeCallGraph(options, monitor);
 
@@ -166,8 +161,8 @@ public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements A
         .getClassLoader());
 
     // add standard libraries
-    for (int i = 0; i < j2seLibs.length; i++) {
-      scope.addToScope(scope.getPrimordialLoader(), j2seLibs[i]);
+    for (Module j2seLib : j2seLibs) {
+      scope.addToScope(scope.getPrimordialLoader(), j2seLib);
     }
 
     // add user stuff
@@ -215,8 +210,7 @@ public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements A
    */
   protected void addApplicationModulesToScope() {
     ClassLoaderReference app = scope.getApplicationLoader();
-    for (Iterator it = moduleFiles.iterator(); it.hasNext();) {
-      Object o = it.next();
+    for (Object o : moduleFiles) {
       if (!(o instanceof Module)) {
         Assertions.UNREACHABLE("Unexpected type: " + o.getClass());
       }
@@ -260,7 +254,7 @@ public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements A
     return scope;
   }
 
-  public PointerAnalysis<I> getPointerAnalysis() {
+  public PointerAnalysis<? super I> getPointerAnalysis() {
     return pointerAnalysis;
   }
 
@@ -271,8 +265,8 @@ public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements A
     return heapGraph;
   }
 
-  public SDG<I> getSDG(DataDependenceOptions data, ControlDependenceOptions ctrl) {
-    return new SDG<I>(getCallGraph(), getPointerAnalysis(), data, ctrl);
+  public SDG<? super I> getSDG(DataDependenceOptions data, ControlDependenceOptions ctrl) {
+    return new SDG<>(getCallGraph(), getPointerAnalysis(), data, ctrl);
   }
   
   public String getExclusionsFile() {
@@ -307,7 +301,7 @@ public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements A
    * @throws IllegalArgumentException
    * @throws IOException
    */
-  public CallGraphBuilder defaultCallGraphBuilder() throws IllegalArgumentException, CancelException, IOException {
+  public CallGraphBuilder<? super I> defaultCallGraphBuilder() throws IllegalArgumentException, CancelException, IOException {
     buildAnalysisScope();
     IClassHierarchy cha = buildClassHierarchy();
     setClassHierarchy(cha);
@@ -329,4 +323,9 @@ public abstract class AbstractAnalysisEngine<I extends InstanceKey> implements A
     return options;
   }
 
+  @SuppressWarnings("unused")
+  public Y performAnalysis(PropagationCallGraphBuilder builder) throws CancelException {
+    return null;
+    
+  }
 }

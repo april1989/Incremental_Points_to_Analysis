@@ -11,10 +11,10 @@
 package com.ibm.wala.ipa.callgraph.propagation;
 
 import java.util.Iterator;
-import java.util.function.Predicate;
 
 import com.ibm.wala.util.collections.FilterIterator;
 import com.ibm.wala.util.collections.IVector;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.SimpleVector;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.BitVector;
@@ -42,7 +42,7 @@ public class PointsToMap {
    * <li>UNIFIED
    * </ul>
    */
-  private final IVector<Object> pointsToSets = new SimpleVector<Object>();
+  private final IVector<Object> pointsToSets = new SimpleVector<>();
 
   private final IntegerUnionFind uf = new IntegerUnionFind();
 
@@ -188,8 +188,7 @@ public class PointsToMap {
    * Wipe out the cached transitive closure information
    */
   public void revertToPreTransitive() {
-    for (Iterator it = iterateKeys(); it.hasNext();) {
-      PointerKey key = (PointerKey) it.next();
+    for (PointerKey key : Iterator2Iterable.make(iterateKeys())) {
       if (!isTransitiveRoot(key) && !isImplicit(key) && !isUnified(key)) {
         PointsToSetVariable v = getPointsToSet(key);
         v.removeAll();
@@ -201,11 +200,7 @@ public class PointsToMap {
    * @return {@link Iterator}&lt;{@link PointerKey}&gt;
    */
   public Iterator<PointerKey> getTransitiveRoots() {
-    return new FilterIterator<PointerKey>(iterateKeys(), new Predicate() {
-      @Override public boolean test(Object o) {
-        return isTransitiveRoot((PointerKey) o);
-      }
-    });
+    return new FilterIterator<>(iterateKeys(), this::isTransitiveRoot);
   }
 
   /**

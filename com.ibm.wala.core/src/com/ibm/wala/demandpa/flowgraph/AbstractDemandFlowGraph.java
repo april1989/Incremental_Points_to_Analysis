@@ -64,6 +64,7 @@ import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.intset.BitVectorIntSet;
 import com.ibm.wala.util.ref.ReferenceCleanser;
 
@@ -123,19 +124,17 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
       return EmptyIterator.instance();
     }
     int paramPos = pk.getValueNumber() - 1;
-    ArrayList<PointerKeyAndCallSite> paramSuccs = new ArrayList<PointerKeyAndCallSite>();
+    ArrayList<PointerKeyAndCallSite> paramSuccs = new ArrayList<>();
     // iterate over callers
     for (CGNode caller : cg) {
       // TODO optimization: we don't need to add the graph if null is passed
       // as the argument
       addSubgraphForNode(caller);
       IR ir = caller.getIR();
-      for (Iterator<CallSiteReference> iterator = ir.iterateCallSites(); iterator.hasNext();) {
-        CallSiteReference call = iterator.next();
+      for (CallSiteReference call : Iterator2Iterable.make(ir.iterateCallSites())) {
         if (cg.getPossibleTargets(caller, call).contains(cgNode)) {
           SSAAbstractInvokeInstruction[] callInstrs = ir.getCalls(call);
-          for (int i = 0; i < callInstrs.length; i++) {
-            SSAAbstractInvokeInstruction callInstr = callInstrs[i];
+          for (SSAAbstractInvokeInstruction callInstr : callInstrs) {
             PointerKey actualPk = heapModel.getPointerKeyForLocal(caller, callInstr.getUse(paramPos));
             assert containsNode(actualPk);
             assert containsNode(pk);
@@ -156,7 +155,7 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
     if (instrs == null) {
       return EmptyIterator.instance();
     }
-    ArrayList<PointerKeyAndCallSite> paramPreds = new ArrayList<PointerKeyAndCallSite>();
+    ArrayList<PointerKeyAndCallSite> paramPreds = new ArrayList<>();
     for (SSAAbstractInvokeInstruction callInstr : instrs) {
       for (int i = 0; i < callInstr.getNumberOfUses(); i++) {
         if (pk.getValueNumber() != callInstr.getUse(i))
@@ -186,7 +185,7 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
     SSAAbstractInvokeInstruction callInstr = callDefs.get(pk);
     if (callInstr == null)
       return EmptyIterator.instance();
-    ArrayList<PointerKeyAndCallSite> returnSuccs = new ArrayList<PointerKeyAndCallSite>();
+    ArrayList<PointerKeyAndCallSite> returnSuccs = new ArrayList<>();
     boolean isExceptional = pk.getValueNumber() == callInstr.getException();
 
     CallSiteReference callSiteRef = callInstr.getCallSite();
@@ -213,19 +212,17 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
       return EmptyIterator.instance();
     }
     boolean isExceptional = pk == heapModel.getPointerKeyForExceptionalReturnValue(cgNode);
-    ArrayList<PointerKeyAndCallSite> returnPreds = new ArrayList<PointerKeyAndCallSite>();
+    ArrayList<PointerKeyAndCallSite> returnPreds = new ArrayList<>();
     // iterate over callers
     for (CGNode caller : cg) {
       // TODO we don't need to add the graph if null is passed
       // as the argument
       addSubgraphForNode(caller);
       IR ir = caller.getIR();
-      for (Iterator<CallSiteReference> iterator = ir.iterateCallSites(); iterator.hasNext();) {
-        CallSiteReference call = iterator.next();
+      for (CallSiteReference call : Iterator2Iterable.make(ir.iterateCallSites())) {
         if (cg.getPossibleTargets(caller, call).contains(cgNode)) {
           SSAAbstractInvokeInstruction[] callInstrs = ir.getCalls(call);
-          for (int i = 0; i < callInstrs.length; i++) {
-            SSAAbstractInvokeInstruction callInstr = callInstrs[i];
+          for (SSAAbstractInvokeInstruction callInstr : callInstrs) {
             PointerKey returnPk = heapModel.getPointerKeyForLocal(caller, isExceptional ? callInstr.getException() : callInstr
                 .getDef());
             assert containsNode(returnPk);
@@ -284,8 +281,7 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
     v.setBasicBlock(b);
 
     // visit each instruction in the basic block.
-    for (Iterator<SSAInstruction> it = b.iterator(); it.hasNext();) {
-      SSAInstruction s = it.next();
+    for (SSAInstruction s : b) {
       if (s != null) {
         s.visit(v);
       }
@@ -297,8 +293,8 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
   private void addPhiConstraints(CGNode node, ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg, ISSABasicBlock b) {
 
     // visit each phi instruction in each successor block
-    for (Iterator<? extends IBasicBlock> iter = cfg.getSuccNodes(b); iter.hasNext();) {
-      ISSABasicBlock sb = (ISSABasicBlock) iter.next();
+    for (IBasicBlock ibb : Iterator2Iterable.make(cfg.getSuccNodes(b))) {
+      ISSABasicBlock sb = (ISSABasicBlock) ibb;
       if (sb.isExitBlock()) {
         // an optimization based on invariant that exit blocks should
         // have no
@@ -307,15 +303,15 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
       }
       int n = 0;
       // set n to be whichPred(this, sb);
-      for (Iterator<? extends IBasicBlock> back = cfg.getPredNodes(sb); back.hasNext(); n++) {
-        if (back.next() == b) {
+      for (IBasicBlock back : Iterator2Iterable.make(cfg.getPredNodes(sb))) {
+        if (back == b) {
           break;
         }
+        ++n;
       }
       assert n < cfg.getPredNodeCount(sb);
-      for (Iterator<SSAPhiInstruction> phis = sb.iteratePhis(); phis.hasNext();) {
+      for (SSAPhiInstruction phi : Iterator2Iterable.make(sb.iteratePhis())) {
         // Assertions.UNREACHABLE();
-        SSAPhiInstruction phi = phis.next();
         if (phi == null) {
           continue;
         }
@@ -364,10 +360,8 @@ public abstract class AbstractDemandFlowGraph extends AbstractFlowGraph {
     Set<CallerSiteContext> ret = callerCache.get(callee);
     if (ret == null) {
       ret = HashSetFactory.make();
-      for (Iterator<? extends CGNode> predNodes = cg.getPredNodes(callee); predNodes.hasNext();) {
-        CGNode caller = predNodes.next();
-        for (Iterator<CallSiteReference> iterator = cg.getPossibleSites(caller, callee); iterator.hasNext();) {
-          CallSiteReference call = iterator.next();
+      for (CGNode caller : Iterator2Iterable.make(cg.getPredNodes(callee))) {
+        for (CallSiteReference call : Iterator2Iterable.make(cg.getPossibleSites(caller, callee))) {
           ret.add(new CallerSiteContext(caller, call));
         }
       }

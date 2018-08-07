@@ -61,12 +61,14 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 
 	  private final long maxNumberOfNodes;
 
+	  private final IMethod fakeRootMethod;
+
 	  /**
 	   * special object to track call graph edges
 	   */
 	  private final ExplicitEdgeManager edgeManager = makeEdgeManger();
 
-	  public IPAExplicitCallGraph(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache) {
+	  public IPAExplicitCallGraph(IMethod fakeRootMethod, AnalysisOptions options, IAnalysisCacheView cache) {
 	    super();
 	    if (options == null) {
 	      throw new IllegalArgumentException("null options");
@@ -74,11 +76,11 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	    if (cache == null) {
 	      throw new IllegalArgumentException("null cache");
 	    }
-	    this.cha = cha;
+	    this.cha = fakeRootMethod.getClassHierarchy();
 	    this.options = options;
 	    this.cache = cache;
 	    this.maxNumberOfNodes = options.getMaxNumberOfNodes();
-
+	    this.fakeRootMethod = fakeRootMethod;
 	  }
 
 	  /**
@@ -95,7 +97,7 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	   */
 	  @Override
 	  protected CGNode makeFakeRootNode() throws CancelException {
-	    return findOrCreateNode(new FakeRootMethod(cha, options, cache), Everywhere.EVERYWHERE);
+		  return findOrCreateNode(fakeRootMethod, Everywhere.EVERYWHERE);
 	  }
 
 	  /**
@@ -105,7 +107,7 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	   */
 	  @Override
 	  protected CGNode makeFakeWorldClinitNode() throws CancelException {
-	    return findOrCreateNode(new FakeWorldClinitMethod(cha, options, cache), Everywhere.EVERYWHERE);
+		  return findOrCreateNode(new FakeWorldClinitMethod(fakeRootMethod.getDeclaringClass(), options, cache), Everywhere.EVERYWHERE);
 	  }
 
 	  /**

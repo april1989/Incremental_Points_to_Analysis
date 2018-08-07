@@ -94,7 +94,7 @@ public class CloneInterpreter implements SSAContextInterpreter {
   private final static int NEW_PC = 0;
 
   /**
-   * Mapping from TypeReference -> IR TODO: Soft references?
+   * Mapping from TypeReference -&gt; IR TODO: Soft references?
    */
   final private Map<TypeReference, IR> IRCache = HashMapFactory.make();
 
@@ -141,13 +141,13 @@ public class CloneInterpreter implements SSAContextInterpreter {
     }
     assert understands(node);
     IClass cls = ContextUtil.getConcreteClassFromContext(node.getContext());
-    return new NonNullSingletonIterator<NewSiteReference>(NewSiteReference.make(NEW_PC, cls.getReference()));
+    return new NonNullSingletonIterator<>(NewSiteReference.make(NEW_PC, cls.getReference()));
   }
 
   @Override
   public Iterator<CallSiteReference> iterateCallSites(CGNode node) {
     assert understands(node);
-    return new NonNullSingletonIterator<CallSiteReference>(ARRAYCOPY_SITE);
+    return new NonNullSingletonIterator<>(ARRAYCOPY_SITE);
   }
 
   /**
@@ -156,7 +156,7 @@ public class CloneInterpreter implements SSAContextInterpreter {
   private SSAInstruction[] makeStatements(IClass klass) {
     assert klass != null;
 
-    ArrayList<SSAInstruction> statements = new ArrayList<SSAInstruction>();
+    ArrayList<SSAInstruction> statements = new ArrayList<>();
     // value number 1 is "this".
     int nextLocal = 2;
 
@@ -189,8 +189,7 @@ public class CloneInterpreter implements SSAContextInterpreter {
       // TODO:
       IClass k = klass;
       while (k != null) {
-        for (Iterator<IField> it = klass.getDeclaredInstanceFields().iterator(); it.hasNext();) {
-          IField f = it.next();
+        for (IField f : klass.getDeclaredInstanceFields()) {
           int tempValue = nextLocal++;
           SSAGetInstruction G = insts.GetInstruction(statements.size(), tempValue, 1, f.getReference());
           statements.add(G);
@@ -258,7 +257,7 @@ public class CloneInterpreter implements SSAContextInterpreter {
     return CodeScanner.hasObjectArrayStore(statements);
   }
 
-  public Iterator iterateCastTypes(CGNode node) {
+  public Iterator<TypeReference> iterateCastTypes(CGNode node) {
     SSAInstruction[] statements = getIR(node).getInstructions();
     return CodeScanner.iterateCastTypes(statements);
   }

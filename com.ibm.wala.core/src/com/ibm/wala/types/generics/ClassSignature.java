@@ -20,7 +20,7 @@ import com.ibm.wala.shrikeCT.InvalidClassFileException;
  * Under construction.
  * 
  * ClassSignature: 
- *    (<FormalTypeParameter+>)? SuperclassSignature SuperinterfaceSignature*
+ *    (&lt;FormalTypeParameter+&gt;)? SuperclassSignature SuperinterfaceSignature*
  * 
  * SuperclassSignature:
  *    ClassTypeSignature
@@ -86,7 +86,7 @@ public class ClassSignature extends Signature {
   
   public ClassTypeSignature[] getSuperinterfaceSignatures() throws IllegalArgumentException {
     int start = endOfClassTypeSig(endOfFormalTypeParameters());
-    ArrayList<ClassTypeSignature> result = new ArrayList<ClassTypeSignature>();
+    ArrayList<ClassTypeSignature> result = new ArrayList<>();
     while (start < rawString().length() - 1) {
       int end = endOfClassTypeSig(start);
       result.add(ClassTypeSignature.makeClassTypeSig(rawString().substring(start,end)));

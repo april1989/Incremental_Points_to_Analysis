@@ -11,12 +11,12 @@
 package com.ibm.wala.util.graph.traverse;
 
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
 import com.ibm.wala.util.collections.HashMapFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.graph.NumberedGraph;
 
 public class WelshPowell<T> {
@@ -65,17 +65,13 @@ public class WelshPowell<T> {
   }
 
   public static <T> Comparator<T> defaultComparator(final NumberedGraph<T> G) {
-    return new Comparator<T>() {
-
-      @Override
-      public int compare(T o1, T o2) {
-        int o1edges = G.getSuccNodeCount(o1) + G.getPredNodeCount(o1);
-        int o2edges = G.getSuccNodeCount(o2) + G.getPredNodeCount(o2);
-        if (o1edges != o2edges) {
-          return o2edges - o1edges;
-        } else {
-          return o2.toString().compareTo(o1.toString());
-        }
+    return (o1, o2) -> {
+      int o1edges = G.getSuccNodeCount(o1) + G.getPredNodeCount(o1);
+      int o2edges = G.getSuccNodeCount(o2) + G.getPredNodeCount(o2);
+      if (o1edges != o2edges) {
+        return o2edges - o1edges;
+      } else {
+        return o2.toString().compareTo(o1.toString());
       }
     };
   }
@@ -112,15 +108,13 @@ public class WelshPowell<T> {
         for(T m : vertices) {
           if (colors[G.getNumber(m)] == -1) {
             color_me: {
-              for(Iterator<T> ps = G.getPredNodes(m); ps.hasNext(); ) {
-                T p = ps.next();
+              for(T p : Iterator2Iterable.make(G.getPredNodes(m)) ) {
                 if (colors[ G.getNumber(p) ] == currentColor) {
                   break color_me;
                 }
               }
   
-              for(Iterator<T> ss = G.getSuccNodes(m); ss.hasNext(); ) {
-                T s = ss.next();
+              for(T s : Iterator2Iterable.make(G.getSuccNodes(m))) {
                 if (colors[G.getNumber(s)] == currentColor) {
                   break color_me;
                 }

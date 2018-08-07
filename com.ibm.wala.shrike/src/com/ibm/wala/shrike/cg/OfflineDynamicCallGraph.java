@@ -23,6 +23,7 @@ import com.ibm.wala.shrikeBT.Constants;
 import com.ibm.wala.shrikeBT.Disassembler;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
 import com.ibm.wala.shrikeBT.IInvokeInstruction.Dispatch;
+import com.ibm.wala.shrikeBT.InvokeDynamicInstruction;
 import com.ibm.wala.shrikeBT.InvokeInstruction;
 import com.ibm.wala.shrikeBT.LoadInstruction;
 import com.ibm.wala.shrikeBT.MethodData;
@@ -97,9 +98,11 @@ public class OfflineDynamicCallGraph {
   private final static boolean verify = true;
 
   private static boolean patchExits = true;
-  private static boolean patchCalls = false;
+  private static boolean patchCalls = true;
   private static boolean extractCalls = true;
-
+  private static boolean extractDynamicCalls = false;
+  private static boolean extractConstructors = true;
+  
   private static Class<?> runtime = Runtime.class;
 
   private static SetOfClasses filter;
@@ -120,6 +123,10 @@ public class OfflineDynamicCallGraph {
           patchExits = false;
         } else if ("--patch-calls".equals(args[i])) {
           patchCalls = true;
+        } else if ("--extract-dynamic-calls".equals(args[i])) {
+          extractDynamicCalls = true;
+        } else if ("--extract-constructors".equals(args[i])) {
+          extractConstructors = true;
         } else if ("--rt-jar".equals(args[i])) {
           System.err.println("using " + args[i+1] + " as stdlib");
           OfflineInstrumenter libReader = new OfflineInstrumenter();
@@ -167,7 +174,7 @@ public class OfflineDynamicCallGraph {
 
     final ClassReader r = ci.getReader();
 
-    final Map<Pair<String,Pair<String,String>>,MethodData> methods = HashMapFactory.make();
+    final Map<Object,MethodData> methods = HashMapFactory.make();
     
     for (int m = 0; m < ci.getReader().getMethodCount(); m++) {
       final MethodData d = ci.visitMethod(m);
@@ -242,30 +249,45 @@ public class OfflineDynamicCallGraph {
             me.visitInstructions(new AddTracingToInvokes() {
               @Override
               public void visitInvoke(final IInvokeInstruction inv) {
-                if (inv.getMethodName().equals("<init>") || (r.getAccessFlags()&Constants.ACC_INTERFACE) != 0) {
+                if ((!extractConstructors && inv.getMethodName().equals("<init>")) || 
+                    (r.getAccessFlags()&Constants.ACC_INTERFACE) != 0 ||
+                    (!extractDynamicCalls && inv instanceof InvokeDynamicInstruction)) 
+                {
                   super.visitInvoke(inv);
                 } else {
                   this.replaceWith(new MethodEditor.Patch() {                    
                     @Override
                     public void emitTo(final Output w) {
-                      final String methodSignature = inv.getInvocationCode().hasImplicitThis()?
-                          "(" + inv.getClassType() + inv.getMethodSignature().substring(1):
-                          inv.getMethodSignature();
-                      Pair<String,Pair<String,String>> key = Pair.make(inv.getClassType(), Pair.make(inv.getMethodName(), methodSignature));
+                      final String methodSignature = 
+                          inv.getInvocationCode().hasImplicitThis() && !(inv instanceof InvokeDynamicInstruction)?
+                              "(" + inv.getClassType() + inv.getMethodSignature().substring(1):
+                              inv.getMethodSignature(); 
+                      Object key;
+                      if (inv instanceof InvokeDynamicInstruction) {
+                        key = inv;
+                      } else {
+                        key = Pair.make(inv.getClassType(), Pair.make(inv.getMethodName(), methodSignature));
+                      }
+                      
                       if (! methods.containsKey(key)) {
                         MethodData trampoline = ci.createEmptyMethodData("$shrike$trampoline$" + methods.size(), methodSignature, Constants.ACC_STATIC|Constants.ACC_PRIVATE);
                         methods.put(key,  trampoline);
                         MethodEditor me = new MethodEditor(trampoline);
                         me.beginPass();
                         me.insertAtStart(new MethodEditor.Patch() {
+                          private String hackType(String type) {
+                            if ("B".equals(type) || "C".equals(type) || "S".equals(type) || "Z".equals(type)) {
+                              return "I";
+                            } else {
+                              return type;
+                            }
+                          }
+                          
                           @Override
                           public void emitTo(MethodEditor.Output w) {
                             String[] types = Util.getParamsTypes(null, methodSignature);
                             for(int i = 0, local = 0; i < types.length; i++) {
-                              String type = types[i];
-                              if ("B".equals(type) || "C".equals(type) || "S".equals(type) || "Z".equals(type)) {
-                                type = "I";
-                              }
+                              String type = hackType(types[i]);
                               w.emit(LoadInstruction.make(type, local));
                               if ("J".equals(type) || "D".equals(type)) {
                                 local += 2;
@@ -274,12 +296,21 @@ public class OfflineDynamicCallGraph {
                               }
                             }
                             Dispatch mode = (Dispatch)inv.getInvocationCode();
-                            w.emit(InvokeInstruction.make(inv.getMethodSignature(), inv.getClassType(), inv.getMethodName(), mode));
-                          }
+                            if (inv instanceof InvokeDynamicInstruction) {
+                              InvokeDynamicInstruction inst = new InvokeDynamicInstruction(((InvokeDynamicInstruction) inv).getOpcode(), ((InvokeDynamicInstruction) inv).getBootstrap(), inv.getMethodName(), inv.getMethodSignature());
+                              w.emit(inst);
+                            } else {
+                              InvokeInstruction inst = InvokeInstruction.make(inv.getMethodSignature(), inv.getClassType(), inv.getMethodName(), mode);
+                              w.emit(inst);
+                            }
+                            //w.emit(ReturnInstruction.make(hackType(inv.getMethodSignature().substring(inv.getMethodSignature().indexOf(")")+1))));
+                            }   
                         });
+                        
                         me.applyPatches();
                         me.endPass();
 
+                           
                         me.beginPass();
                         me.visitInstructions(new AddTracingToInvokes());
                         me.applyPatches();
@@ -321,7 +352,7 @@ public class OfflineDynamicCallGraph {
             w.emit(Util.makeInvoke(runtime, "execution", new Class[] {String.class, String.class, Object.class}));
           }
         });
-
+        
         // this updates the data d
         me.applyPatches();
 
@@ -333,7 +364,7 @@ public class OfflineDynamicCallGraph {
           w.flush();
         }
 
-        if (verify) {
+        if (verify && !extractConstructors) {
           Verifier v = new Verifier(d);
           // v.setClassHierarchy(cha);
           v.verify();
@@ -351,16 +382,16 @@ public class OfflineDynamicCallGraph {
             final byte itemType = p.getItemType(i);
             switch (itemType) {
             case CONSTANT_Integer:
-              entries.put(new Integer(p.getCPInt(i)), i);
+              entries.put(Integer.valueOf(p.getCPInt(i)), i);
               break;
             case CONSTANT_Long:
-              entries.put(new Long(p.getCPLong(i)), i);
+              entries.put(Long.valueOf(p.getCPLong(i)), i);
               break;
             case CONSTANT_Float:
-              entries.put(new Float(p.getCPFloat(i)), i);
+              entries.put(Float.valueOf(p.getCPFloat(i)), i);
               break;
             case CONSTANT_Double:
-              entries.put(new Double(p.getCPDouble(i)), i);
+              entries.put(Double.valueOf(p.getCPDouble(i)), i);
               break;
             case CONSTANT_Utf8:
               entries.put(p.getCPUtf8(i), i);

@@ -11,7 +11,6 @@
 package com.ibm.wala.ipa.callgraph;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -42,14 +41,13 @@ public class CallGraphTransitiveClosure {
   public static <T> Map<CGNode, OrdinalSet<T>> transitiveClosure(CallGraph cg, Map<CGNode, Collection<T>> nodeResults) {
     try {
       // invert the call graph, to compute the bottom-up result
-      GenReach<CGNode, T> gr = new GenReach<CGNode, T>(GraphInverter.invert(cg), nodeResults);
-      BitVectorSolver<CGNode> solver = new BitVectorSolver<CGNode>(gr);
+      GenReach<CGNode, T> gr = new GenReach<>(GraphInverter.invert(cg), nodeResults);
+      BitVectorSolver<CGNode> solver = new BitVectorSolver<>(gr);
       solver.solve(null);
       Map<CGNode, OrdinalSet<T>> result = HashMapFactory.make();
-      for (Iterator<? extends CGNode> it = cg.iterator(); it.hasNext();) {
-        CGNode n = it.next();
+      for (CGNode n : cg) {
         BitVectorVariable bv = solver.getOut(n);
-        result.put(n, new OrdinalSet<T>(bv.getValue(), gr.getLatticeValues()));
+        result.put(n, new OrdinalSet<>(bv.getValue(), gr.getLatticeValues()));
       }
       return result;
     } catch (CancelException e) {
@@ -62,8 +60,7 @@ public class CallGraphTransitiveClosure {
    */
   public static <T> Map<CGNode, Collection<T>> collectNodeResults(CallGraph cg, Function<CGNode, Collection<T>> nodeResultComputer) {
     Map<CGNode, Collection<T>> result = HashMapFactory.make();
-    for (Iterator<? extends CGNode> it = cg.iterator(); it.hasNext();) {
-      CGNode n = it.next();
+    for (CGNode n : cg) {
       result.put(n, nodeResultComputer.apply(n));
     }
     return result;

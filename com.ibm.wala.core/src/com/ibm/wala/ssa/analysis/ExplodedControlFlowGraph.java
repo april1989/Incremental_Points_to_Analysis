@@ -30,6 +30,7 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.Iterator2Collection;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.NonNullSingletonIterator;
 import com.ibm.wala.util.collections.SimpleVector;
 import com.ibm.wala.util.debug.Assertions;
@@ -54,7 +55,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
   /**
    * The ith element of this vector is the basic block holding instruction i. this basic block has number i+1.
    */
-  private final SimpleVector<IExplodedBasicBlock> normalNodes = new SimpleVector<IExplodedBasicBlock>();
+  private final SimpleVector<IExplodedBasicBlock> normalNodes = new SimpleVector<>();
 
   private final Collection<IExplodedBasicBlock> allNodes = HashSetFactory.make();
 
@@ -127,7 +128,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return Collections.emptySet();
     }
     if (eb.isExitBlock() || eb.instructionIndex == eb.original.getFirstInstructionIndex()) {
-      List<IExplodedBasicBlock> result = new ArrayList<IExplodedBasicBlock>();
+      List<IExplodedBasicBlock> result = new ArrayList<>();
       for (ISSABasicBlock s : ir.getControlFlowGraph().getExceptionalPredecessors(eb.original)) {
         assert normalNodes.get(s.getLastInstructionIndex()) != null;
         result.add(normalNodes.get(s.getLastInstructionIndex()));
@@ -146,7 +147,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return Collections.emptyList();
     }
     if (eb.isEntryBlock() || eb.instructionIndex == eb.original.getLastInstructionIndex()) {
-      List<IExplodedBasicBlock> result = new ArrayList<IExplodedBasicBlock>();
+      List<IExplodedBasicBlock> result = new ArrayList<>();
       ISSABasicBlock orig = eb.original;
       if (eb.isEntryBlock() && orig == null) {
         orig = ir.getControlFlowGraph().entry();
@@ -184,7 +185,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return Collections.emptySet();
     }
     if (eb.isExitBlock() || eb.instructionIndex == eb.original.getFirstInstructionIndex()) {
-      List<IExplodedBasicBlock> result = new ArrayList<IExplodedBasicBlock>();
+      List<IExplodedBasicBlock> result = new ArrayList<>();
       for (ISSABasicBlock s : ir.getControlFlowGraph().getNormalPredecessors(eb.original)) {
         if (s.equals(ir.getControlFlowGraph().entry())) {
           if (s.getLastInstructionIndex() >= 0) {
@@ -216,7 +217,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return Collections.singleton(normalNodes.get(0));
     }
     if (eb.instructionIndex == eb.original.getLastInstructionIndex()) {
-      List<IExplodedBasicBlock> result = new ArrayList<IExplodedBasicBlock>();
+      List<IExplodedBasicBlock> result = new ArrayList<>();
       for (ISSABasicBlock s : ir.getControlFlowGraph().getNormalSuccessors(eb.original)) {
         if (s.equals(ir.getControlFlowGraph().exit())) {
           result.add(exit());
@@ -309,12 +310,11 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
     }
     ISSABasicBlock original = eb.isExitBlock() ? ir.getControlFlowGraph().exit() : eb.original;
     if (eb.isExitBlock() || eb.instructionIndex == eb.original.getFirstInstructionIndex()) {
-      List<IExplodedBasicBlock> result = new ArrayList<IExplodedBasicBlock>();
+      List<IExplodedBasicBlock> result = new ArrayList<>();
       if (eb.original != null && eb.original.isEntryBlock()) {
         result.add(entry);
       }
-      for (Iterator<ISSABasicBlock> it = ir.getControlFlowGraph().getPredNodes(original); it.hasNext();) {
-        ISSABasicBlock s = it.next();
+      for (ISSABasicBlock s : Iterator2Iterable.make(ir.getControlFlowGraph().getPredNodes(original))) {
         if (s.isEntryBlock()) {
           // it's possible for an entry block to have instructions; in this case, add
           // the exploded basic block for the last instruction in the entry block
@@ -355,9 +355,8 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
       return z == null ? EmptyIterator.<IExplodedBasicBlock> instance() : NonNullSingletonIterator.make(z);
     }
     if (eb.instructionIndex == eb.original.getLastInstructionIndex()) {
-      List<IExplodedBasicBlock> result = new ArrayList<IExplodedBasicBlock>();
-      for (Iterator<ISSABasicBlock> it = ir.getControlFlowGraph().getSuccNodes(eb.original); it.hasNext();) {
-        ISSABasicBlock s = it.next();
+      List<IExplodedBasicBlock> result = new ArrayList<>();
+      for (ISSABasicBlock s : Iterator2Iterable.make(ir.getControlFlowGraph().getSuccNodes(eb.original))) {
         if (s.equals(ir.getControlFlowGraph().exit())) {
           result.add(exit());
         } else {
@@ -379,8 +378,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
 
   @Override
   public boolean hasEdge(IExplodedBasicBlock src, IExplodedBasicBlock dst) throws UnimplementedError {
-    for (Iterator<IExplodedBasicBlock> it = getSuccNodes(src); it.hasNext();) {
-      IExplodedBasicBlock succ = it.next();
+    for (IExplodedBasicBlock succ : Iterator2Iterable.make(getSuccNodes(src))) {
       if (succ == dst) {
         return true;
       }
@@ -443,8 +441,8 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
   @Override
   public IntSet getPredNodeNumbers(IExplodedBasicBlock node) {
     MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
-    for (Iterator<? extends IExplodedBasicBlock> it = getPredNodes(node); it.hasNext();) {
-      result.add(getNumber(it.next()));
+    for (IExplodedBasicBlock ebb : Iterator2Iterable.make(getPredNodes(node))) {
+      result.add(getNumber(ebb));
     }
     return result;
   }
@@ -644,8 +642,7 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
   @Override
   public String toString() {
     StringBuffer s = new StringBuffer("");
-    for (Iterator<IExplodedBasicBlock> it = iterator(); it.hasNext();) {
-      IExplodedBasicBlock bb = it.next();
+    for (IExplodedBasicBlock bb : this) {
       s.append("BB").append(getNumber(bb)).append("\n");
 
       Iterator<? extends IExplodedBasicBlock> succNodes = getSuccNodes(bb);

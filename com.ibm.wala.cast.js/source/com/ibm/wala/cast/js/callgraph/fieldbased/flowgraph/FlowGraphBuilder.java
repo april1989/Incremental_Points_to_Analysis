@@ -10,13 +10,13 @@
  *****************************************************************************/
 package com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph;
 
-import java.util.Iterator;
-
 import com.ibm.wala.cast.ir.ssa.AstGlobalRead;
 import com.ibm.wala.cast.ir.ssa.AstGlobalWrite;
 import com.ibm.wala.cast.ir.ssa.AstLexicalAccess.Access;
 import com.ibm.wala.cast.ir.ssa.AstLexicalRead;
 import com.ibm.wala.cast.ir.ssa.AstLexicalWrite;
+import com.ibm.wala.cast.ir.ssa.AstPropertyRead;
+import com.ibm.wala.cast.ir.ssa.AstPropertyWrite;
 import com.ibm.wala.cast.js.callgraph.fieldbased.JSMethodInstructionVisitor;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.CreationSiteVertex;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.FuncVertex;
@@ -26,8 +26,6 @@ import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.VertexFactor
 import com.ibm.wala.cast.js.ipa.callgraph.JSCallGraphUtil;
 import com.ibm.wala.cast.js.ipa.callgraph.JSSSAPropagationCallGraphBuilder;
 import com.ibm.wala.cast.js.ssa.JavaScriptInvoke;
-import com.ibm.wala.cast.js.ssa.JavaScriptPropertyRead;
-import com.ibm.wala.cast.js.ssa.JavaScriptPropertyWrite;
 import com.ibm.wala.cast.js.ssa.PrototypeLookup;
 import com.ibm.wala.cast.js.ssa.SetPrototype;
 import com.ibm.wala.cast.js.types.JavaScriptMethods;
@@ -50,6 +48,7 @@ import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.ssa.SSAThrowInstruction;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.intset.EmptyIntSet;
 import com.ibm.wala.util.intset.IntSet;
 
@@ -117,11 +116,11 @@ public class FlowGraphBuilder {
     	
     	// now visit phis and catches
     	visitor.instructionIndex = -1;
-    	for(Iterator<? extends SSAInstruction> iter=ir.iteratePhis();iter.hasNext();)
-    		iter.next().visit(visitor);
+    	for(SSAInstruction inst : Iterator2Iterable.make(ir.iteratePhis()))
+    		inst.visit(visitor);
     	
-    	for(Iterator<SSAInstruction> iter=ir.iterateCatchInstructions();iter.hasNext();)
-    		iter.next().visit(visitor);
+    	for(SSAInstruction inst : Iterator2Iterable.make(ir.iterateCatchInstructions()))
+    		inst.visit(visitor);
     }
   }
 	
@@ -256,7 +255,7 @@ public class FlowGraphBuilder {
 		}
 		
 		@Override
-		public void visitJavaScriptPropertyWrite(JavaScriptPropertyWrite pw) {
+		public void visitPropertyWrite(AstPropertyWrite pw) {
 			int p = pw.getMemberRef();
 			if(symtab.isConstant(p)) {
 				String pn = JSCallGraphUtil.simulateToStringForPropertyNames(symtab.getConstantValue(p));
@@ -299,7 +298,7 @@ public class FlowGraphBuilder {
 		}
 		
 		@Override
-		public void visitJavaScriptPropertyRead(JavaScriptPropertyRead pr) {
+		public void visitPropertyRead(AstPropertyRead pr) {
 			int p = pr.getMemberRef();
 			if(symtab.isConstant(p)) {
 				String pn = JSCallGraphUtil.simulateToStringForPropertyNames(symtab.getConstantValue(p));
@@ -393,7 +392,7 @@ public class FlowGraphBuilder {
 	        flowgraph.addEdge(cs, factory.makeVarVertex(func, invk.getDef())); 
 	        
 	        // also passed as 'this' to constructor
-	        if (invk.getNumberOfParameters() > 1) {
+	        if (invk.getNumberOfPositionalParameters() > 1) {
 	          flowgraph.addEdge(cs, factory.makeVarVertex(func, invk.getUse(0)));
 	        }
 			  }

@@ -11,8 +11,6 @@
 
 package com.ibm.wala.dataflow.ssa;
 
-import java.util.Iterator;
-
 import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.fixedpoint.impl.DefaultFixedPointSolver;
 import com.ibm.wala.fixedpoint.impl.NullaryOperator;
@@ -21,6 +19,7 @@ import com.ibm.wala.fixpoint.IVariable;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SymbolTable;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * This class performs intra-procedural propagation over an SSA form.
@@ -82,20 +81,16 @@ public abstract class SSAInference<T extends IVariable<T>> extends DefaultFixedP
 
   private void createEquations(OperatorFactory<T> opFactory) {
     SSAInstruction[] instructions = ir.getInstructions();
-    for (int i = 0; i < instructions.length; i++) {
-      SSAInstruction s = instructions[i];
+    for (SSAInstruction s : instructions) {
       makeEquationForInstruction(opFactory, s);
     }
-    for (Iterator it = ir.iteratePhis(); it.hasNext();) {
-      SSAInstruction s = (SSAInstruction) it.next();
+    for (SSAInstruction s : Iterator2Iterable.make(ir.iteratePhis())) {
       makeEquationForInstruction(opFactory, s);
     }
-    for (Iterator it = ir.iteratePis(); it.hasNext();) {
-      SSAInstruction s = (SSAInstruction) it.next();
+    for (SSAInstruction s : Iterator2Iterable.make(ir.iteratePis())) {
       makeEquationForInstruction(opFactory, s);
     }
-    for (Iterator it = ir.iterateCatchInstructions(); it.hasNext();) {
-      SSAInstruction s = (SSAInstruction) it.next();
+    for (SSAInstruction s : Iterator2Iterable.make(ir.iterateCatchInstructions())) {
       makeEquationForInstruction(opFactory, s);
     }
   }

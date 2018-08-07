@@ -210,7 +210,7 @@ public class JavaLangClassContextInterpreter implements SSAContextInterpreter {
     JavaTypeContext context = (JavaTypeContext) node.getContext();
     TypeReference tr = context.getType().getTypeReference();
     if (tr != null) {
-      return new NonNullSingletonIterator<NewSiteReference>(NewSiteReference.make(0, tr));
+      return new NonNullSingletonIterator<>(NewSiteReference.make(0, tr));
     }
     return EmptyIterator.instance();
   }
@@ -239,7 +239,7 @@ public class JavaLangClassContextInterpreter implements SSAContextInterpreter {
    */
   private static Collection<IMethod> getAllNormalPublicMethods(IClass cls) {
     Collection<IMethod> result = HashSetFactory.make();
-    Collection<IMethod> allMethods = null;
+    Collection<? extends IMethod> allMethods = null;
     allMethods = cls.getAllMethods();
     for (IMethod m : allMethods) {
       if (!m.isInit() && !m.isClinit() && m.isPublic()) {
@@ -282,7 +282,7 @@ public class JavaLangClassContextInterpreter implements SSAContextInterpreter {
    */
   private static SSAInstruction[] getMethodArrayStatements(MethodReference ref, Collection<IMethod> returnValues, JavaTypeContext context,
       Map<Integer, ConstantValue> constants) {
-    ArrayList<SSAInstruction> statements = new ArrayList<SSAInstruction>();
+    ArrayList<SSAInstruction> statements = new ArrayList<>();
     int nextLocal = ref.getNumberOfParameters() + 2;
     int retValue = nextLocal++;
     IClass cls = context.getType().getType();
@@ -329,7 +329,7 @@ public class JavaLangClassContextInterpreter implements SSAContextInterpreter {
    */
   private static SSAInstruction[] getParticularMethodStatements(MethodReference ref, Collection<IMethod> returnValues,
       JavaTypeContext context, Map<Integer, ConstantValue> constants) {
-    ArrayList<SSAInstruction> statements = new ArrayList<SSAInstruction>();
+    ArrayList<SSAInstruction> statements = new ArrayList<>();
     int nextLocal = ref.getNumberOfParameters() + 2;
     IClass cls = context.getType().getType();
     SSAInstructionFactory insts = context.getType().getType().getClassLoader().getInstructionFactory();

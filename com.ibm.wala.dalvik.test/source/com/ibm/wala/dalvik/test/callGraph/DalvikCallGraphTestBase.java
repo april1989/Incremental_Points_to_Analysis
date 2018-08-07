@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.core.tests.shrike.DynamicCallGraphTestBase;
 import com.ibm.wala.dalvik.classLoader.DexIRFactory;
@@ -48,7 +49,6 @@ import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeBT.analysis.Analyzer.FailureException;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
-import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
@@ -75,18 +75,8 @@ public class DalvikCallGraphTestBase extends DynamicCallGraphTestBase {
 	
 	protected static Set<MethodReference> applicationMethods(CallGraph cg) {
 		return processCG(cg,
-			new Predicate<CGNode>() {
-				@Override
-				public boolean test(CGNode t) {
-					return t.getMethod().getReference().getDeclaringClass().getClassLoader().equals(ClassLoaderReference.Application);
-				}
-			},
-			new Function<CGNode,MethodReference>() {
-				@Override
-				public MethodReference apply(CGNode object) {
-					return object.getMethod().getReference();
-				}
-			});
+			t -> t.getMethod().getReference().getDeclaringClass().getClassLoader().equals(ClassLoaderReference.Application),
+			object -> object.getMethod().getReference());
 	}
 	
 
@@ -107,21 +97,11 @@ public class DalvikCallGraphTestBase extends DynamicCallGraphTestBase {
 			@Override
 			public Iterator<NewSiteReference> iterateNewSites(CGNode node) {
 				return 
-					new MapIterator<SSAInstruction,NewSiteReference>(
-						new FilterIterator<SSAInstruction>(
+					new MapIterator<>(
+						new FilterIterator<>(
 								node.getIR().iterateAllInstructions(), 
-								new Predicate<SSAInstruction>() {
-									@Override
-									public boolean test(SSAInstruction t) {
-										return t instanceof SSANewInstruction;
-									} 
-								}), 
-						new Function<SSAInstruction,NewSiteReference>() {
-							@Override
-							public NewSiteReference apply(SSAInstruction object) {
-								return ((SSANewInstruction)object).getNewSite();
-							} 
-						}
+								SSANewInstruction.class::isInstance), 
+						object -> ((SSANewInstruction)object).getNewSite()
 					);
 			}
 		};
@@ -142,7 +122,7 @@ public class DalvikCallGraphTestBase extends DynamicCallGraphTestBase {
 		options.setReflectionOptions(policy);
 		
 		// SSAPropagationCallGraphBuilder cgb = Util.makeZeroCFABuilder(options, cache, cha, scope, null, makeDefaultInterpreter(options, cache));
-		SSAPropagationCallGraphBuilder cgb = Util.makeZeroCFABuilder(options, cache, cha, scope);
+		SSAPropagationCallGraphBuilder cgb = Util.makeZeroCFABuilder(Language.JAVA, options, cache, cha, scope);
   
 		CallGraph callGraph = cgb.makeCallGraph(options, monitor);
 		
@@ -178,7 +158,7 @@ public class DalvikCallGraphTestBase extends DynamicCallGraphTestBase {
 
 		AnalysisOptions options = new AnalysisOptions(scope, entrypoints);
 
-		SSAPropagationCallGraphBuilder cgb = Util.makeZeroCFABuilder(options, cache, cha, scope);
+		SSAPropagationCallGraphBuilder cgb = Util.makeZeroCFABuilder(Language.JAVA, options, cache, cha, scope);
   
 		CallGraph callGraph = cgb.makeCallGraph(options);
 

@@ -122,49 +122,47 @@ public class PaPanel extends JSplitPane {
 
       @Override
       public void valueChanged(TreeSelectionEvent e) {
-        TreePath newLeadSelectionPath = e.getNewLeadSelectionPath();
-        if (null == newLeadSelectionPath){
-          return;
-        }
-        DefaultMutableTreeNode treeNode = (DefaultMutableTreeNode) newLeadSelectionPath.getLastPathComponent();
-        Object userObject = treeNode.getUserObject();
-        fullName.setText(userObject.toString());
-        if (userObject instanceof LocalPointerKey){
-          LocalPointerKey lpk = (LocalPointerKey) userObject;
-          IR ir = lpk.getNode().getIR();
-          SSAInstruction def = lpk.getNode().getDU().getDef(lpk.getValueNumber());
-          int pc = IrViewer.NA;
-          if (def != null){
-            SSAInstruction[] instructions = ir.getInstructions();
-            for (int i = 0; i < instructions.length; i++) {
-              SSAInstruction instruction = instructions[i];
-              if (def == instruction){
-                pc = i;
-              }
+      TreePath newLeadSelectionPath = e.getNewLeadSelectionPath();
+      if (null == newLeadSelectionPath){
+        return;
+      }
+      DefaultMutableTreeNode treeNode = (DefaultMutableTreeNode) newLeadSelectionPath.getLastPathComponent();
+      Object userObject = treeNode.getUserObject();
+      fullName.setText(userObject.toString());
+      if (userObject instanceof LocalPointerKey){
+        LocalPointerKey lpk = (LocalPointerKey) userObject;
+        IR ir1 = lpk.getNode().getIR();
+        SSAInstruction def = lpk.getNode().getDU().getDef(lpk.getValueNumber());
+        int pc1 = IrViewer.NA;
+        if (def != null){
+          SSAInstruction[] instructions = ir1.getInstructions();
+          for (int i = 0; i < instructions.length; i++) {
+            SSAInstruction instruction = instructions[i];
+            if (def == instruction){
+              pc1 = i;
             }
           }
-          irViewer.setIRAndPc(ir, pc);
-        } else if (userObject instanceof InstanceFieldPointerKey){
-          InstanceKey ik = ((InstanceFieldPointerKey) userObject).getInstanceKey();
-          if (ik instanceof NormalAllocationInNode){
-            NormalAllocationInNode normalIk = (NormalAllocationInNode) ik;
-            IR ir = normalIk.getNode().getIR();
-            int pc = normalIk.getSite().getProgramCounter();
-            irViewer.setIRAndPc(ir, pc);
-          }
-        } else if (userObject instanceof NormalAllocationInNode){
-          NormalAllocationInNode normalIk = (NormalAllocationInNode) userObject;
-          IR ir = normalIk.getNode().getIR();
-          int pc = normalIk.getSite().getProgramCounter();
-          irViewer.setIRAndPc(ir, pc);
-        } else if (userObject instanceof CGNode){
-          irViewer.setIR(((CGNode)userObject).getIR());
         }
-
-
+        irViewer.setIRAndPc(ir1, pc1);
+      } else if (userObject instanceof InstanceFieldPointerKey){
+        InstanceKey ik = ((InstanceFieldPointerKey) userObject).getInstanceKey();
+        if (ik instanceof NormalAllocationInNode){
+          NormalAllocationInNode normalIk1 = (NormalAllocationInNode) ik;
+          IR ir2 = normalIk1.getNode().getIR();
+          int pc2 = normalIk1.getSite().getProgramCounter();
+          irViewer.setIRAndPc(ir2, pc2);
+        }
+      } else if (userObject instanceof NormalAllocationInNode){
+        NormalAllocationInNode normalIk2 = (NormalAllocationInNode) userObject;
+        IR ir3 = normalIk2.getNode().getIR();
+        int pc3 = normalIk2.getSite().getProgramCounter();
+        irViewer.setIRAndPc(ir3, pc3);
+      } else if (userObject instanceof CGNode){
+        irViewer.setIR(((CGNode)userObject).getIR());
       }
-    });
 
+
+    }});
   }
 
   private void initDataStructures(PointerAnalysis<InstanceKey> pa) {
@@ -196,10 +194,9 @@ public class PaPanel extends JSplitPane {
 
   /**
    * Override if you want different roots for your heap tree.
-   * @return
    */
   protected List<Object> getRootNodes(){
-    List<Object> ret = new ArrayList<Object>();
+    List<Object> ret = new ArrayList<>();
     for (CGNode n : cg){
       ret.add(n);
     }
@@ -232,10 +229,9 @@ public class PaPanel extends JSplitPane {
   /**
    * Used for filling the tree dynamically. Override and handle your own nodes / different links.
    * @param node
-   * @return
    */
   protected List<Object> getChildrenFor(Object node) {
-    List<Object> ret = new ArrayList<Object>();
+    List<Object> ret = new ArrayList<>();
     if (node instanceof InstanceKey){
       ret.addAll(getPointerKeysUnderInstanceKey((InstanceKey) node));
     } else if (node instanceof PointerKey){
@@ -257,7 +253,6 @@ public class PaPanel extends JSplitPane {
    * pointer keys (not just for fields)
    * 
    * @param ik
-   * @return
    */
   protected List<? extends PointerKey> getPointerKeysUnderInstanceKey(InstanceKey ik) {
     int ikIndex = pa.getInstanceKeyMapping().getMappedIndex(ik);
@@ -286,7 +281,7 @@ public class PaPanel extends JSplitPane {
       set = null;
     }
     if (null == set){
-      set = new ArrayList<T>();
+      set = new ArrayList<>();
       map.put(index, set);
     }
     set.add(o);

@@ -63,7 +63,7 @@ import com.ibm.wala.util.strings.Atom;
  *  names in synthetic methods. This should not change th analysis-result but may come in handy when
  *  debugging.
  *
- *  @author     Tobias Blaschke <code@tobiasblaschke.de>
+ *  @author     Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
  *  @since      2013-11-25
  */
 public class SummarizedMethodWithNames extends SummarizedMethod {
@@ -72,6 +72,10 @@ public class SummarizedMethodWithNames extends SummarizedMethod {
   
     private final MethodSummary summary;
     private final Map<Integer, Atom> localNames;
+
+    public SummarizedMethodWithNames(MethodReference ref, MethodSummary summary, IClass declaringClass) {
+      this(ref, summary, declaringClass, summary.getValueNames());
+    }
 
     public SummarizedMethodWithNames(MethodReference ref, MethodSummary summary, IClass declaringClass, Map<Integer, Atom> localNames) 
                 throws NullPointerException {

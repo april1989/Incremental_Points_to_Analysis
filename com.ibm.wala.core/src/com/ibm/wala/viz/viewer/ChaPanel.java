@@ -41,25 +41,24 @@ public class ChaPanel extends JSplitPane {
     this.setLeftComponent(new JScrollPane(tree));
     
     final DefaultListModel<String> methodListModel = new DefaultListModel<>();
-    JList methodList = new JList<String>(methodListModel);
+    JList methodList = new JList<>(methodListModel);
     this.setRightComponent(methodList);
     
-    tree.addTreeSelectionListener(new TreeSelectionListener(){
+    tree.addTreeSelectionListener(new TreeSelectionListener() {
       @Override
       public void valueChanged(TreeSelectionEvent e) {
-        TreePath newLeadSelectionPath = e.getNewLeadSelectionPath();
-        if (null == newLeadSelectionPath){
-          return;
-        }
-        DefaultMutableTreeNode treeNode = (DefaultMutableTreeNode) newLeadSelectionPath.getLastPathComponent();
-        IClass klass = (IClass) treeNode.getUserObject();
-        methodListModel.clear();
-        for (IMethod m : klass.getDeclaredMethods()){
-          methodListModel.addElement(m.toString());
-        }
+      TreePath newLeadSelectionPath = e.getNewLeadSelectionPath();
+      if (null == newLeadSelectionPath){
+        return;
       }
-    });
-    
+      DefaultMutableTreeNode treeNode = (DefaultMutableTreeNode) newLeadSelectionPath.getLastPathComponent();
+      IClass klass = (IClass) treeNode.getUserObject();
+      methodListModel.clear();
+      for (IMethod m : klass.getDeclaredMethods()){
+        methodListModel.addElement(m.toString());
+      }
+    }   
+  });
   }
 
   private JTree buildTree() {

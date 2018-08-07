@@ -82,6 +82,7 @@ import com.ibm.wala.ssa.SymbolTable;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.HashMapFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.MapUtil;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
@@ -113,7 +114,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
   };
 
   /**
-   * Map: LocalPointerKey -> SSAInvokeInstruction. If we have (x, foo()), that means that x was def'fed by the return value from the
+   * Map: LocalPointerKey -&gt; SSAInvokeInstruction. If we have (x, foo()), that means that x was def'fed by the return value from the
    * call to foo()
    */
   protected final Map<PointerKey, SSAAbstractInvokeInstruction> callDefs = HashMapFactory.make();
@@ -126,7 +127,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
   protected final Map<PointerKey, Set<SSAAbstractInvokeInstruction>> callParams = HashMapFactory.make();
 
   /**
-   * Map: LocalPointerKey -> CGNode. If we have (x, foo), then x is a parameter of method foo. For now, we have to re-discover the
+   * Map: LocalPointerKey -&gt; CGNode. If we have (x, foo), then x is a parameter of method foo. For now, we have to re-discover the
    * parameter position. TODO this should just be a set; we can get the CGNode from the {@link LocalPointerKey}
    */
   protected final Map<PointerKey, CGNode> params = HashMapFactory.make();
@@ -159,10 +160,9 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
    */
   @Override
   public void visitSuccs(Object node, IFlowLabelVisitor v) {
-    for (Iterator<? extends IFlowLabel> succLabelIter = getSuccLabels(node); succLabelIter.hasNext();) {
-      final IFlowLabel label = succLabelIter.next();
-      for (Iterator<? extends Object> succNodeIter = getSuccNodes(node, label); succNodeIter.hasNext();) {
-        label.visit(v, succNodeIter.next());
+    for (final IFlowLabel label : Iterator2Iterable.make(getSuccLabels(node))) {
+      for (Object succNode : Iterator2Iterable.make(getSuccNodes(node, label))) {
+        label.visit(v, succNode);
       }
     }
   }
@@ -173,10 +173,9 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
    */
   @Override
   public void visitPreds(Object node, IFlowLabelVisitor v) {
-    for (Iterator<? extends IFlowLabel> predLabelIter = getPredLabels(node); predLabelIter.hasNext();) {
-      final IFlowLabel label = predLabelIter.next();
-      for (Iterator<? extends Object> predNodeIter = getPredNodes(node, label); predNodeIter.hasNext();) {
-        label.visit(v, predNodeIter.next());
+    for (final IFlowLabel label : Iterator2Iterable.make(getPredLabels(node))) {
+      for (Object predNode : Iterator2Iterable.make(getPredNodes(node, label))) {
+        label.visit(v, predNode);
       }
     }
   }
@@ -187,8 +186,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
    * @param node
    */
   protected void addNodesForInvocations(CGNode node, IR ir) {
-    for (Iterator<CallSiteReference> iter = ir.iterateCallSites(); iter.hasNext();) {
-      CallSiteReference site = iter.next();
+    for (CallSiteReference site : Iterator2Iterable.make(ir.iterateCallSites())) {
       SSAAbstractInvokeInstruction[] calls = ir.getCalls(site);
       for (SSAAbstractInvokeInstruction invokeInstr : calls) {
         for (int i = 0; i < invokeInstr.getNumberOfUses(); i++) {
@@ -271,7 +269,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
     for (MemoryAccess a : writes) {
       addSubgraphForNode(a.getNode());
     }
-    ArrayList<PointerKey> written = new ArrayList<PointerKey>();
+    ArrayList<PointerKey> written = new ArrayList<>();
     for (MemoryAccess a : writes) {
       IR ir = a.getNode().getIR();
       SSAPutInstruction s = (SSAPutInstruction) ir.getInstructions()[a.getInstructionIndex()];
@@ -332,7 +330,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
     for (MemoryAccess a : reads) {
       addSubgraphForNode(a.getNode());
     }
-    ArrayList<PointerKey> readInto = new ArrayList<PointerKey>();
+    ArrayList<PointerKey> readInto = new ArrayList<>();
     for (MemoryAccess a : reads) {
       IR ir = a.getNode().getIR();
       SSAGetInstruction s = (SSAGetInstruction) ir.getInstructions()[a.getInstructionIndex()];
@@ -355,7 +353,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
     for (MemoryAccess a : arrayWrites) {
       addSubgraphForNode(a.getNode());
     }
-    ArrayList<PointerKey> written = new ArrayList<PointerKey>();
+    ArrayList<PointerKey> written = new ArrayList<>();
     for (MemoryAccess a : arrayWrites) {
       final CGNode node = a.getNode();
       IR ir = node.getIR();
@@ -385,13 +383,11 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
   protected Iterator<PointerKey> getArrayReads(PointerKey arrayRef) {
     arrayRef = convertPointerKeyToHeapModel(arrayRef, mam.getHeapModel());
     Collection<MemoryAccess> arrayReads = mam.getArrayReads(arrayRef);
-    for (Iterator<MemoryAccess> it = arrayReads.iterator(); it.hasNext();) {
-      MemoryAccess a = it.next();
+    for (MemoryAccess a : arrayReads) {
       addSubgraphForNode(a.getNode());
     }
-    ArrayList<PointerKey> read = new ArrayList<PointerKey>();
-    for (Iterator<MemoryAccess> it = arrayReads.iterator(); it.hasNext();) {
-      MemoryAccess a = it.next();
+    ArrayList<PointerKey> read = new ArrayList<>();
+    for (MemoryAccess a : arrayReads) {
       IR ir = a.getNode().getIR();
       SSAArrayLoadInstruction s = (SSAArrayLoadInstruction) ir.getInstructions()[a.getInstructionIndex()];
       if (s == null) {
@@ -430,8 +426,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
    */
   protected void addExceptionDefConstraints(IR ir, CGNode node, List<ProgramCounter> peis, PointerKey exceptionVar,
       Set<IClass> catchClasses) {
-    for (Iterator<ProgramCounter> it = peis.iterator(); it.hasNext();) {
-      ProgramCounter peiLoc = it.next();
+    for (ProgramCounter peiLoc : peis) {
       SSAInstruction pei = ir.getPEI(peiLoc);
 
       if (pei instanceof SSAAbstractInvokeInstruction) {
@@ -454,8 +449,7 @@ public abstract class AbstractFlowGraph extends SlowSparseNumberedLabeledGraph<O
       // the pei, but just instance keys
       Collection<TypeReference> types = pei.getExceptionTypes();
       if (types != null) {
-        for (Iterator<TypeReference> it2 = types.iterator(); it2.hasNext();) {
-          TypeReference type = it2.next();
+        for (TypeReference type : types) {
           if (type != null) {
             InstanceKey ik = heapModel.getInstanceKeyForPEI(node, peiLoc, type);
             if (ik == null) {

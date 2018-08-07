@@ -13,7 +13,6 @@ package com.ibm.wala.ipa.modref;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -28,12 +27,13 @@ import com.ibm.wala.ssa.SSAGetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.types.FieldReference;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Computes interprocedural field accesses for a given method.
  * 
  * @author Martin Seidel
- * @author Juergen Graf <juergen.graf@gmail.com>
+ * @author Juergen Graf &lt;juergen.graf@gmail.com&gt;
  *
  */
 public final class ModRefFieldAccess {
@@ -46,10 +46,10 @@ public final class ModRefFieldAccess {
 			this.mods = mods;
 			this.refs = refs;
 			if (mods == null) {
-				this.mods = new HashMap<IClass, Set<IField>>();
+				this.mods = new HashMap<>();
 			}
 			if (refs == null) {
-				this.refs = new HashMap<IClass, Set<IField>>();
+				this.refs = new HashMap<>();
 			}
 		}
 		
@@ -73,11 +73,11 @@ public final class ModRefFieldAccess {
 
 	private ModRefFieldAccess(CallGraph cg) {
 		this.cg = cg;
-		this.refs = new HashMap<CGNode, Map<IClass, Set<IField>>>();
-		this.mods = new HashMap<CGNode, Map<IClass, Set<IField>>>();
-		this.trefs = new HashMap<CGNode, Map<IClass, Set<IField>>>();
-		this.tmods = new HashMap<CGNode, Map<IClass, Set<IField>>>();
-		this.done = new LinkedList<CGNode>();
+		this.refs = new HashMap<>();
+		this.mods = new HashMap<>();
+		this.trefs = new HashMap<>();
+		this.tmods = new HashMap<>();
+		this.done = new LinkedList<>();
 	}
 	
 	public static ModRefFieldAccess compute(CallGraph cg) {
@@ -119,8 +119,7 @@ public final class ModRefFieldAccess {
 				continue;
 			}
 			
-			for (Iterator<SSAInstruction> it = ir.iterateNormalInstructions(); it.hasNext();) {
-				SSAInstruction instr = it.next();
+			for (SSAInstruction instr : Iterator2Iterable.make(ir.iterateNormalInstructions())) {
 				if (instr instanceof SSAGetInstruction) {
 					SSAGetInstruction get = (SSAGetInstruction) instr;
 					FieldReference fref = get.getDeclaredField();
@@ -165,8 +164,7 @@ public final class ModRefFieldAccess {
 		
 		final IR ir = node.getIR();
 		if (ir != null) {
-			for (Iterator<SSAInstruction> it = ir.iterateNormalInstructions(); it.hasNext();) {
-				SSAInstruction instr = it.next();
+			for (SSAInstruction instr : Iterator2Iterable.make(ir.iterateNormalInstructions())) {
 				if (instr instanceof SSAGetInstruction) {
 					SSAGetInstruction get = (SSAGetInstruction) instr;
 					FieldReference fref = get.getDeclaredField();
@@ -197,8 +195,7 @@ public final class ModRefFieldAccess {
 			}
 		}
 		
-		for (Iterator<CGNode> it = cg.getSuccNodes(node); it.hasNext();) {
-			CGNode n = it.next();
+		for (CGNode n : Iterator2Iterable.make(cg.getSuccNodes(node))) {
 			if (!done.contains(n)) {
 				done.add(n);
 				TwoMaps t = recAdd(n);

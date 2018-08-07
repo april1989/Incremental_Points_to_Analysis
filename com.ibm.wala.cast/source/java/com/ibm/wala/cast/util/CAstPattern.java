@@ -292,8 +292,8 @@ public class CAstPattern {
       return references.get(value).match(tree, s);
 
     } else if (kind == ALTERNATIVE_PATTERN_KIND) {
-      for (int i = 0; i < children.length; i++) {
-        if (children[i].tryMatch(tree, s)) {
+      for (CAstPattern element : children) {
+        if (element.tryMatch(tree, s)) {
 
           if (s != null && name != null)
             s.add(name, tree);
@@ -408,6 +408,13 @@ public class CAstPattern {
       visit(top, c, this);   
       return result;
     }
+
+    @Override
+    protected boolean doVisit(CAstNode n, Context context, CAstVisitor<Context> visitor) {
+      return true;
+    }
+    
+    
   }
     
   private static class Parser {

@@ -363,8 +363,8 @@ public class TypeAnnotationsReader extends AnnotationsReader {
     static {
       final TargetType[] targetTypes = TargetType.values();
       fromValue = HashMapFactory.make(targetTypes.length);
-      for (int i = 0; i < targetTypes.length; i++) {
-        fromValue.put(targetTypes[i].target_type, targetTypes[i]);
+      for (TargetType targetType : targetTypes) {
+        fromValue.put(targetType.target_type, targetType);
       }
     }
     
@@ -710,8 +710,8 @@ public class TypeAnnotationsReader extends AnnotationsReader {
     static {
       final TypePathKind[] typePathKinds = TypePathKind.values();
       fromValue = HashMapFactory.make(typePathKinds.length);
-      for (int i = 0; i < typePathKinds.length; i++) {
-        fromValue.put(typePathKinds[i].type_path_kind, typePathKinds[i]);
+      for (TypePathKind typePathKind : typePathKinds) {
+        fromValue.put(typePathKind.type_path_kind, typePathKind);
       }
     }
     
@@ -754,40 +754,20 @@ public class TypeAnnotationsReader extends AnnotationsReader {
     TypeAnnotationsReader apply() throws InvalidClassFileException;
   }
   public static TypeAnnotationsReader getReaderForAnnotationAtClassfile(final AnnotationType type, final ClassReader.AttrIterator iter, final SignatureReader signatureReader) {
-      return advanceIter(type, iter, new Action() {
-        @Override
-        public TypeAnnotationsReader apply() throws InvalidClassFileException {
-          return getTypeAnnotationReaderAtClassfile(iter, type.toString(), signatureReader); 
-        }
-      });
+      return advanceIter(type, iter, () -> getTypeAnnotationReaderAtClassfile(iter, type.toString(), signatureReader));
   }
   
   public static TypeAnnotationsReader getReaderForAnnotationAtMethodInfo(final AnnotationType type, final ClassReader.AttrIterator iter, final ExceptionsReader exceptionReader, final SignatureReader signatureReader) {
-    return advanceIter(type, iter, new Action() {
-      @Override
-      public TypeAnnotationsReader apply() throws InvalidClassFileException {
-        return getTypeAnnotationReaderAtMethodInfo(iter, type.toString(), exceptionReader, signatureReader);
-      }
-    });
+    return advanceIter(type, iter, () -> getTypeAnnotationReaderAtMethodInfo(iter, type.toString(), exceptionReader, signatureReader));
   }
 
   public static TypeAnnotationsReader getReaderForAnnotationAtFieldInfo(final AnnotationType type, final ClassReader.AttrIterator iter) {
-    return advanceIter(type, iter, new Action() {
-      @Override
-      public TypeAnnotationsReader apply() throws InvalidClassFileException {
-        return getTypeAnnotationReaderAtFieldInfo(iter, type.toString());
-      }
-    });
+    return advanceIter(type, iter, () -> getTypeAnnotationReaderAtFieldInfo(iter, type.toString()));
   }
   
   
   public static TypeAnnotationsReader getReaderForAnnotationAtCode(final AnnotationType type, final ClassReader.AttrIterator iter, final CodeReader codereader) {
-    return advanceIter(type, iter, new Action() {
-      @Override
-      public TypeAnnotationsReader apply() throws InvalidClassFileException {
-        return getTypeAnnotationReaderAtCode(iter, type.toString(), codereader);
-      }
-    });
+    return advanceIter(type, iter, () -> getTypeAnnotationReaderAtCode(iter, type.toString(), codereader));
   }
 
   

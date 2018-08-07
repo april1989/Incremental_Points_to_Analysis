@@ -226,7 +226,7 @@ public class IntraproceduralExceptionAnalysis {
 
     if (pointerAnalysis != null) {
       PointerKey pointerKey = pointerAnalysis.getHeapModel().getPointerKeyForLocal(node, exceptionVariable);
-      Iterator it = pointerAnalysis.getHeapGraph().getSuccNodes(pointerKey);
+      Iterator<Object> it = pointerAnalysis.getHeapGraph().getSuccNodes(pointerKey);
       while (it.hasNext()) {
         Object next = it.next();
         if (next instanceof InstanceKey) {
@@ -263,7 +263,7 @@ public class IntraproceduralExceptionAnalysis {
    *         given block.
    */
   private Set<TypeReference> collectCaughtExceptions(ISSABasicBlock block) {
-    LinkedHashSet<TypeReference> result = new LinkedHashSet<TypeReference>();
+    LinkedHashSet<TypeReference> result = new LinkedHashSet<>();
     List<ISSABasicBlock> exceptionalSuccessors = ir.getControlFlowGraph().getExceptionalSuccessors(block);
     for (ISSABasicBlock succ : exceptionalSuccessors) {
       if (succ.isCatchBlock()) {

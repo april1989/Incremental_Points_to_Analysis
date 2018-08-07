@@ -89,12 +89,11 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
   @Override
   public String toString() {
     StringBuffer result = new StringBuffer("PointerAnalysis:\n");
-    for (Iterator it = pointsToMap.iterateKeys(); it.hasNext();) {
-      PointerKey p = (PointerKey) it.next();
-      OrdinalSet O = getPointsToSet(p);
+    for (PointerKey p : Iterator2Iterable.make(pointsToMap.iterateKeys())) {
+      OrdinalSet<InstanceKey> O = getPointsToSet(p);
       result.append("  ").append(p).append(" ->\n");
-      for (Iterator it2 = O.iterator(); it2.hasNext();) {
-        result.append("     ").append(it2.next()).append("\n");
+      for (InstanceKey instanceKey : O) {
+        result.append("     ").append(instanceKey).append("\n");
       }
     }
     return result.toString();
@@ -135,7 +134,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
       return OrdinalSet.empty();
     } else {
       IntSet S = v.getValue();
-      return new OrdinalSet<InstanceKey>(S, instanceKeys);
+      return new OrdinalSet<>(S, instanceKeys);
     }
   }
 
@@ -261,7 +260,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
         }
       }
     }
-    return new OrdinalSet<InstanceKey>(S, instanceKeys);
+    return new OrdinalSet<>(S, instanceKeys);
   }
 
   private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtPhi(CGNode node, SSAPhiInstruction instruction) {
@@ -277,15 +276,14 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
         }
       }
     }
-    return new OrdinalSet<InstanceKey>(S, instanceKeys);
+    return new OrdinalSet<>(S, instanceKeys);
   }
 
   private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtALoad(CGNode node, SSAArrayLoadInstruction instruction) {
     PointerKey arrayRef = pointerKeys.getPointerKeyForLocal(node, instruction.getArrayRef());
     MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
-    OrdinalSet refs = getPointsToSet(arrayRef);
-    for (Iterator it = refs.iterator(); it.hasNext();) {
-      InstanceKey ik = (InstanceKey) it.next();
+    OrdinalSet<InstanceKey> refs = getPointsToSet(arrayRef);
+    for (InstanceKey ik : refs) {
       PointerKey key = pointerKeys.getPointerKeyForArrayContents(ik);
       OrdinalSet pointees = getPointsToSet(key);
       IntSet set = pointees.getBackingSet();
@@ -293,7 +291,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
         S.addAll(set);
       }
     }
-    return new OrdinalSet<InstanceKey>(S, instanceKeys);
+    return new OrdinalSet<>(S, instanceKeys);
   }
 
   private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtGet(CGNode node, SSAGetInstruction instruction) {
@@ -311,9 +309,8 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
     } else {
       PointerKey ref = pointerKeys.getPointerKeyForLocal(node, refVn);
       MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
-      OrdinalSet refs = getPointsToSet(ref);
-      for (Iterator it = refs.iterator(); it.hasNext();) {
-        InstanceKey ik = (InstanceKey) it.next();
+      OrdinalSet<InstanceKey> refs = getPointsToSet(ref);
+      for (InstanceKey ik : refs) {
         PointerKey fkey = pointerKeys.getPointerKeyForInstanceField(ik, f);
         if (fkey != null) {
           OrdinalSet pointees = getPointsToSet(fkey);
@@ -323,7 +320,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
           }
         }
       }
-      return new OrdinalSet<InstanceKey>(S, instanceKeys);
+      return new OrdinalSet<>(S, instanceKeys);
     }
   }
 
@@ -333,8 +330,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
     Set<IClass> caughtTypes = SSAPropagationCallGraphBuilder.getCaughtExceptionTypes(instruction, ir);
     MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
     // add the instances from each incoming pei ...
-    for (Iterator<ProgramCounter> it = peis.iterator(); it.hasNext();) {
-      ProgramCounter peiLoc = it.next();
+    for (ProgramCounter peiLoc : peis) {
       SSAInstruction pei = ir.getPEI(peiLoc);
       PointerKey e = null;
       // first deal with exception variables from calls and throws.
@@ -346,9 +342,8 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
         e = pointerKeys.getPointerKeyForLocal(node, s.getException());
       }
       if (e != null) {
-        OrdinalSet ep = getPointsToSet(e);
-        for (Iterator it2 = ep.iterator(); it2.hasNext();) {
-          InstanceKey ik = (InstanceKey) it2.next();
+        OrdinalSet<InstanceKey> ep = getPointsToSet(e);
+        for (InstanceKey ik : ep) {
           if (PropagationCallGraphBuilder.catches(caughtTypes, ik.getConcreteType(), getCallGraph().getClassHierarchy())) {
             S.add(instanceKeys.getMappedIndex(ik));
           }
@@ -358,10 +353,9 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
       // Account for those exceptions for which we do not actually have a
       // points-to set for
       // the pei, but just instance keys
-      Collection types = pei.getExceptionTypes();
+      Collection<TypeReference> types = pei.getExceptionTypes();
       if (types != null) {
-        for (Iterator it2 = types.iterator(); it2.hasNext();) {
-          TypeReference type = (TypeReference) it2.next();
+        for (TypeReference type : types) {
           if (type != null) {
             InstanceKey ik = SSAPropagationCallGraphBuilder.getInstanceKeyForPEI(node, peiLoc, type, iKeyFactory);
             ConcreteTypeKey ck = (ConcreteTypeKey) ik;
@@ -374,7 +368,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
         }
       }
     }
-    return new OrdinalSet<InstanceKey>(S, instanceKeys);
+    return new OrdinalSet<>(S, instanceKeys);
   }
 
   private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtCheckCast(CGNode node, SSACheckCastInstruction instruction) {
@@ -388,15 +382,13 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
         return rhsSet;
       } else {
         if (klass.isInterface()) {
-          for (Iterator it = rhsSet.iterator(); it.hasNext();) {
-            InstanceKey ik = (InstanceKey) it.next();
+          for (InstanceKey ik : rhsSet) {
             if (getCallGraph().getClassHierarchy().implementsInterface(ik.getConcreteType(), klass)) {
               S.add(getInstanceKeyMapping().getMappedIndex(ik));
             }
           }
         } else {
-          for (Iterator it = rhsSet.iterator(); it.hasNext();) {
-            InstanceKey ik = (InstanceKey) it.next();
+          for (InstanceKey ik : rhsSet) {
             if (getCallGraph().getClassHierarchy().isSubclassOf(ik.getConcreteType(), klass)) {
               S.add(getInstanceKeyMapping().getMappedIndex(ik));
             }
@@ -404,7 +396,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
         }
       }
     }
-    return new OrdinalSet<InstanceKey>(S, instanceKeys);
+    return new OrdinalSet<>(S, instanceKeys);
   }
 
   private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtCall(LocalPointerKey lpk, CGNode node, SSAInvokeInstruction call) {
@@ -419,15 +411,15 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
 
   private OrdinalSet<InstanceKey> toOrdinalSet(InstanceKey[] ik) {
     MutableSparseIntSet s = MutableSparseIntSet.makeEmpty();
-    for (int i = 0; i < ik.length; i++) {
-      int index = instanceKeys.getMappedIndex(ik[i]);
+    for (InstanceKey element : ik) {
+      int index = instanceKeys.getMappedIndex(element);
       if (index != -1) {
         s.add(index);
       } else {
-        assert index != -1 : "instance " + ik[i] + " not mapped!";
+        assert index != -1 : "instance " + element + " not mapped!";
       }
     }
-    return new OrdinalSet<InstanceKey>(s, instanceKeys);
+    return new OrdinalSet<>(s, instanceKeys);
   }
 
   /**
@@ -435,15 +427,14 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
    */
   private OrdinalSet<InstanceKey> computeImplicitExceptionsForCall(CGNode node, SSAInvokeInstruction call) {
     MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
-    for (Iterator it = getCallGraph().getPossibleTargets(node, call.getCallSite()).iterator(); it.hasNext();) {
-      CGNode target = (CGNode) it.next();
+    for (CGNode target : getCallGraph().getPossibleTargets(node, call.getCallSite())) {
       PointerKey retVal = pointerKeys.getPointerKeyForExceptionalReturnValue(target);
       IntSet set = getPointsToSet(retVal).getBackingSet();
       if (set != null) {
         S.addAll(set);
       }
     }
-    return new OrdinalSet<InstanceKey>(S, instanceKeys);
+    return new OrdinalSet<>(S, instanceKeys);
   }
 
   /*

@@ -13,6 +13,7 @@ package com.ibm.wala.shrikeCT;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.ibm.wala.shrikeCT.BootstrapMethodsReader.BootstrapMethod;
 import com.ibm.wala.shrikeCT.ConstantPoolParser.ReferenceToken;
 
 /**
@@ -202,6 +203,40 @@ public class ClassWriter implements ClassConstants {
     }
   }
 
+  static class CWInvokeDynamic extends CWItem {
+    final private BootstrapMethod b;
+
+    final private String n;
+
+    final private String t;
+
+    CWInvokeDynamic(BootstrapMethod b, String n, String t) {
+      this.b = b;
+      this.n = n;
+      this.t = t;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o instanceof CWInvokeDynamic) {
+        CWInvokeDynamic r = (CWInvokeDynamic) o;
+        return r.b.equals(b) && r.n.equals(n) && r.t.equals(t);
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return (b.hashCode() << 10) + (n.hashCode() << 3) + t.hashCode();
+    }
+
+    @Override
+    byte getType() {
+      return CONSTANT_InvokeDynamic;
+    }
+  }
+
   /**
    * Copy a constant pool from some ClassReader into this class. This must be done before any entries are allocated in this
    * ClassWriter's constant pool, and it can only be done once. If and only if this is done, it is safe to copy "raw" fields,
@@ -230,37 +265,40 @@ public class ClassWriter implements ClassConstants {
         byte t = cp.getItemType(i);
         switch (t) {
         case CONSTANT_String:
-          cachedCPEntries.put(new CWStringItem(cp.getCPString(i), CONSTANT_String), new Integer(i));
+          cachedCPEntries.put(new CWStringItem(cp.getCPString(i), CONSTANT_String), Integer.valueOf(i));
           break;
         case CONSTANT_Class:
-          cachedCPEntries.put(new CWStringItem(cp.getCPClass(i), CONSTANT_Class), new Integer(i));
+          cachedCPEntries.put(new CWStringItem(cp.getCPClass(i), CONSTANT_Class), Integer.valueOf(i));
           break;
         case CONSTANT_MethodType:
-          cachedCPEntries.put(new CWStringItem(cp.getCPMethodType(i), CONSTANT_MethodType), new Integer(i));
+          cachedCPEntries.put(new CWStringItem(cp.getCPMethodType(i), CONSTANT_MethodType), Integer.valueOf(i));
           break;
         case CONSTANT_MethodHandle:
         case CONSTANT_FieldRef:
         case CONSTANT_InterfaceMethodRef:
         case CONSTANT_MethodRef:
-          cachedCPEntries.put(new CWRef(t, cp.getCPRefClass(i), cp.getCPRefName(i), cp.getCPRefType(i)), new Integer(i));
+          cachedCPEntries.put(new CWRef(t, cp.getCPRefClass(i), cp.getCPRefName(i), cp.getCPRefType(i)), Integer.valueOf(i));
           break;
         case CONSTANT_NameAndType:
-          cachedCPEntries.put(new CWNAT(cp.getCPNATName(i), cp.getCPNATType(i)), new Integer(i));
+          cachedCPEntries.put(new CWNAT(cp.getCPNATName(i), cp.getCPNATType(i)), Integer.valueOf(i));
+          break;
+        case CONSTANT_InvokeDynamic:
+          cachedCPEntries.put(new CWInvokeDynamic(cp.getCPDynBootstrap(i), cp.getCPDynName(i), cp.getCPDynType(i)), Integer.valueOf(i));
           break;
         case CONSTANT_Integer:
-          cachedCPEntries.put(new Integer(cp.getCPInt(i)), new Integer(i));
+          cachedCPEntries.put(Integer.valueOf(cp.getCPInt(i)), Integer.valueOf(i));
           break;
         case CONSTANT_Float:
-          cachedCPEntries.put(new Float(cp.getCPFloat(i)), new Integer(i));
+          cachedCPEntries.put(Float.valueOf(cp.getCPFloat(i)), Integer.valueOf(i));
           break;
         case CONSTANT_Long:
-          cachedCPEntries.put(new Long(cp.getCPLong(i)), new Integer(i));
+          cachedCPEntries.put(Long.valueOf(cp.getCPLong(i)), Integer.valueOf(i));
           break;
         case CONSTANT_Double:
-          cachedCPEntries.put(new Double(cp.getCPDouble(i)), new Integer(i));
+          cachedCPEntries.put(Double.valueOf(cp.getCPDouble(i)), Integer.valueOf(i));
           break;
         case CONSTANT_Utf8:
-          cachedCPEntries.put(cp.getCPUtf8(i), new Integer(i));
+          cachedCPEntries.put(cp.getCPUtf8(i), Integer.valueOf(i));
           break;
         default:
           throw new UnsupportedOperationException(String.format("unexpected constant-pool item type %s", t));
@@ -288,7 +326,7 @@ public class ClassWriter implements ClassConstants {
     } else {
       int index = nextCPIndex;
       nextCPIndex += size;
-      i = new Integer(index);
+      i = Integer.valueOf(index);
       cachedCPEntries.put(o, i);
       newCPEntries.add(o);
       if (nextCPIndex > 0xFFFF) {
@@ -313,7 +351,7 @@ public class ClassWriter implements ClassConstants {
    * @return the index of a constant pool item with the right value
    */
   public int addCPInt(int i) {
-    return addCPEntry(new Integer(i), 1);
+    return addCPEntry(Integer.valueOf(i), 1);
   }
 
   /**
@@ -322,7 +360,7 @@ public class ClassWriter implements ClassConstants {
    * @return the index of a constant pool item with the right value
    */
   public int addCPFloat(float f) {
-    return addCPEntry(new Float(f), 1);
+    return addCPEntry(Float.valueOf(f), 1);
   }
 
   /**
@@ -331,7 +369,7 @@ public class ClassWriter implements ClassConstants {
    * @return the index of a constant pool item with the right value
    */
   public int addCPLong(long l) {
-    return addCPEntry(new Long(l), 2);
+    return addCPEntry(Long.valueOf(l), 2);
   }
 
   /**
@@ -340,7 +378,7 @@ public class ClassWriter implements ClassConstants {
    * @return the index of a constant pool item with the right value
    */
   public int addCPDouble(double d) {
-    return addCPEntry(new Double(d), 2);
+    return addCPEntry(Double.valueOf(d), 2);
   }
 
   private int addCPString(String s, byte type) {
@@ -434,6 +472,18 @@ public class ClassWriter implements ClassConstants {
   }
 
   /**
+   * Add an InvokeDynamic to the constant pool if necessary.
+   * 
+   * @param n the name
+   * @param t the type, in JVM format
+   * @return the index of a constant pool item with the right value
+   */
+  public int addCPInvokeDynamic(BootstrapMethod b, String n, String t) {
+    return addCPEntry(new CWInvokeDynamic(b, n, t), 1);
+  }
+
+  
+  /**
    * Set the access flags for the class.
    */
   public void setAccessFlags(int f) {
@@ -471,8 +521,7 @@ public class ClassWriter implements ClassConstants {
       if (ifaces.length > 0xFFFF) {
         throw new IllegalArgumentException("Too many interfaces implemented: " + ifaces.length);
       }
-      for (int i = 0; i < ifaces.length; i++) {
-        int c = ifaces[i];
+      for (int c : ifaces) {
         if (c < 1 || c > 0xFFFF) {
           throw new IllegalArgumentException("Interface name index out of range: " + c);
         }
@@ -637,8 +686,8 @@ public class ClassWriter implements ClassConstants {
     public int getSize() {
       int size = 8;
       if (attributes != null) {
-        for (int i = 0; i < attributes.length; i++) {
-          size += attributes[i].getSize();
+        for (Element attribute : attributes) {
+          size += attribute.getSize();
         }
       }
       return size;
@@ -652,8 +701,8 @@ public class ClassWriter implements ClassConstants {
       if (attributes != null) {
         setUShort(buf, offset + 6, attributes.length);
         offset += 8;
-        for (int i = 0; i < attributes.length; i++) {
-          offset = attributes[i].copyInto(buf, offset);
+        for (Element attribute : attributes) {
+          offset = attribute.copyInto(buf, offset);
         }
       } else {
         setUShort(buf, offset + 6, 0);
@@ -760,6 +809,13 @@ public class ClassWriter implements ClassConstants {
           CWNAT nat = (CWNAT) item;
           setUShort(buf, offset + 1, addCPUtf8(nat.n));
           setUShort(buf, offset + 3, addCPUtf8(nat.t));
+          break;
+        }
+        case CONSTANT_InvokeDynamic: {
+          offset = reserveBuf(5);
+          CWInvokeDynamic inv = (CWInvokeDynamic) item;
+          setUShort(buf, offset+1, inv.b.getIndexInClassFile());
+          setUShort(buf, offset+3, addCPNAT(inv.n, inv.t));
           break;
         }
         case CONSTANT_MethodHandle: {

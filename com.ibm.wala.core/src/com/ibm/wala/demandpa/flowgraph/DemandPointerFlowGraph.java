@@ -38,7 +38,6 @@
 package com.ibm.wala.demandpa.flowgraph;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -81,6 +80,7 @@ import com.ibm.wala.ssa.SymbolTable;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.Pair;
 
 /**
@@ -98,8 +98,7 @@ public class DemandPointerFlowGraph extends AbstractDemandFlowGraph implements I
    */
   @Override
   protected void addNodesForParameters(CGNode node, IR ir) {
-    for (Iterator<Integer> iter = new PointerParamValueNumIterator(node); iter.hasNext();) {
-      int parameter = iter.next();
+    for (int parameter : Iterator2Iterable.make(new PointerParamValueNumIterator(node))) {
       PointerKey paramPk = heapModel.getPointerKeyForLocal(node, parameter);
       addNode(paramPk);
       params.put(paramPk, node);
@@ -409,8 +408,7 @@ public class DemandPointerFlowGraph extends AbstractDemandFlowGraph implements I
      */
     protected void addExceptionDefConstraints(IR ir, CGNode node, List<ProgramCounter> peis, PointerKey exceptionVar,
         Set<IClass> catchClasses) {
-      for (Iterator<ProgramCounter> it = peis.iterator(); it.hasNext();) {
-        ProgramCounter peiLoc = it.next();
+      for (ProgramCounter peiLoc : peis) {
         SSAInstruction pei = ir.getPEI(peiLoc);
 
         if (pei instanceof SSAAbstractInvokeInstruction) {
@@ -433,8 +431,7 @@ public class DemandPointerFlowGraph extends AbstractDemandFlowGraph implements I
         // the pei, but just instance keys
         Collection<TypeReference> types = pei.getExceptionTypes();
         if (types != null) {
-          for (Iterator<TypeReference> it2 = types.iterator(); it2.hasNext();) {
-            TypeReference type = it2.next();
+          for (TypeReference type : types) {
             if (type != null) {
               InstanceKey ik = heapModel.getInstanceKeyForPEI(node, peiLoc, type);
               if (ik == null) {

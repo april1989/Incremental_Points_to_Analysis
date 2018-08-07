@@ -24,6 +24,7 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.NonNullSingletonIterator;
 
 public abstract class TestCallGraphShape extends WalaTestCase {
@@ -100,26 +101,26 @@ public abstract class TestCallGraphShape extends WalaTestCase {
   }
 
   protected void verifyNameAssertions(CallGraph CG, Object[][] assertionData) {
-    for (int i = 0; i < assertionData.length; i++) {
-      Iterator<CGNode> NS = getNodes(CG, (String) assertionData[i][0]).iterator();
+    for (Object[] element : assertionData) {
+      Iterator<CGNode> NS = getNodes(CG, (String) element[0]).iterator();
       while (NS.hasNext()) {
         CGNode N = NS.next();
         IR ir = N.getIR();
-        Name[] names = (Name[]) assertionData[i][1];
-        for (int j = 0; j < names.length; j++) {
+        Name[] names = (Name[]) element[1];
+        for (Name name : names) {
 
-          System.err.println("looking for " + names[j].name + ", " + names[j].vn + " in " + N);
+          System.err.println("looking for " + name.name + ", " + name.vn + " in " + N);
 
-          String[] localNames = ir.getLocalNames(names[j].instructionIndex, names[j].vn);
+          String[] localNames = ir.getLocalNames(name.instructionIndex, name.vn);
 
           boolean found = false;
-          for (int k = 0; k < localNames.length; k++) {
-            if (localNames[k].equals(names[j].name)) {
+          for (String localName : localNames) {
+            if (localName.equals(name.name)) {
               found = true;
             }
           }
 
-          Assert.assertTrue("no name " + names[j].name + " for " + N + "\n" + ir, found);
+          Assert.assertTrue("no name " + name.name + " for " + N + "\n" + ir, found);
         }
       }
     }
@@ -149,8 +150,7 @@ public abstract class TestCallGraphShape extends WalaTestCase {
 
         while (srcs.hasNext()) {
           CGNode src = srcs.next();
-          for (Iterator<CallSiteReference> sites = src.iterateCallSites(); sites.hasNext();) {
-            CallSiteReference sr = sites.next();
+          for (CallSiteReference sr : Iterator2Iterable.make(src.iterateCallSites())) {
            
             Iterator<CGNode> dsts = getNodes(CG, targetName).iterator();
             if (! checkAbsence) {
@@ -159,8 +159,8 @@ public abstract class TestCallGraphShape extends WalaTestCase {
             
             while (dsts.hasNext()) {
               CGNode dst = dsts.next();
-              for (Iterator<CGNode> tos = CG.getPossibleTargets(src, sr).iterator(); tos.hasNext();) {
-                if (tos.next().equals(dst)) {
+              for (CGNode cgNode : CG.getPossibleTargets(src, sr)) {
+                if (cgNode.equals(dst)) {
                   if (checkAbsence) {
                     System.err.println(("found unexpected " + src + " --> " + dst + " at " + sr));
                     Assert.assertTrue("found edge " + assertionData[i][0] + " ---> " + targetName, false);
@@ -194,8 +194,8 @@ public abstract class TestCallGraphShape extends WalaTestCase {
     Collection<CGNode> dests = getNodes(CG, destDescription);
     for (Object source : sources) {
       for (Object dest : dests) {
-        for (Iterator<CGNode> i = CG.getSuccNodes((CGNode) source); i.hasNext();) {
-          if (i.next().equals(dest)) {
+        for (CGNode n : Iterator2Iterable.make(CG.getSuccNodes((CGNode) source))) {
+          if (n.equals(dest)) {
             Assert.fail("Found a link from " + source + " to " + dest);
           }
         }

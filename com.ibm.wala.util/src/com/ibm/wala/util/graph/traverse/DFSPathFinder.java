@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import com.ibm.wala.util.collections.HashMapFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.NonNullSingletonIterator;
 import com.ibm.wala.util.graph.Graph;
 
@@ -125,8 +126,8 @@ public class DFSPathFinder<T> extends ArrayList<T> {
 
   protected List<T> currentPath() {
     ArrayList<T> result = new ArrayList<>();
-    for (Iterator<T> path = iterator(); path.hasNext();) {
-      result.add(0, path.next());
+    for (T t : this) {
+      result.add(0, t);
     }
     return result;
   }
@@ -171,8 +172,7 @@ public class DFSPathFinder<T> extends ArrayList<T> {
     assert getPendingChildren(currentNode) != null;
     do {
       T stackTop = peek();
-      for (Iterator<? extends T> it = getPendingChildren(stackTop); it.hasNext();) {
-        T child = it.next();
+      for (T child : Iterator2Iterable.make(getPendingChildren(stackTop))) {
         if (getPendingChildren(child) == null) {
           // found a new child.
           push(child);

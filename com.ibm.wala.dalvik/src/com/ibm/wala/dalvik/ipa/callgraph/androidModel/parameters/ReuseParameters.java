@@ -75,7 +75,7 @@ import com.ibm.wala.util.strings.Atom;
  *  @see    com.ibm.wala.dalvik.ipa.callgraph.androidModel.parameters.IInstantiationBehavior
  *  @see    com.ibm.wala.util.ssa.ParameterAccessor 
  *  
- *  @author Tobias Blaschke <code@tobiasblaschke.de>
+ *  @author Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
  *  @since  2013-11-02
  */
 public class ReuseParameters {
@@ -127,8 +127,8 @@ public class ReuseParameters {
                     }
                     
                     // Assert the rest of the types have the same name
-                    for (int j = 0; j < types.length; ++j) {
-                        final TypeName paramType = types[j].getName();
+                    for (TypeReference type : types) {
+                        final TypeName paramType = type.getName();
 
                         if (isReuse(paramType, ALL_TARGETS)) {
                             if (! reuseParameters.contains(paramType)) {    // XXX: Why not use a Set?

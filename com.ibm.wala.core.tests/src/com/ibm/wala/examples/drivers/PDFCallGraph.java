@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.Properties;
 import java.util.function.Predicate;
 
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
@@ -55,9 +56,8 @@ public class PDFCallGraph {
 
   public static String findJarFiles(String[] directories) {
     Collection<String> result = HashSetFactory.make();
-    for (int i = 0; i < directories.length; i++) {
-      for (Iterator<File> it = FileUtil.listFiles(directories[i], ".*\\.jar", true).iterator(); it.hasNext();) {
-        File f = it.next();
+    for (String directorie : directories) {
+      for (File f : FileUtil.listFiles(directorie, ".*\\.jar", true)) {
         result.add(f.getAbsolutePath());
       }
     }
@@ -157,7 +157,7 @@ public class PDFCallGraph {
     // //
     // build the call graph
     // //
-    com.ibm.wala.ipa.callgraph.CallGraphBuilder<InstanceKey> builder = Util.makeZeroCFABuilder(options, new AnalysisCacheImpl(), cha, scope);
+    com.ibm.wala.ipa.callgraph.CallGraphBuilder<InstanceKey> builder = Util.makeZeroCFABuilder(Language.JAVA, options, new AnalysisCacheImpl(), cha, scope);
     CallGraph cg = builder.makeCallGraph(options, null);
 
     System.err.println(CallGraphStats.getStats(cg));

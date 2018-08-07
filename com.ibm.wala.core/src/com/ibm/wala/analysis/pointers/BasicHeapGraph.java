@@ -27,6 +27,7 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.CompoundIterator;
 import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.IntMapIterator;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.debug.UnimplementedError;
 import com.ibm.wala.util.graph.AbstractNumberedGraph;
@@ -78,7 +79,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
     final NumberedNodeManager<Object> nodeMgr = new NumberedNodeManager<Object>() {
       @Override
       public Iterator<Object> iterator() {
-        return new CompoundIterator<Object>(pointerKeys.iterator(), P.getInstanceKeyMapping().iterator());
+        return new CompoundIterator<>(pointerKeys.iterator(), P.getInstanceKeyMapping().iterator());
       }
 
       @Override
@@ -130,17 +131,12 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
 
       @Override
       public Iterator<Object> iterateNodes(IntSet s) {
-        return new NumberedNodeIterator<Object>(s, this);
+        return new NumberedNodeIterator<>(s, this);
       }
     };
 
     final IBinaryNaturalRelation pred = computePredecessors(nodeMgr);
-    final IntFunction<Object> toNode = new IntFunction<Object>() {
-      @Override
-      public Object apply(int i) {
-        return nodeMgr.getNode(i);
-      }
-    };
+    final IntFunction<Object> toNode = nodeMgr::getNode;
 
     this.G = new AbstractNumberedGraph<Object>() {
       private final NumberedEdgeManager<Object> edgeMgr = new NumberedEdgeManager<Object>() {
@@ -151,7 +147,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
           if (p == null) {
             return EmptyIterator.instance();
           } else {
-            return new IntMapIterator<Object>(p.intIterator(), toNode);
+            return new IntMapIterator<>(p.intIterator(), toNode);
           }
         }
 
@@ -179,7 +175,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
             return EmptyIterator.instance();
           }
           SparseIntSet s = factory.make(succ);
-          return new IntMapIterator<Object>(s.intIterator(), toNode);
+          return new IntMapIterator<>(s.intIterator(), toNode);
         }
 
         @Override
@@ -245,8 +241,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
   private OrdinalSetMapping<PointerKey> getPointerKeys() {
     MutableMapping<PointerKey> result = MutableMapping.make();
 
-    for (Iterator<PointerKey> it = getPointerAnalysis().getPointerKeys().iterator(); it.hasNext();) {
-      PointerKey p = it.next();
+    for (PointerKey p : getPointerAnalysis().getPointerKeys()) {
       result.add(p);
     }
     return result;
@@ -259,8 +254,8 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
       OrdinalSet<T> S = getPointerAnalysis().getPointsToSet(P);
       int[] result = new int[S.size()];
       int i = 0;
-      for (Iterator<T> it = S.iterator(); it.hasNext();) {
-        result[i] = nodeManager.getNumber(it.next());
+      for (T t : S) {
+        result[i] = nodeManager.getNumber(t);
         i++;
       }
       return result;
@@ -280,8 +275,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
         IClass klass = getHeapModel().getClassHierarchy().lookupClass(T);
         assert klass != null : "null klass for type " + T;
         MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
-        for (Iterator<IField> it = klass.getAllInstanceFields().iterator(); it.hasNext();) {
-          IField f = it.next();
+        for (IField f : klass.getAllInstanceFields()) {
           if (!f.getReference().getFieldType().isPrimitiveType()) {
             PointerKey p = getHeapModel().getPointerKeyForInstanceField(I, f);
             if (p != null && nodeManager.containsNode(p)) {
@@ -326,8 +320,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
       if (!(n instanceof LocalPointerKey)) {
         int[] succ = computeSuccNodeNumbers(n, nodeManager);
         if (succ != null) {
-          for (int z = 0; z < succ.length; z++) {
-            int j = succ[z];
+          for (int j : succ) {
             R.add(j, i);
           }
         }
@@ -340,9 +333,8 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
    */
   private void computePredecessorsForLocals(NumberedNodeManager<Object> nodeManager, BasicNaturalRelation R) {
 
-    ArrayList<LocalPointerKey> list = new ArrayList<LocalPointerKey>();
-    for (Iterator<Object> it = nodeManager.iterator(); it.hasNext();) {
-      Object n = it.next();
+    ArrayList<LocalPointerKey> list = new ArrayList<>();
+    for (Object n : nodeManager) {
       if (n instanceof LocalPointerKey) {
         list.add((LocalPointerKey) n);
       }
@@ -360,8 +352,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
       int num = nodeManager.getNumber(n);
       int[] succ = computeSuccNodeNumbers(n, nodeManager);
       if (succ != null) {
-        for (int z = 0; z < succ.length; z++) {
-          int j = succ[z];
+        for (int j : succ) {
           R.add(j, num);
         }
       }
@@ -516,8 +507,7 @@ public class BasicHeapGraph<T extends InstanceKey> extends HeapGraphImpl<T> {
       Object node = getNode(i);
       if (node != null) {
         result.append(i).append(" -> ");
-        for (Iterator it = getSuccNodes(node); it.hasNext();) {
-          Object s = it.next();
+        for (Object s : Iterator2Iterable.make(getSuccNodes(node))) {
           result.append(getNumber(s)).append(" ");
         }
         result.append("\n");

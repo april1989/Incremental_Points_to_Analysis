@@ -21,6 +21,7 @@ import java.util.Set;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilder;
@@ -167,12 +168,7 @@ public class Util {
         }
       }
     }
-    return new Iterable<Entrypoint>() {
-      @Override
-      public Iterator<Entrypoint> iterator() {
-        return result.iterator();
-      }
-    };
+    return result::iterator;
   }
 
   /**
@@ -193,7 +189,7 @@ public class Util {
   /**
    * @return Entrypoints for a set of J2SE Main classes
    * @throws IllegalArgumentException if classNames == null
-   * @throws IllegalArgumentException if (classNames != null) and (0 < classNames.length) and (classNames[0] == null)
+   * @throws IllegalArgumentException if (classNames != null) and (0 &lt; classNames.length) and (classNames[0] == null)
    * @throws IllegalArgumentException if classNames.length == 0
    */
   public static Iterable<Entrypoint> makeMainEntrypoints(final ClassLoaderReference loaderRef, final IClassHierarchy cha,
@@ -209,41 +205,38 @@ public class Util {
       throw new IllegalArgumentException("(0 < classNames.length) and (classNames[0] == null)");
     }
 
-    for (int i = 0; i < classNames.length; i++) {
-      if (classNames[i].indexOf("L") != 0) {
-        throw new IllegalArgumentException("Expected class name to start with L " + classNames[i]);
+    for (String className : classNames) {
+      if (className.indexOf("L") != 0) {
+        throw new IllegalArgumentException("Expected class name to start with L " + className);
       }
-      if (classNames[i].indexOf(".") > 0) {
-        Assertions.productionAssertion(false, "Expected class name formatted with /, not . " + classNames[i]);
+      if (className.indexOf(".") > 0) {
+        Assertions.productionAssertion(false, "Expected class name formatted with /, not . " + className);
       }
     }
 
-    return new Iterable<Entrypoint>() {
-      @Override
-      public Iterator<Entrypoint> iterator() {
-        final Atom mainMethod = Atom.findOrCreateAsciiAtom("main");
-        return new Iterator<Entrypoint>() {
-          private int index = 0;
+    return () -> {
+      final Atom mainMethod = Atom.findOrCreateAsciiAtom("main");
+      return new Iterator<Entrypoint>() {
+        private int index = 0;
 
-          @Override
-          public void remove() {
-            Assertions.UNREACHABLE();
-          }
+        @Override
+        public void remove() {
+          Assertions.UNREACHABLE();
+        }
 
-          @Override
-          public boolean hasNext() {
-            return index < classNames.length;
-          }
+        @Override
+        public boolean hasNext() {
+          return index < classNames.length;
+        }
 
-          @Override
-          public Entrypoint next() {
-            TypeReference T = TypeReference.findOrCreate(loaderRef, TypeName.string2TypeName(classNames[index++]));
-            MethodReference mainRef = MethodReference.findOrCreate(T, mainMethod, Descriptor
-                .findOrCreateUTF8("([Ljava/lang/String;)V"));
-            return new DefaultEntrypoint(mainRef, cha);
-          }
-        };
-      }
+        @Override
+        public Entrypoint next() {
+          TypeReference T = TypeReference.findOrCreate(loaderRef, TypeName.string2TypeName(classNames[index++]));
+          MethodReference mainRef = MethodReference.findOrCreate(T, mainMethod, Descriptor
+              .findOrCreateUTF8("([Ljava/lang/String;)V"));
+          return new DefaultEntrypoint(mainRef, cha);
+        }
+      };
     };
   }
 
@@ -282,15 +275,13 @@ public class Util {
       System.err.println("subgraph: ");
       System.err.println(subG.toString());
       System.err.println("nodeDiff: ");
-      for (Iterator it = nodeDiff.iterator(); it.hasNext();) {
-        System.err.println(it.next().toString());
+      for (T t : nodeDiff) {
+        System.err.println(t.toString());
       }
       Assertions.productionAssertion(nodeDiff.isEmpty(), "bad superset, see tracefile\n");
     }
 
-    for (Iterator<? extends T> subNodes = subG.iterator(); subNodes.hasNext();) {
-      T m = subNodes.next();
-
+    for (T m : subG) {
       Set<T> succDiff = setify(subG.getSuccNodes(m));
       succDiff.removeAll(setify(supG.getSuccNodes(m)));
       if (!succDiff.isEmpty()) {
@@ -305,8 +296,8 @@ public class Util {
         System.err.println("subgraph: ");
         System.err.println(subG.toString());
         System.err.println("predDiff: ");
-        for (Iterator it = predDiff.iterator(); it.hasNext();) {
-          System.err.println(it.next().toString());
+        for (T t : predDiff) {
+          System.err.println(t.toString());
         }
         Assertions.UNREACHABLE("bad superset for predecessors of " + m + ":" + predDiff);
       }
@@ -335,9 +326,9 @@ public class Util {
    * @param scope representation of the analysis scope
    * @return a 0-CFA Call Graph Builder.
    */
-  public static SSAPropagationCallGraphBuilder makeZeroCFABuilder(AnalysisOptions options, IAnalysisCacheView cache,
+  public static SSAPropagationCallGraphBuilder makeZeroCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView cache,
       IClassHierarchy cha, AnalysisScope scope) {
-    return makeZeroCFABuilder(options, cache, cha, scope, null, null);
+    return makeZeroCFABuilder(l, options, cache, cha, scope, null, null);
   }
 
   /**
@@ -349,7 +340,7 @@ public class Util {
    * @return a 0-CFA Call Graph Builder.
    * @throws IllegalArgumentException if options is null
    */
-  public static SSAPropagationCallGraphBuilder makeZeroCFABuilder(AnalysisOptions options, IAnalysisCacheView cache,
+  public static SSAPropagationCallGraphBuilder makeZeroCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView cache,
       IClassHierarchy cha, AnalysisScope scope, ContextSelector customSelector, SSAContextInterpreter customInterpreter) {
 
     if (options == null) {
@@ -358,7 +349,7 @@ public class Util {
     addDefaultSelectors(options, cha);
     addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
 
-    return ZeroXCFABuilder.make(cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.NONE);
+    return ZeroXCFABuilder.make(l, cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.NONE);
   }
 
   /**
@@ -368,9 +359,9 @@ public class Util {
    * @param cha governing class hierarchy
    * @param scope representation of the analysis scope
    */
-  public static SSAPropagationCallGraphBuilder makeZeroOneCFABuilder(AnalysisOptions options, IAnalysisCacheView cache,
+  public static SSAPropagationCallGraphBuilder makeZeroOneCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView cache,
       IClassHierarchy cha, AnalysisScope scope) {
-    return makeZeroOneCFABuilder(options, cache, cha, scope, null, null);
+    return makeZeroOneCFABuilder(l, options, cache, cha, scope, null, null);
   }
 
   /**
@@ -382,7 +373,7 @@ public class Util {
    * @return a 0-1-CFA Call Graph Builder.
    * @throws IllegalArgumentException if options is null
    */
-  public static SSAPropagationCallGraphBuilder makeVanillaZeroOneCFABuilder(AnalysisOptions options, IAnalysisCacheView analysisCache,
+  public static SSAPropagationCallGraphBuilder makeVanillaZeroOneCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView analysisCache,
       IClassHierarchy cha, AnalysisScope scope, ContextSelector customSelector, SSAContextInterpreter customInterpreter) {
 
     if (options == null) {
@@ -391,7 +382,7 @@ public class Util {
     addDefaultSelectors(options, cha);
     addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
 
-    return ZeroXCFABuilder.make(cha, options, analysisCache, customSelector, customInterpreter, ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.CONSTANT_SPECIFIC);
+    return ZeroXCFABuilder.make(l, cha, options, analysisCache, customSelector, customInterpreter, ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.CONSTANT_SPECIFIC);
   }
 
   /**
@@ -401,9 +392,9 @@ public class Util {
    * @param cha governing class hierarchy
    * @param scope representation of the analysis scope
    */
-  public static SSAPropagationCallGraphBuilder makeVanillaZeroOneCFABuilder(AnalysisOptions options, IAnalysisCacheView analysisCache,
+  public static SSAPropagationCallGraphBuilder makeVanillaZeroOneCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView analysisCache,
       IClassHierarchy cha, AnalysisScope scope) {
-    return makeVanillaZeroOneCFABuilder(options, analysisCache, cha, scope, null, null);
+    return makeVanillaZeroOneCFABuilder(l, options, analysisCache, cha, scope, null, null);
   }
 
   /**
@@ -415,7 +406,7 @@ public class Util {
    * @return a 0-1-CFA Call Graph Builder.
    * @throws IllegalArgumentException if options is null
    */
-  public static SSAPropagationCallGraphBuilder makeZeroOneCFABuilder(AnalysisOptions options, IAnalysisCacheView cache,
+  public static SSAPropagationCallGraphBuilder makeZeroOneCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView cache,
       IClassHierarchy cha, AnalysisScope scope, ContextSelector customSelector, SSAContextInterpreter customInterpreter) {
 
     if (options == null) {
@@ -424,7 +415,7 @@ public class Util {
     addDefaultSelectors(options, cha);
     addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
 
-    return ZeroXCFABuilder.make(cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS
+    return ZeroXCFABuilder.make(l, cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS
         | ZeroXInstanceKeys.SMUSH_STRINGS | ZeroXInstanceKeys.SMUSH_THROWABLES);
   }
 
@@ -488,7 +479,7 @@ public class Util {
     addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
     ContextSelector appSelector = null;
     SSAContextInterpreter appInterpreter = null;
-    SSAPropagationCallGraphBuilder result = new nCFABuilder(n, cha, options, cache, appSelector, appInterpreter);
+    SSAPropagationCallGraphBuilder result = new nCFABuilder(n, Language.JAVA.getFakeRootMethod(cha, options, cache), options, cache, appSelector, appInterpreter);
     // nCFABuilder uses type-based heap abstraction by default, but we want allocation sites
     result.setInstanceKeys(new ZeroXInstanceKeys(options, cha, result.getContextInterpreter(), ZeroXInstanceKeys.ALLOCATIONS
         | ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS | ZeroXInstanceKeys.SMUSH_STRINGS
@@ -511,7 +502,7 @@ public class Util {
     addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
     ContextSelector appSelector = null;
     SSAContextInterpreter appInterpreter = null;
-    SSAPropagationCallGraphBuilder result = new nCFABuilder(n, cha, options, cache, appSelector, appInterpreter);
+    SSAPropagationCallGraphBuilder result = new nCFABuilder(n, Language.JAVA.getFakeRootMethod(cha, options, cache), options, cache, appSelector, appInterpreter);
     // nCFABuilder uses type-based heap abstraction by default, but we want allocation sites
     result.setInstanceKeys(new ZeroXInstanceKeys(options, cha, result.getContextInterpreter(), ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.CONSTANT_SPECIFIC));
     return result;

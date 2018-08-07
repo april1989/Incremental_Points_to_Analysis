@@ -11,16 +11,15 @@
 package com.ibm.wala.ipa.modref;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphTransitiveClosure;
+import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
@@ -34,6 +33,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.intset.OrdinalSet;
 
 /**
@@ -45,7 +45,7 @@ import com.ibm.wala.util.intset.OrdinalSet;
 public class ModRef<T extends InstanceKey> {
 
   public static <U extends InstanceKey> ModRef<U> make() {
-    return new ModRef<U>();
+    return new ModRef<>();
   }
 
   public ModRef() {
@@ -96,43 +96,37 @@ public class ModRef<T extends InstanceKey> {
   }
 
   /**
-   * For each call graph node, what heap locations (as determined by a heap model) may it write, <bf> NOT </bf> including its
+   * For each call graph node, what heap locations (as determined by a heap model) may it write, <b> NOT </b> including its
    * callees transitively
    * 
    * @param heapExclude
    */
   private Map<CGNode, Collection<PointerKey>> scanForMod(CallGraph cg, final PointerAnalysis<T> pa, final HeapExclusions heapExclude) {
 
-    return CallGraphTransitiveClosure.collectNodeResults(cg, new Function<CGNode, Collection<PointerKey>>() {
-
-      @Override
-      public Collection<PointerKey> apply(CGNode n) {
-        return scanNodeForMod(n, pa, heapExclude);
-      }
-    });
+    return CallGraphTransitiveClosure.collectNodeResults(cg, n -> scanNodeForMod(n, pa, heapExclude));
   }
 
   /**
-   * For each call graph node, what heap locations (as determined by a heap model) may it read, <bf> NOT </bf> including its callees
+   * For each call graph node, what heap locations (as determined by a heap model) may it read, <b> NOT </b> including its callees
    * transitively
    * 
    * @param heapExclude
    */
   private Map<CGNode, Collection<PointerKey>> scanForRef(CallGraph cg, final PointerAnalysis<T> pa, final HeapExclusions heapExclude) {
-    return CallGraphTransitiveClosure.collectNodeResults(cg, new Function<CGNode, Collection<PointerKey>>() {
-
-      @Override
-      public Collection<PointerKey> apply(CGNode n) {
-        return scanNodeForRef(n, pa, heapExclude);
-      }
-    });
+    return CallGraphTransitiveClosure.collectNodeResults(cg, n -> scanNodeForRef(n, pa, heapExclude));
   }
 
   public ExtendedHeapModel makeHeapModel(PointerAnalysis<T> pa) {
-    return new DelegatingExtendedHeapModel(pa.getHeapModel());
+    HeapModel heapModel = pa.getHeapModel();
+    if (heapModel instanceof ExtendedHeapModel) {
+      return (ExtendedHeapModel) heapModel;
+    } else {
+      return new DelegatingExtendedHeapModel(heapModel);
+    }
   }
+  
   /**
-   * For a call graph node, what heap locations (as determined by a heap model) may it write, <bf> NOT </bf> including it's callees
+   * For a call graph node, what heap locations (as determined by a heap model) may it write, <b> NOT </b> including it's callees
    * transitively
    * 
    * @param heapExclude
@@ -143,8 +137,8 @@ public class ModRef<T extends InstanceKey> {
     SSAInstruction.Visitor v = makeModVisitor(n, result, pa, h);
     IR ir = n.getIR();
     if (ir != null) {
-      for (Iterator<SSAInstruction> it = ir.iterateNormalInstructions(); it.hasNext();) {
-        it.next().visit(v);
+      for (SSAInstruction inst : Iterator2Iterable.make(ir.iterateNormalInstructions())) {
+        inst.visit(v);
         assert ! result.contains(null);
       }
     }
@@ -155,7 +149,7 @@ public class ModRef<T extends InstanceKey> {
   }
 
   /**
-   * For a call graph node, what heap locations (as determined by a heap model) may it read, <bf> NOT </bf> including it's callees
+   * For a call graph node, what heap locations (as determined by a heap model) may it read, <b> NOT </b> including it's callees
    * transitively
    */
   private Collection<PointerKey> scanNodeForRef(final CGNode n, final PointerAnalysis<T> pa, HeapExclusions heapExclude) {
@@ -164,8 +158,7 @@ public class ModRef<T extends InstanceKey> {
     SSAInstruction.Visitor v = makeRefVisitor(n, result, pa, h);
     IR ir = n.getIR();
     if (ir != null) {
-      for (Iterator<SSAInstruction> it = ir.iterateNormalInstructions(); it.hasNext();) {
-        SSAInstruction x = it.next();
+      for (SSAInstruction x : Iterator2Iterable.make(ir.iterateNormalInstructions())) {
         x.visit(v);
         assert ! result.contains(null) : x;
      }
@@ -176,7 +169,7 @@ public class ModRef<T extends InstanceKey> {
     return result;
   }
 
-  protected static class RefVisitor<T extends InstanceKey, H extends ExtendedHeapModel> extends SSAInstruction.Visitor {
+  public static class RefVisitor<T extends InstanceKey, H extends ExtendedHeapModel> extends SSAInstruction.Visitor {
     protected final CGNode n;
 
     protected final Collection<PointerKey> result;
@@ -185,7 +178,7 @@ public class ModRef<T extends InstanceKey> {
 
     protected final H h;
 
-    protected RefVisitor(CGNode n, Collection<PointerKey> result, PointerAnalysis<T> pa2, H h) {
+    public RefVisitor(CGNode n, Collection<PointerKey> result, PointerAnalysis<T> pa2, H h) {
       this.n = n;
       this.result = result;
       this.pa = pa2;
@@ -227,7 +220,7 @@ public class ModRef<T extends InstanceKey> {
     }
   }
 
-  protected static class ModVisitor<T extends InstanceKey, H extends ExtendedHeapModel> extends SSAInstruction.Visitor {
+  public static class ModVisitor<T extends InstanceKey, H extends ExtendedHeapModel> extends SSAInstruction.Visitor {
     protected final CGNode n;
 
     protected final Collection<PointerKey> result;
@@ -238,7 +231,7 @@ public class ModRef<T extends InstanceKey> {
 
     private final boolean ignoreAllocHeapDefs;
 
-    protected ModVisitor(CGNode n, Collection<PointerKey> result, H h, PointerAnalysis<T> pa,
+    public ModVisitor(CGNode n, Collection<PointerKey> result, H h, PointerAnalysis<T> pa,
         boolean ignoreAllocHeapDefs) {
       this.n = n;
       this.result = result;
@@ -344,7 +337,8 @@ public class ModRef<T extends InstanceKey> {
 
   protected ModVisitor<T, ? extends ExtendedHeapModel> makeModVisitor(CGNode n, Collection<PointerKey> result, PointerAnalysis<T> pa, ExtendedHeapModel h,
       boolean ignoreAllocHeapDefs) {
-    return new ModVisitor<>(n, result, h, pa, ignoreAllocHeapDefs);
+    return n.getMethod().getDeclaringClass().getClassLoader().getLanguage().makeModVisitor(n, result, pa, h, ignoreAllocHeapDefs);
+    //return new ModVisitor<>(n, result, h, pa, ignoreAllocHeapDefs);
   }
 
   /**
@@ -369,7 +363,7 @@ public class ModRef<T extends InstanceKey> {
   }
 
   protected RefVisitor<T, ? extends ExtendedHeapModel> makeRefVisitor(CGNode n, Collection<PointerKey> result, PointerAnalysis<T> pa, ExtendedHeapModel h) {
-    return new RefVisitor<>(n, result, pa, h);
+    return n.getMethod().getDeclaringClass().getClassLoader().getLanguage().makeRefVisitor(n, result, pa, h);
   }
 
   /**

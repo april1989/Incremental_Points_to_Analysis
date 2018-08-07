@@ -11,22 +11,20 @@
 package com.ibm.wala.ssa.analysis;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.fixedpoint.impl.DefaultFixedPointSolver;
 import com.ibm.wala.fixpoint.BooleanVariable;
 import com.ibm.wala.fixpoint.UnaryOr;
-import com.ibm.wala.ssa.DefUse;
-import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.*;
 import com.ibm.wala.ssa.SSACFG.BasicBlock;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.CancelRuntimeException;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 
 /**
  * Eliminate dead assignments (phis) from an SSA IR.
@@ -59,16 +57,15 @@ public class DeadAssignmentElimination {
    * @param solution dataflow solution for dead assignment elimination
    */
   private static void doTransformation(IR ir, DeadValueSystem solution) {
-    ControlFlowGraph cfg = ir.getControlFlowGraph();
-    for (Iterator x = cfg.iterator(); x.hasNext();) {
-      BasicBlock b = (BasicBlock) x.next();
+    ControlFlowGraph<?, ISSABasicBlock> cfg = ir.getControlFlowGraph();
+    for (ISSABasicBlock issaBasicBlock : cfg) {
+      BasicBlock b = (BasicBlock) issaBasicBlock;
       if (DEBUG) {
         System.err.println("eliminateDeadPhis: " + b);
       }
       if (b.hasPhi()) {
         HashSet<SSAPhiInstruction> toRemove = HashSetFactory.make(5);
-        for (Iterator it = b.iteratePhis(); it.hasNext();) {
-          SSAPhiInstruction phi = (SSAPhiInstruction) it.next();
+        for (SSAPhiInstruction phi : Iterator2Iterable.make(b.iteratePhis())) {
           if (phi != null) {
             int def = phi.getDef();
             if (solution.isDead(def)) {
@@ -90,7 +87,7 @@ public class DeadAssignmentElimination {
   private static class DeadValueSystem extends DefaultFixedPointSolver<BooleanVariable> {
 
     /**
-     * Map: value number -> BooleanVariable isLive
+     * Map: value number -&gt; BooleanVariable isLive
      */
     final private Map<Integer, BooleanVariable> vars = HashMapFactory.make();
 
@@ -105,19 +102,18 @@ public class DeadAssignmentElimination {
      */
     DeadValueSystem(IR ir, DefUse DU) {
       // create a variable for each potentially dead phi instruction.
-      for (Iterator it = ir.iteratePhis(); it.hasNext();) {
-        SSAPhiInstruction phi = (SSAPhiInstruction) it.next();
+      for (SSAInstruction inst : Iterator2Iterable.make(ir.iteratePhis())) {
+        SSAPhiInstruction phi = (SSAPhiInstruction) inst;
         if (phi == null) {
           continue;
         }
         int def = phi.getDef();
         if (DU.getNumberOfUses(def) == 0) {
           // the phi is certainly dead ... record this with a dataflow fact.
-          trivialDead.add(new Integer(def));
+          trivialDead.add(Integer.valueOf(def));
         } else {
           boolean maybeDead = true;
-          for (Iterator uses = DU.getUses(def); uses.hasNext();) {
-            SSAInstruction u = (SSAInstruction) uses.next();
+          for (SSAInstruction u : Iterator2Iterable.make(DU.getUses(def))) {
             if (!(u instanceof SSAPhiInstruction)) {
               // certainly not dead
               maybeDead = false;
@@ -127,19 +123,18 @@ public class DeadAssignmentElimination {
           if (maybeDead) {
             // perhaps the phi is dead .. create a variable
             BooleanVariable B = new BooleanVariable(false);
-            vars.put(new Integer(def), B);
+            vars.put(Integer.valueOf(def), B);
           }
         }
       }
 
       // Now create dataflow equations; v is live iff any phi that uses v is live
-      for (Iterator it = vars.entrySet().iterator(); it.hasNext();) {
-        Map.Entry E = (Map.Entry) it.next();
-        Integer def = (Integer) E.getKey();
-        BooleanVariable B = (BooleanVariable) E.getValue();
-        for (Iterator uses = DU.getUses(def.intValue()); uses.hasNext();) {
-          SSAPhiInstruction u = (SSAPhiInstruction) uses.next();
-          Integer ud = new Integer(u.getDef());
+      for (Entry<Integer, BooleanVariable> E : vars.entrySet()) {
+        Integer def = E.getKey();
+        BooleanVariable B = E.getValue();
+        for (SSAInstruction use : Iterator2Iterable.make(DU.getUses(def.intValue()))) {
+          SSAPhiInstruction u = (SSAPhiInstruction) use;
+          Integer ud = Integer.valueOf(u.getDef());
           if (trivialDead.contains(ud)) {
             // do nothing ... u will not keep def live
           } else {

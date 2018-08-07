@@ -32,6 +32,7 @@ import com.ibm.wala.ipa.summaries.SyntheticIR;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
 import com.ibm.wala.ssa.ConstantValue;
 import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAArrayStoreInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInstructionFactory;
@@ -54,7 +55,7 @@ import com.ibm.wala.util.warnings.Warnings;
  */
 public abstract class AbstractRootMethod extends SyntheticMethod {
 
-  final protected ArrayList<SSAInstruction> statements = new ArrayList<SSAInstruction>();
+  public final ArrayList<SSAInstruction> statements = new ArrayList<>();
 
   private Map<ConstantValue, Integer> constant2ValueNumber = HashMapFactory.make();
 
@@ -62,9 +63,9 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
    * The number of the next local value number available for the fake root method. Note that we reserve value number 1 to represent
    * the value "any exception caught by the root method"
    */
-  protected int nextLocal = 2;
+  public int nextLocal = 2;
 
-  protected final IClassHierarchy cha;
+  public final IClassHierarchy cha;
 
   private final AnalysisOptions options;
 
@@ -90,7 +91,7 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
   }
 
   public AbstractRootMethod(MethodReference method, final IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache) {
-    this(method, new FakeRootClass(cha), cha, options, cache);
+    this(method, new FakeRootClass(method.getDeclaringClass().getClassLoader(), cha), cha, options, cache);
   }
 
   /*
@@ -100,8 +101,8 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
   public SSAInstruction[] getStatements(SSAOptions options) {
     SSAInstruction[] result = new SSAInstruction[statements.size()];
     int i = 0;
-    for (Iterator<SSAInstruction> it = statements.iterator(); it.hasNext();) {
-      result[i++] = it.next();
+    for (SSAInstruction ssaInstruction : statements) {
+      result[i++] = ssaInstruction;
     }
 
     return result;
@@ -130,12 +131,12 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
    * @return the invoke instructions added by this operation
    * @throws IllegalArgumentException if site is null
    */
-  public SSAInvokeInstruction addInvocation(int[] params, CallSiteReference site) {
+  public SSAAbstractInvokeInstruction addInvocation(int[] params, CallSiteReference site) {
     if (site == null) {
       throw new IllegalArgumentException("site is null");
     }
     CallSiteReference newSite = CallSiteReference.make(statements.size(), site.getDeclaredTarget(), site.getInvocationCode());
-    SSAInvokeInstruction s = null;
+    SSAAbstractInvokeInstruction s = null;
     if (newSite.getDeclaredTarget().getReturnType().equals(TypeReference.Void)) {
       s = insts.InvokeInstruction(statements.size(), params, nextLocal++, newSite, null);
     } else {
@@ -361,11 +362,11 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
 
       @Override
       public Iterator<NewSiteReference> iterateNewSites(CGNode node) {
-        ArrayList<NewSiteReference> result = new ArrayList<NewSiteReference>();
+        ArrayList<NewSiteReference> result = new ArrayList<>();
         SSAInstruction[] statements = getStatements(options.getSSAOptions());
-        for (int i = 0; i < statements.length; i++) {
-          if (statements[i] instanceof SSANewInstruction) {
-            SSANewInstruction s = (SSANewInstruction) statements[i];
+        for (SSAInstruction statement : statements) {
+          if (statement instanceof SSANewInstruction) {
+            SSANewInstruction s = (SSANewInstruction) statement;
             result.add(s.getNewSite());
           }
         }
@@ -373,11 +374,11 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
       }
 
       public Iterator<SSAInstruction> getInvokeStatements() {
-        ArrayList<SSAInstruction> result = new ArrayList<SSAInstruction>();
+        ArrayList<SSAInstruction> result = new ArrayList<>();
         SSAInstruction[] statements = getStatements(options.getSSAOptions());
-        for (int i = 0; i < statements.length; i++) {
-          if (statements[i] instanceof SSAInvokeInstruction) {
-            result.add(statements[i]);
+        for (SSAInstruction statement : statements) {
+          if (statement instanceof SSAInvokeInstruction) {
+            result.add(statement);
           }
         }
         return result.iterator();
@@ -407,7 +408,7 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
 
       @Override
       public boolean understands(CGNode node) {
-        return node.getMethod().getDeclaringClass().getReference().equals(FakeRootClass.FAKE_ROOT_CLASS);
+        return node.getMethod().getDeclaringClass().equals(AbstractRootMethod.this.getDeclaringClass());
       }
 
       @Override

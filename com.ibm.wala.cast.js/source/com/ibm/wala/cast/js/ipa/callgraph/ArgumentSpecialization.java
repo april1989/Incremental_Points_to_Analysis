@@ -27,6 +27,7 @@ import com.ibm.wala.cast.tree.CAstEntity;
 import com.ibm.wala.cast.tree.CAstNode;
 import com.ibm.wala.cast.tree.impl.CAstImpl;
 import com.ibm.wala.cast.tree.rewrite.CAstBasicRewriter;
+import com.ibm.wala.cast.tree.rewrite.CAstBasicRewriter.NonCopyingContext;
 import com.ibm.wala.cast.util.CAstPattern;
 import com.ibm.wala.cast.util.CAstPattern.Segments;
 import com.ibm.wala.cfg.AbstractCFG;
@@ -135,9 +136,9 @@ public class ArgumentSpecialization {
         int v = -1;
         for (SSAAbstractInvokeInstruction x : caller.getIR().getCalls(site)) {
           if (v == -1) {
-            v = x.getNumberOfParameters();
+            v = x.getNumberOfPositionalParameters();
           } else {
-            if (v != x.getNumberOfParameters()) {
+            if (v != x.getNumberOfPositionalParameters()) {
               return baseContext; 
             }
           }
@@ -183,12 +184,12 @@ public class ArgumentSpecialization {
         if (v != null) {
           final JavaScriptLoader myloader = (JavaScriptLoader) method.getDeclaringClass().getClassLoader();
                     
-          class FixedArgumentsRewriter extends CAstBasicRewriter {
+          class FixedArgumentsRewriter extends CAstBasicRewriter<NonCopyingContext> {
             private final CAstEntity e;
             private final Map<String, CAstNode> argRefs = HashMapFactory.make();
  
             public FixedArgumentsRewriter(CAst Ast) {
-              super(Ast, false);
+              super(Ast, new NonCopyingContext(), false);
               this.e = m.getEntity();
               for(Segments s : CAstPattern.findAll(destructuredAccessPattern, m.getEntity())) {
                 argRefs.put(s.getSingle("name").getValue().toString(), s.getSingle("value"));

@@ -9,7 +9,6 @@ import com.ibm.wala.cast.ipa.callgraph.CrossLanguageContextSelector;
 import com.ibm.wala.cast.ipa.callgraph.CrossLanguageInstanceKeys;
 import com.ibm.wala.cast.ipa.callgraph.CrossLanguageSSAPropagationCallGraphBuilder;
 import com.ibm.wala.cast.ipa.callgraph.GlobalObjectKey;
-import com.ibm.wala.cast.js.ipa.callgraph.JSCallGraph.JSFakeRoot;
 import com.ibm.wala.cast.js.ipa.callgraph.JSSSAPropagationCallGraphBuilder;
 import com.ibm.wala.cast.js.ipa.callgraph.JSSSAPropagationCallGraphBuilder.JSConstraintVisitor;
 import com.ibm.wala.cast.js.ipa.callgraph.JSSSAPropagationCallGraphBuilder.JSInterestingVisitor;
@@ -21,6 +20,7 @@ import com.ibm.wala.cast.js.ipa.callgraph.JavaScriptScopeMappingInstanceKeys;
 import com.ibm.wala.cast.js.loader.JavaScriptLoader;
 import com.ibm.wala.cast.js.types.JavaScriptTypes;
 import com.ibm.wala.cast.util.TargetLanguageSelector;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
@@ -28,7 +28,6 @@ import com.ibm.wala.ipa.callgraph.ContextSelector;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.DefaultContextSelector;
-import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.propagation.AbstractFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKeyFactory;
@@ -36,15 +35,14 @@ import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys;
-import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.strings.Atom;
 
 public class JavaJavaScriptHybridCallGraphBuilder extends CrossLanguageSSAPropagationCallGraphBuilder {
 
-  public JavaJavaScriptHybridCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache) {
-    super(cha, options, cache, new AstCFAPointerKeys());
+  public JavaJavaScriptHybridCallGraphBuilder(IMethod fakeRootClass, AnalysisOptions options, IAnalysisCacheView cache) {
+    super(fakeRootClass, options, cache, new AstCFAPointerKeys());
     globalObject = new GlobalObjectKey(cha.lookupClass(JavaScriptTypes.Root));
     
     SSAContextInterpreter contextInterpreter = makeDefaultContextInterpreters(null, options, cha);
@@ -78,28 +76,22 @@ public class JavaJavaScriptHybridCallGraphBuilder extends CrossLanguageSSAPropag
 
   @Override
   protected TargetLanguageSelector<ConstraintVisitor, CGNode> makeMainVisitorSelector() {
-    return new TargetLanguageSelector<ConstraintVisitor, CGNode>() {
-      @Override
-      public ConstraintVisitor get(Atom language, CGNode construct) {
-        if (JavaScriptTypes.jsName.equals(language)) {
-          return new JSConstraintVisitor(JavaJavaScriptHybridCallGraphBuilder.this, construct);
-        } else {
-          return new ConstraintVisitor(JavaJavaScriptHybridCallGraphBuilder.this, construct);
-        }
+    return (language, construct) -> {
+      if (JavaScriptTypes.jsName.equals(language)) {
+        return new JSConstraintVisitor(JavaJavaScriptHybridCallGraphBuilder.this, construct);
+      } else {
+        return new ConstraintVisitor(JavaJavaScriptHybridCallGraphBuilder.this, construct);
       }
     };
   }
 
   @Override
   protected TargetLanguageSelector<InterestingVisitor, Integer> makeInterestingVisitorSelector() {
-    return new TargetLanguageSelector<InterestingVisitor, Integer>() {
-      @Override
-      public InterestingVisitor get(Atom language, Integer construct) {
-        if (JavaScriptTypes.jsName.equals(language)) {
-          return new JSInterestingVisitor(construct);
-        } else {
-          return new InterestingVisitor(construct);
-        }
+    return (language, construct) -> {
+      if (JavaScriptTypes.jsName.equals(language)) {
+        return new JSInterestingVisitor(construct);
+      } else {
+        return new InterestingVisitor(construct);
       }
     };
   }
@@ -107,29 +99,19 @@ public class JavaJavaScriptHybridCallGraphBuilder extends CrossLanguageSSAPropag
   @Override
   protected TargetLanguageSelector<AstImplicitPointsToSetVisitor, LocalPointerKey> makeImplicitVisitorSelector(
       CrossLanguagePointerAnalysisImpl analysis) {
-    return new TargetLanguageSelector<AstImplicitPointsToSetVisitor, LocalPointerKey>() {
-      @Override
-      public AstImplicitPointsToSetVisitor get(Atom language, LocalPointerKey construct) {
-        if (JavaScriptTypes.jsName.equals(language)) {
-          return new JSImplicitPointsToSetVisitor((AstPointerAnalysisImpl) getPointerAnalysis(), construct);
-        } else {
-          return new AstImplicitPointsToSetVisitor((AstPointerAnalysisImpl) getPointerAnalysis(), construct);
-        }
+    return (language, construct) -> {
+      if (JavaScriptTypes.jsName.equals(language)) {
+        return new JSImplicitPointsToSetVisitor((AstPointerAnalysisImpl) getPointerAnalysis(), construct);
+      } else {
+        return new AstImplicitPointsToSetVisitor((AstPointerAnalysisImpl) getPointerAnalysis(), construct);
       }
     };
   }
 
   @Override
   protected TargetLanguageSelector<AbstractRootMethod, CrossLanguageCallGraph> makeRootNodeSelector() {
-    return new TargetLanguageSelector<AbstractRootMethod, CrossLanguageCallGraph>() {
-      @Override
-      public AbstractRootMethod get(Atom language, CrossLanguageCallGraph construct) {
-        if (JavaScriptTypes.jsName.equals(language)) {
-          return new JSFakeRoot(getClassHierarchy(), getOptions(), getAnalysisCache());
-        } else {
-          return new FakeRootMethod(getClassHierarchy(), getOptions(), getAnalysisCache());
-        }
-      }
+    return (language, construct) -> {
+        return getOptions().getAnalysisScope().getLanguage(language).getFakeRootMethod(getClassHierarchy(), getOptions(), getAnalysisCache());
     };
   }
 

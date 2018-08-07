@@ -54,7 +54,7 @@ import com.ibm.wala.types.TypeReference;
  *
  *  This Class does not consider Boxing / Unboxing 
  *
- *  @author Tobias Blaschke <code@tobiasblaschke.de>
+ *  @author Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
  *  @since  2013-11-21
  */
 public class PrimitiveAssignability {
@@ -78,13 +78,13 @@ public class PrimitiveAssignability {
     }
 
     private static final Map<Primitive, Map<Primitive, AssignabilityKind>> assignability =
-        new EnumMap<Primitive, Map<Primitive, AssignabilityKind>>(Primitive.class);
+        new EnumMap<>(Primitive.class);
 
     static {
         // fill assignability
 
         for (final Primitive t : Primitive.values()) {
-            final Map<Primitive, AssignabilityKind> addendum = new EnumMap<Primitive, AssignabilityKind>(Primitive.class);
+            final Map<Primitive, AssignabilityKind> addendum = new EnumMap<>(Primitive.class);
             addendum.put(t, AssignabilityKind.IDENTITY);
             assignability.put(t, addendum);
         }
@@ -145,7 +145,7 @@ public class PrimitiveAssignability {
         assignability.get(from).put(to, AssignabilityKind.WIDENING);
     }
 
-    private static final Map<TypeName, Primitive> namePrimitiveMap = new HashMap<TypeName, Primitive>();
+    private static final Map<TypeName, Primitive> namePrimitiveMap = new HashMap<>();
 
     static {
         // fill namePrimitiveMap

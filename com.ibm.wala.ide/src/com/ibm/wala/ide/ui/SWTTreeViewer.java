@@ -11,7 +11,6 @@
 package com.ibm.wala.ide.ui;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -30,6 +29,7 @@ import org.eclipse.ui.PlatformUI;
 
 import com.ibm.wala.util.PlatformUtil;
 import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.viz.NodeDecorator;
@@ -108,14 +108,11 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
     if (PlatformUI.isWorkbenchRunning()) {
       // run the code on the UI thread
       Display d = PlatformUI.getWorkbench().getDisplay();
-      Runnable r = new Runnable() {
-        @Override
-        public void run() {
-          try {
-            w.open();
-          } catch (Exception e) {
-            e.printStackTrace();
-          }
+      Runnable r = () -> {
+        try {
+          w.open();
+        } catch (Exception e) {
+          e.printStackTrace();
         }
       };
       if (isBlockInput()) {
@@ -130,12 +127,9 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
         w.open();
         Display.getCurrent().dispose();
       } else {
-        Runnable r = new Runnable() {
-          @Override
-          public void run() {
-            w.open();
-            Display.getCurrent().dispose();
-          }
+        Runnable r = () -> {
+          w.open();
+          Display.getCurrent().dispose();
         };
         Thread t = new Thread(r);
         t.start();
@@ -171,7 +165,7 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
     /**
      * Graph to visualize
      */
-    private final Graph graph;
+    private final Graph<Object> graph;
 
     /**
      * JFace component implementing the tree viewer
@@ -181,7 +175,7 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
     /**
      * @throws WalaException
      */
-    public GraphViewer(Graph graph) throws WalaException {
+    public GraphViewer(Graph<Object> graph) throws WalaException {
       super(null);
       this.graph = graph;
       if (graph == null) {
@@ -203,8 +197,8 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
       if (getPopUpActions().size() > 0) {
         MenuManager mm = new MenuManager();
         treeViewer.getTree().setMenu(mm.createContextMenu(treeViewer.getTree()));
-        for (Iterator<IAction> it = getPopUpActions().iterator(); it.hasNext();) {
-          mm.add(it.next());
+        for (IAction iAction : getPopUpActions()) {
+          mm.add(iAction);
         }
       }
       return treeViewer.getTree();
@@ -242,8 +236,8 @@ public class SWTTreeViewer extends AbstractJFaceRunner {
 
         Object[] result = new Object[graph.getSuccNodeCount(parentElement)];
         int i = 0;
-        for (Iterator it = graph.getSuccNodes(parentElement); it.hasNext();) {
-          result[i++] = it.next();
+        for (Object o : Iterator2Iterable.make(graph.getSuccNodes(parentElement))) {
+          result[i++] = o;
         }
         return result;
       }

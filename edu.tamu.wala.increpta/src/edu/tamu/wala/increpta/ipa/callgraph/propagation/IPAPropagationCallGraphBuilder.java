@@ -37,6 +37,7 @@ import com.ibm.wala.ipa.callgraph.ContextSelector;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
+import com.ibm.wala.ipa.callgraph.impl.ExplicitCallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.FilteredPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.IPointerOperator;
 import com.ibm.wala.ipa.callgraph.propagation.IPointsToSolver;
@@ -200,22 +201,22 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	 * @param options governing call graph construction options
 	 * @param pointerKeyFactory factory which embodies pointer abstraction policy
 	 */
-	protected IPAPropagationCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache,
+	protected IPAPropagationCallGraphBuilder(IMethod abstractRootMethod, AnalysisOptions options, IAnalysisCacheView cache,
 			IPAPointerKeyFactory pointerKeyFactory) {
-		if (cha == null) {
+		if (abstractRootMethod == null) {
 			throw new IllegalArgumentException("cha is null");
 		}
 		if (options == null) {
 			throw new IllegalArgumentException("options is null");
 		}
 		assert cache != null;
-		this.cha = cha;
+	    this.cha = abstractRootMethod.getClassHierarchy();
 		this.options = options;
 		this.analysisCache = cache;
 		// we need pointer keys to handle reflection
 		assert pointerKeyFactory != null;
 		this.pointerKeyFactory = pointerKeyFactory;
-		callGraph = createEmptyCallGraph(cha, options);
+	    callGraph = createEmptyCallGraph(abstractRootMethod, options);
 		try {
 			callGraph.init();
 		} catch (CancelException e) {
@@ -227,8 +228,8 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		JAVA_LANG_OBJECT = cha.lookupClass(TypeReference.JavaLangObject);
 	}
 
-	protected IPAExplicitCallGraph createEmptyCallGraph(IClassHierarchy cha, AnalysisOptions options) {
-		return new IPAExplicitCallGraph(cha, options, getAnalysisCache());
+	protected IPAExplicitCallGraph createEmptyCallGraph(IMethod abstractRootMethod, AnalysisOptions options) {
+		return new IPAExplicitCallGraph(abstractRootMethod, options, getAnalysisCache());
 	}
 
 	/**

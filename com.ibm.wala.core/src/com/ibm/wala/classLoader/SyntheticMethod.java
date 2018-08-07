@@ -41,7 +41,7 @@ public class SyntheticMethod implements IMethod {
 
   protected final IMethod resolvedMethod;
 
-  protected final IClass declaringClass;
+  public final IClass declaringClass;
 
   private final boolean isStatic;
 
@@ -175,7 +175,7 @@ public class SyntheticMethod implements IMethod {
    * NOTE: SIDE EFFECT!!! ... nulls out phi instructions in the instruction array!
    */
   public InducedCFG makeControlFlowGraph(SSAInstruction[] instructions) {
-    return new InducedCFG(instructions, this, Everywhere.EVERYWHERE);
+    return this.getDeclaringClass().getClassLoader().getLanguage().makeInducedCFG(instructions, this, Everywhere.EVERYWHERE);
   }
 
   public BytecodeStream getBytecodeStream() throws UnsupportedOperationException {

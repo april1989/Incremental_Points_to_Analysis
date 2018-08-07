@@ -10,6 +10,7 @@
  ******************************************************************************/
 package edu.tamu.wala.increpta.util;
 
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.ContextSelector;
@@ -30,9 +31,9 @@ public abstract class IPAUtil extends Util{
 	 * @param scope representation of the analysis scope
 	 * @return a 0-CFA Call Graph Builder.
 	 */
-	public static IPASSAPropagationCallGraphBuilder makeIPAZeroCFABuilder(AnalysisOptions options, IAnalysisCacheView cache,
+	public static IPASSAPropagationCallGraphBuilder makeIPAZeroCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView cache,
 			IClassHierarchy cha, AnalysisScope scope) {
-		return makeIPAZeroCFABuilder(options, cache, cha, scope, null, null);
+		return makeIPAZeroCFABuilder(l, options, cache, cha, scope, null, null);
 	}
 
 	/**
@@ -44,7 +45,7 @@ public abstract class IPAUtil extends Util{
 	 * @return a 0-CFA Call Graph Builder.
 	 * @throws IllegalArgumentException if options is null
 	 */
-	public static IPASSAPropagationCallGraphBuilder makeIPAZeroCFABuilder(AnalysisOptions options, IAnalysisCacheView cache,
+	public static IPASSAPropagationCallGraphBuilder makeIPAZeroCFABuilder(Language l, AnalysisOptions options, IAnalysisCacheView cache,
 			IClassHierarchy cha, AnalysisScope scope, ContextSelector customSelector, SSAContextInterpreter customInterpreter) {
 
 		if (options == null) {
@@ -53,7 +54,7 @@ public abstract class IPAUtil extends Util{
 		addDefaultSelectors(options, cha);
 		addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
 
-		return IPAZeroXCFABuilder.make(cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.NONE);
+		return IPAZeroXCFABuilder.make(l, cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.NONE);
 	}
 
 }

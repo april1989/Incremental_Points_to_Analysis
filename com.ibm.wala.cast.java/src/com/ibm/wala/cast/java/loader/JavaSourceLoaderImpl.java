@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +30,9 @@ import com.ibm.wala.cast.ir.ssa.AstIsDefinedInstruction;
 import com.ibm.wala.cast.ir.ssa.AstLexicalAccess.Access;
 import com.ibm.wala.cast.ir.ssa.AstLexicalRead;
 import com.ibm.wala.cast.ir.ssa.AstLexicalWrite;
+import com.ibm.wala.cast.ir.ssa.AstPropertyRead;
+import com.ibm.wala.cast.ir.ssa.AstPropertyWrite;
+import com.ibm.wala.cast.ir.ssa.AstYieldInstruction;
 import com.ibm.wala.cast.ir.translator.AstTranslator;
 import com.ibm.wala.cast.ir.translator.AstTranslator.AstLexicalInformation;
 import com.ibm.wala.cast.java.ssa.AstJavaInstructionFactory;
@@ -92,7 +94,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
 
   /**
    * WALA representation of a Java class residing in a source file
-   * 
+   *
    * @author rfuhrer
    */
   public class JavaClass extends AstClass {
@@ -101,7 +103,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     protected final Collection<TypeName> superTypeNames;
 
     private final Collection<Annotation> annotations;
-    
+
     public JavaClass(String typeName, Collection<TypeName> superTypeNames, CAstSourcePositionMap.Position position, Collection<CAstQualifier> qualifiers,
         JavaSourceLoaderImpl loader, IClass enclosingClass, Collection<Annotation> annotations) {
       super(position, TypeName.string2TypeName(typeName), loader, (short) mapToInt(qualifiers), new HashMap<Atom, IField>(), new HashMap<Selector, IMethod>());
@@ -123,8 +125,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     @Override
     public IClass getSuperclass() {
       boolean excludedSupertype=false;
-      for (Iterator<TypeName> iter = superTypeNames.iterator(); iter.hasNext();) {
-        TypeName name = iter.next();
+      for (TypeName name : superTypeNames) {
         IClass domoType = lookupClass(name);
         if (domoType != null && !domoType.isInterface()) {
           return domoType;
@@ -143,11 +144,11 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
 /** END Custom change: Common superclass is optional */
         Assertions.UNREACHABLE("Cannot find super class for " + this + " in " + superTypeNames);
       }
-      
+
       if (excludedSupertype){
         System.err.println("Not tracking calls through excluded superclass of " + getName() + " extends " + superTypeNames);
       }
-      
+
       return null;
     }
 
@@ -167,17 +168,17 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return result;
     }
 
-    private void addMethod(CAstEntity methodEntity, IClass owner, AbstractCFG<?, ?> cfg, SymbolTable symtab, boolean hasCatchBlock,
+    protected void addMethod(CAstEntity methodEntity, IClass owner, AbstractCFG<?, ?> cfg, SymbolTable symtab, boolean hasCatchBlock,
         Map<IBasicBlock<SSAInstruction>, TypeReference[]> caughtTypes, boolean hasMonitorOp, AstLexicalInformation lexicalInfo, DebuggingInformation debugInfo) {
       declaredMethods.put(Util.methodEntityToSelector(methodEntity), new ConcreteJavaMethod(methodEntity, owner, cfg, symtab,
           hasCatchBlock, caughtTypes, hasMonitorOp, lexicalInfo, debugInfo));
     }
 
-    private void addMethod(CAstEntity methodEntity, IClass owner) {
+    protected void addMethod(CAstEntity methodEntity, IClass owner) {
       declaredMethods.put(Util.methodEntityToSelector(methodEntity), new AbstractJavaMethod(methodEntity, owner));
     }
 
-    private void addField(CAstEntity fieldEntity) {
+    protected void addField(CAstEntity fieldEntity) {
       declaredFields.put(Util.fieldEntityToAtom(fieldEntity), new JavaField(fieldEntity, JavaSourceLoaderImpl.this, this, JavaSourceLoaderImpl.this.getAnnotations(fieldEntity)));
     }
 
@@ -201,7 +202,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     }
   }
 
-  private Collection<Annotation> getAnnotations(CAstEntity e) {
+  protected Collection<Annotation> getAnnotations(CAstEntity e) {
     Collection<CAstAnnotation> annotations = e.getAnnotations();
     if (annotations == null || annotations.isEmpty()) {
       return null;
@@ -223,14 +224,14 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return result;
     }
   }
-  
+
   /**
    * WALA representation of a field on a Java type that resides in a source file
-   * 
+   *
    * @author rfuhrer
    */
-  private class JavaField extends AstField {
-    private JavaField(CAstEntity fieldEntity, IClassLoader loader, IClass declaringClass, Collection<Annotation> annotations) {
+  protected class JavaField extends AstField {
+    protected JavaField(CAstEntity fieldEntity, IClassLoader loader, IClass declaringClass, Collection<Annotation> annotations) {
       super(FieldReference.findOrCreate(declaringClass.getReference(), Atom.findOrCreateUnicodeAtom(fieldEntity.getName()),
           TypeReference.findOrCreate(loader.getReference(), TypeName.string2TypeName(fieldEntity.getType().getName()))),
           fieldEntity.getQualifiers(), declaringClass, declaringClass.getClassHierarchy(), annotations);
@@ -240,10 +241,10 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
   /**
    * Generic DOMO representation of a method on a Java type that resides in a
    * source file
-   * 
+   *
    * @author rfuhrer
    */
-  private abstract class JavaEntityMethod extends AstMethod {
+  protected abstract class JavaEntityMethod extends AstMethod {
     private final TypeReference[] parameterTypes;
 
     private final TypeReference[] exceptionTypes;
@@ -278,7 +279,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return parameterTypes[i];
     }
 
-    private TypeReference[] computeParameterTypes(CAstEntity methodEntity) {
+    protected TypeReference[] computeParameterTypes(CAstEntity methodEntity) {
       TypeReference[] types;
       CAstType.Function type = (Function) methodEntity.getType();
       int argCount = type.getArgumentTypes().size();
@@ -305,7 +306,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return exceptionTypes;
     }
 
-    private TypeReference[] computeExceptionTypes(CAstEntity methodEntity) {
+    protected TypeReference[] computeExceptionTypes(CAstEntity methodEntity) {
       CAstType.Function fType = (Function) methodEntity.getType();
       Collection<CAstType> exceptionTypes = fType.getExceptionTypes();
 
@@ -328,10 +329,10 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
   /**
    * DOMO representation of an abstract (body-less) method on a Java type that
    * resides in a source file
-   * 
+   *
    * @author rfuhrer
    */
-  private class AbstractJavaMethod extends JavaEntityMethod {
+  protected class AbstractJavaMethod extends JavaEntityMethod {
     public AbstractJavaMethod(CAstEntity methodEntity, IClass owner) {
       super(methodEntity, owner);
     }
@@ -362,7 +363,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
   /**
    * DOMO representation of a concrete method (which has a body) on a Java type
    * that resides in a source file
-   * 
+   *
    * @author rfuhrer
    */
   public class ConcreteJavaMethod extends JavaEntityMethod {
@@ -485,7 +486,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     super(loaderRef, cha.getScope().getArrayClassLoader(), parent, cha.getScope().getExclusions(), cha);
     this.existsCommonSuperclass = existsCommonSuperClass;
   }
-  
+
   public JavaSourceLoaderImpl(ClassLoaderReference loaderRef, IClassLoader parent, IClassHierarchy cha) {
     // standard case: we have a common super class
     this(true, loaderRef, parent, cha);
@@ -505,7 +506,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
 /** BEGIN Custom change: Optional deletion of fTypeMap */
   public static volatile boolean deleteTypeMapAfterInit = true;
 /** END Custom change: Optional deletion of fTypeMap */
-  
+
 
   @Override
   public void init(List<Module> modules) throws IOException {
@@ -530,10 +531,10 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     ((JavaClass) owner).addField(n);
   }
 
-  private static TypeName toWALATypeName(CAstType type) {
+  protected static TypeName toWALATypeName(CAstType type) {
     return TypeName.string2TypeName(type.getName());
   }
-  
+
   public IClass defineType(CAstEntity type, String typeName, CAstEntity owner) {
     Collection<TypeName> superTypeNames = new ArrayList<>();
     for (CAstType superType : type.getType().getSupertypes()) {
@@ -546,7 +547,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     if (getParent().lookupClass(javaClass.getName()) != null) {
       return null;
     }
-    
+
     fTypeMap.put(type, javaClass);
     loadedClasses.put(javaClass.getName(), javaClass);
     return javaClass;
@@ -556,7 +557,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
   public String toString() {
     return "Java Source Loader (classes " + loadedClasses.values() + ")";
   }
-  
+
   public static class InstructionFactory extends JavaInstructionFactory implements AstJavaInstructionFactory {
 
     @Override
@@ -659,10 +660,27 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     public AstLexicalWrite LexicalWrite(int iindex, String definer, String globalName, TypeReference type, int rhs) {
        return new AstLexicalWrite(iindex, definer, globalName, type, rhs);
     }
+
+    @Override
+    public AstYieldInstruction YieldInstruction(int iindex, int[] rvals) {
+      return new AstYieldInstruction(iindex, rvals);
+    }
+    
+    @Override
+    public AstPropertyRead PropertyRead(int iindex, int result, int objectRef, int memberRef) {
+      assert false;
+      return null;
+    }
+
+    @Override
+    public AstPropertyWrite PropertyWrite(int iindex, int objectRef, int memberRef, int value) {
+      assert false;
+      return null;
+    }
   }
-  
-  private static final InstructionFactory insts = new InstructionFactory();
-  
+
+  protected static final InstructionFactory insts = new InstructionFactory();
+
   @Override
   public InstructionFactory getInstructionFactory() {
     return insts;

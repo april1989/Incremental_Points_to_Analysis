@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.core.tests.demandpa.AbstractPtrTest;
 import com.ibm.wala.core.tests.util.TestConstants;
 import com.ibm.wala.core.tests.util.WalaTestCase;
@@ -52,6 +53,7 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.Iterator2Iterable;
+import com.ibm.wala.util.collections.IteratorUtil;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphIntegrity;
@@ -182,7 +184,7 @@ public class CallGraphTest extends WalaTestCase {
     Iterable<Entrypoint> entrypoints = com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints(scope, cha,
         "LstaticInit/TestSystemProperties");
     AnalysisOptions options = CallGraphTestUtil.makeAnalysisOptions(scope, entrypoints);
-    SSAPropagationCallGraphBuilder builder = Util.makeZeroCFABuilder(options, new AnalysisCacheImpl(), cha, scope);    
+    SSAPropagationCallGraphBuilder builder = Util.makeZeroCFABuilder(Language.JAVA, options, new AnalysisCacheImpl(), cha, scope);    
     CallGraph cg = builder.makeCallGraph(options);
     for (CGNode n : cg) {
       if (n.toString().equals("Node: < Application, LstaticInit/TestSystemProperties, main([Ljava/lang/String;)V > Context: Everywhere")) {
@@ -242,12 +244,7 @@ public class CallGraphTest extends WalaTestCase {
         }
       }
     }
-    return new Iterable<Entrypoint>() {
-      @Override
-      public Iterator<Entrypoint> iterator() {
-        return result.iterator();
-      }
-    };
+    return result::iterator;
   }
   
   @Test public void testPrimordial() throws ClassHierarchyException, IllegalArgumentException, CancelException, IOException {
@@ -299,12 +296,7 @@ public class CallGraphTest extends WalaTestCase {
         result.add(new DefaultEntrypoint(m, cha));
       }
     }
-    return new Iterable<Entrypoint>() {
-      @Override
-      public Iterator<Entrypoint> iterator() {
-        return result.iterator();
-      }
-    };
+    return result::iterator;
   }
 
   public static void doCallGraphs(AnalysisOptions options, IAnalysisCacheView cache, IClassHierarchy cha, AnalysisScope scope)
@@ -406,8 +398,7 @@ public class CallGraphTest extends WalaTestCase {
     // perform a little icfg exercise
     @SuppressWarnings("unused")
     int count = 0;
-    for (Iterator<BasicBlockInContext<ISSABasicBlock>> it = icfg.iterator(); it.hasNext();) {
-      BasicBlockInContext<ISSABasicBlock> bb = it.next();
+    for (BasicBlockInContext<ISSABasicBlock> bb : icfg) {
       if (icfg.hasCall(bb)) {
         count++;
       }
@@ -468,8 +459,8 @@ public class CallGraphTest extends WalaTestCase {
       throw new IllegalArgumentException("cg is null");
     }
     final Set<MethodReference> nodes = HashSetFactory.make();
-    for (Iterator<CGNode> nodesI = cg.iterator(); nodesI.hasNext();) {
-      nodes.add((nodesI.next()).getMethod().getReference());
+    for (CGNode cgNode : cg) {
+      nodes.add((cgNode).getMethod().getReference());
     }
 
     return new Graph<MethodReference>() {
@@ -513,9 +504,9 @@ public class CallGraphTest extends WalaTestCase {
       public Iterator<MethodReference> getPredNodes(MethodReference N) {
         Set<MethodReference> pred = HashSetFactory.make(10);
         MethodReference methodReference = N;
-        for (Iterator<CGNode> i = cg.getNodes(methodReference).iterator(); i.hasNext();)
-          for (Iterator<? extends CGNode> ps = cg.getPredNodes(i.next()); ps.hasNext();)
-            pred.add(((CGNode) ps.next()).getMethod().getReference());
+        for (CGNode cgNode : cg.getNodes(methodReference))
+          for (CGNode p : Iterator2Iterable.make(cg.getPredNodes(cgNode)))
+            pred.add(p.getMethod().getReference());
 
         return pred.iterator();
       }
@@ -525,10 +516,7 @@ public class CallGraphTest extends WalaTestCase {
        */
       @Override
       public int getPredNodeCount(MethodReference N) {
-        int count = 0;
-        for (Iterator<? extends MethodReference> ps = getPredNodes(N); ps.hasNext(); count++, ps.next())
-          ;
-        return count;
+        return IteratorUtil.count(getPredNodes(N));
       }
 
       /*
@@ -538,9 +526,9 @@ public class CallGraphTest extends WalaTestCase {
       public Iterator<MethodReference> getSuccNodes(MethodReference N) {
         Set<MethodReference> succ = HashSetFactory.make(10);
         MethodReference methodReference = N;
-        for (Iterator<? extends CGNode> i = cg.getNodes(methodReference).iterator(); i.hasNext();)
-          for (Iterator<? extends CGNode> ps = cg.getSuccNodes(i.next()); ps.hasNext();)
-            succ.add(((CGNode) ps.next()).getMethod().getReference());
+        for (CGNode node : cg.getNodes(methodReference))
+          for (CGNode p : Iterator2Iterable.make(cg.getSuccNodes(node)))
+            succ.add(p.getMethod().getReference());
 
         return succ.iterator();
       }
@@ -550,10 +538,7 @@ public class CallGraphTest extends WalaTestCase {
        */
       @Override
       public int getSuccNodeCount(MethodReference N) {
-        int count = 0;
-        for (Iterator<MethodReference> ps = getSuccNodes(N); ps.hasNext(); count++, ps.next())
-          ;
-        return count;
+        return IteratorUtil.count(getSuccNodes(N));
       }
 
       /*
@@ -617,8 +602,8 @@ public class CallGraphTest extends WalaTestCase {
 
       @Override
       public boolean hasEdge(MethodReference src, MethodReference dst) {
-        for (Iterator<MethodReference> succNodes = getSuccNodes(src); succNodes.hasNext();) {
-          if (dst.equals(succNodes.next())) {
+        for (MethodReference succ : Iterator2Iterable.make(getSuccNodes(src))) {
+          if (dst.equals(succ)) {
             return true;
           }
         }

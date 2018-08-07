@@ -16,7 +16,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import com.ibm.wala.fixedpoint.impl.GeneralStatement;
 import com.ibm.wala.fixpoint.AbstractOperator;
@@ -26,11 +25,7 @@ import com.ibm.wala.fixpoint.IFixedPointSystem;
 import com.ibm.wala.fixpoint.IVariable;
 import com.ibm.wala.fixpoint.UnaryOperator;
 import com.ibm.wala.fixpoint.UnaryStatement;
-import com.ibm.wala.util.collections.CompoundIterator;
-import com.ibm.wala.util.collections.EmptyIterator;
-import com.ibm.wala.util.collections.FilterIterator;
-import com.ibm.wala.util.collections.HashSetFactory;
-import com.ibm.wala.util.collections.SmallMap;
+import com.ibm.wala.util.collections.*;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.debug.UnimplementedError;
 import com.ibm.wala.util.graph.AbstractNumberedGraph;
@@ -61,12 +56,12 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   /**
    * Track nodes (PointsToSet Variables and AbstractEquations)
    */
-  private final NumberedNodeManager<INodeWithNumber> nodeManager = new DelegatingNumberedNodeManager<INodeWithNumber>();
+  private final NumberedNodeManager<INodeWithNumber> nodeManager = new DelegatingNumberedNodeManager<>();
 
   /**
    * Track edges (equations) that are not represented implicitly
    */
-  private final NumberedEdgeManager<INodeWithNumber> edgeManager = new SparseNumberedEdgeManager<INodeWithNumber>(nodeManager, 2,
+  private final NumberedEdgeManager<INodeWithNumber> edgeManager = new SparseNumberedEdgeManager<>(nodeManager, 2,
       BasicNaturalRelation.SIMPLE);
 
   private final DelegateGraph delegateGraph = new DelegateGraph();
@@ -80,14 +75,14 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
    * for UnaryOperator op, let R be implicitMap.get(op) then (i,j) \in R implies i op j is an equation in the graph
    * 
    */
-  private final SmallMap<UnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> implicitUnaryMap = new SmallMap<UnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation>();
+  private final SmallMap<UnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> implicitUnaryMap = new SmallMap<>();
 
   /**
    * The inverse of relations in the implicit map
    * 
    * for UnaryOperator op, let R be invImplicitMap.get(op) then (i,j) \in R implies j op i is an equation in the graph
    */
-  private final SmallMap<UnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> invImplicitUnaryMap = new SmallMap<UnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation>();
+  private final SmallMap<UnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> invImplicitUnaryMap = new SmallMap<>();
 
   /**
    * Number of implicit unary equations registered
@@ -274,14 +269,9 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public Iterator<AbstractStatement> getStatements() {
-    Iterator<AbstractStatement> it = new FilterIterator(delegateGraph.iterator(), new Predicate() {
-      @Override public boolean test(Object x) {
-        return x instanceof AbstractStatement;
-      }
-    });
-    return new CompoundIterator<AbstractStatement>(it, new GlobalImplicitIterator());
+    Iterator<AbstractStatement> it = IteratorUtil.filter(delegateGraph.iterator(), AbstractStatement.class);
+    return new CompoundIterator<>(it, new GlobalImplicitIterator());
   }
 
   /**
@@ -372,7 +362,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
 
     private final Iterator<UnaryOperator<PointsToSetVariable>> outerKeyDelegate = implicitUnaryMap.keySet().iterator();
 
-    private Iterator innerDelegate;
+    private Iterator<IntPair> innerDelegate;
 
     private UnaryOperator<PointsToSetVariable> currentOperator;
 
@@ -388,7 +378,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
       while (outerKeyDelegate.hasNext()) {
         currentOperator = outerKeyDelegate.next();
         IBinaryNaturalRelation R = implicitUnaryMap.get(currentOperator);
-        Iterator it = R.iterator();
+        Iterator<IntPair> it = R.iterator();
         if (it.hasNext()) {
           innerDelegate = it;
           return;
@@ -403,7 +393,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
 
     @Override
     public AbstractStatement next() {
-      IntPair p = (IntPair) innerDelegate.next();
+      IntPair p = innerDelegate.next();
       int lhs = p.getX();
       int rhs = p.getY();
       UnaryStatement result = currentOperator.makeEquation((PointsToSetVariable) delegateGraph.getNode(lhs),
@@ -452,7 +442,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   }
 
   /**
-   * A graph of just the variables in the system. v1 -> v2 iff there exists equation e s.t. e uses v1 and e defs v2.
+   * A graph of just the variables in the system. v1 -&gt; v2 iff there exists equation e s.t. e uses v1 and e defs v2.
    * 
    * Note that this graph trickily and fragilely reuses the nodeManager from the delegateGraph, above. This will work ok as long as
    * every variable is inserted in the delegateGraph.
@@ -488,8 +478,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
      */
     @Override
     public void addNode(PointsToSetVariable n) {
-      Assertions.UNREACHABLE();
-
+      assert containsNode(n);
     }
 
     /*
@@ -514,7 +503,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
      */
     @Override
     public Iterator<PointsToSetVariable> getPredNodes(PointsToSetVariable v) {
-      final Iterator eqs = getStatementsThatDef(v);
+      final Iterator<AbstractStatement> eqs = getStatementsThatDef(v);
       return new Iterator<PointsToSetVariable>() {
         Iterator<INodeWithNumber> inner;
 
@@ -532,7 +521,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
             }
             return result;
           } else {
-            AbstractStatement eq = (AbstractStatement) eqs.next();
+            AbstractStatement eq = eqs.next();
             if (useImplicitRepresentation(eq)) {
               return (PointsToSetVariable) ((UnaryStatement) eq).getRightHandSide();
             } else {
@@ -553,16 +542,14 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
     /*
      * @see com.ibm.wala.util.graph.EdgeManager#getPredNodeCount(java.lang.Object)
      */
-    @SuppressWarnings("unused")
-    public int getPredNodeCount(INodeWithNumber N) {
-      PointsToSetVariable v = (PointsToSetVariable) N;
+    @Override
+    public int getPredNodeCount(PointsToSetVariable v) {
       int result = 0;
-      for (Iterator eqs = getStatementsThatDef(v); eqs.hasNext();) {
-        AbstractStatement eq = (AbstractStatement) eqs.next();
+      for (AbstractStatement eq : Iterator2Iterable.make(getStatementsThatDef(v))) {
         if (useImplicitRepresentation(eq)) {
           result++;
         } else {
-          result += delegateGraph.getPredNodeCount(N);
+          result += delegateGraph.getPredNodeCount(v);
         }
       }
       return result;
@@ -573,7 +560,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
      */
     @Override
     public Iterator<PointsToSetVariable> getSuccNodes(PointsToSetVariable v) {
-      final Iterator eqs = getStatementsThatUse(v);
+      final Iterator<AbstractStatement> eqs = getStatementsThatUse(v);
       return new Iterator<PointsToSetVariable>() {
         PointsToSetVariable nextResult;
         {
@@ -595,7 +582,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
         private void advance() {
           nextResult = null;
           while (eqs.hasNext() && nextResult == null) {
-            AbstractStatement eq = (AbstractStatement) eqs.next();
+            AbstractStatement eq = eqs.next();
             nextResult = (PointsToSetVariable) eq.getLHS();
           }
         }
@@ -614,8 +601,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
     @Override
     public int getSuccNodeCount(PointsToSetVariable v) {
       int result = 0;
-      for (Iterator eqs = getStatementsThatUse(v); eqs.hasNext();) {
-        AbstractStatement eq = (AbstractStatement) eqs.next();
+      for (AbstractStatement eq : Iterator2Iterable.make(getStatementsThatUse(v))) {
         IVariable lhs = eq.getLHS();
         if (lhs != null) {
           result++;
@@ -655,9 +641,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
     @Override
     @SuppressWarnings("unchecked")
     protected NumberedEdgeManager getEdgeManager() {
-      // TODO Auto-generated method stub
-      Assertions.UNREACHABLE();
-      return null;
+      return this;
     }
 
   }
@@ -678,10 +662,10 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
       IBinaryNaturalRelation R = (IBinaryNaturalRelation) invImplicitUnaryMap.getValue(i);
       IntSet s = R.getRelated(number);
       if (s != null) {
-        result = new CompoundIterator<INodeWithNumber>(new ImplicitUseIterator(op, v, s), result);
+        result = new CompoundIterator<>(new ImplicitUseIterator(op, v, s), result);
       }
     }
-    List<AbstractStatement> list = new ArrayList<AbstractStatement>();
+    List<AbstractStatement> list = new ArrayList<>();
     while (result.hasNext()) {
       list.add((AbstractStatement) result.next());
     }
@@ -704,11 +688,11 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
       IBinaryNaturalRelation R = (IBinaryNaturalRelation) implicitUnaryMap.getValue(i);
       IntSet s = R.getRelated(number);
       if (s != null) {
-        result = new CompoundIterator<INodeWithNumber>(new ImplicitDefIterator(op, s, v), result);
+        result = new CompoundIterator<>(new ImplicitDefIterator(op, s, v), result);
       }
     }
 
-    List<AbstractStatement> list = new ArrayList<AbstractStatement>();
+    List<AbstractStatement> list = new ArrayList<>();
     while (result.hasNext()) {
       list.add((AbstractStatement) result.next());
     }
@@ -732,8 +716,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
       return 0;
     }
     int result = delegateGraph.getSuccNodeCount(v);
-    for (Iterator it = invImplicitUnaryMap.keySet().iterator(); it.hasNext();) {
-      UnaryOperator op = (UnaryOperator) it.next();
+    for (UnaryOperator<PointsToSetVariable> op : invImplicitUnaryMap.keySet()) {
       IBinaryNaturalRelation R = invImplicitUnaryMap.get(op);
       IntSet s = R.getRelated(number);
       if (s != null) {
@@ -753,8 +736,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
       return 0;
     }
     int result = delegateGraph.getPredNodeCount(v);
-    for (Iterator it = implicitUnaryMap.keySet().iterator(); it.hasNext();) {
-      UnaryOperator op = (UnaryOperator) it.next();
+    for (UnaryOperator<PointsToSetVariable> op : implicitUnaryMap.keySet()) {
       IBinaryNaturalRelation R = implicitUnaryMap.get(op);
       IntSet s = R.getRelated(number);
       if (s != null) {
@@ -765,14 +747,8 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public Iterator<PointsToSetVariable> getVariables() {
-    Iterator<PointsToSetVariable> it = new FilterIterator(delegateGraph.iterator(), new Predicate() {
-      @Override public boolean test(Object x) {
-        return x instanceof IVariable;
-      }
-    });
-    return it;
+    return IteratorUtil.filter(delegateGraph.iterator(), PointsToSetVariable.class);
   }
 
   /*
@@ -787,10 +763,10 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
       System.err.println("implicit map:");
       int count = 0;
       int totalBytes = 0;
-      for (Iterator it = implicitUnaryMap.entrySet().iterator(); it.hasNext();) {
-        count++;
-        Map.Entry e = (Map.Entry) it.next();
-        IBinaryNaturalRelation R = (IBinaryNaturalRelation) e.getValue();
+      for (Map.Entry<UnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> entry : implicitUnaryMap.entrySet()) {
+		  count++;
+        Map.Entry<?, IBinaryNaturalRelation> e = entry;
+        IBinaryNaturalRelation R = e.getValue();
         System.err.println(("entry " + count));
         R.performVerboseAction();
         HeapTracer.Result result = HeapTracer.traceHeap(Collections.singleton(R), false);
@@ -854,7 +830,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   }
 
   /**
-   * A graph of just the variables in the system. v1 -> v2 iff there exists an assignment equation e s.t. e uses v1 and e defs v2.
+   * A graph of just the variables in the system. v1 -&gt; v2 iff there exists an assignment equation e s.t. e uses v1 and e defs v2.
    * 
    */
   public NumberedGraph<PointsToSetVariable> getAssignmentGraph() {
@@ -868,7 +844,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   }
 
   /**
-   * A graph of just the variables in the system. v1 -> v2 iff there exists an Assingnment or Filter equation e s.t. e uses v1 and e
+   * A graph of just the variables in the system. v1 -&gt; v2 iff there exists an Assingnment or Filter equation e s.t. e uses v1 and e
    * defs v2.
    * 
    */
@@ -891,7 +867,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   }
 
   /**
-   * A graph of just the variables in the system. v1 -> v2 that are related by def-use with "interesting" operators
+   * A graph of just the variables in the system. v1 -&gt; v2 that are related by def-use with "interesting" operators
    * 
    */
   private abstract class FilteredConstraintGraphView extends AbstractNumberedGraph<PointsToSetVariable> {
@@ -954,7 +930,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
      */
     @Override
     public Iterator<PointsToSetVariable> getPredNodes(PointsToSetVariable v) {
-      final Iterator eqs = getStatementsThatDef(v);
+      final Iterator<AbstractStatement> eqs = getStatementsThatDef(v);
       return new Iterator<PointsToSetVariable>() {
         PointsToSetVariable nextResult;
         {
@@ -976,7 +952,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
         private void advance() {
           nextResult = null;
           while (eqs.hasNext() && nextResult == null) {
-            AbstractStatement eq = (AbstractStatement) eqs.next();
+            AbstractStatement eq = eqs.next();
             if (isInteresting(eq)) {
               nextResult = (PointsToSetVariable) ((UnaryStatement) eq).getRightHandSide();
             }
@@ -996,8 +972,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
     @Override
     public int getPredNodeCount(PointsToSetVariable v) {
       int result = 0;
-      for (Iterator eqs = getStatementsThatDef(v); eqs.hasNext();) {
-        AbstractStatement eq = (AbstractStatement) eqs.next();
+      for (AbstractStatement eq : Iterator2Iterable.make(getStatementsThatDef(v))) {
         if (isInteresting(eq)) {
           result++;
         }
@@ -1010,7 +985,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
      */
     @Override
     public Iterator<PointsToSetVariable> getSuccNodes(PointsToSetVariable v) {
-      final Iterator eqs = getStatementsThatUse(v);
+      final Iterator<AbstractStatement> eqs = getStatementsThatUse(v);
       return new Iterator<PointsToSetVariable>() {
         PointsToSetVariable nextResult;
         {
@@ -1032,7 +1007,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
         private void advance() {
           nextResult = null;
           while (eqs.hasNext() && nextResult == null) {
-            AbstractStatement eq = (AbstractStatement) eqs.next();
+            AbstractStatement eq = eqs.next();
             if (isInteresting(eq)) {
               nextResult = (PointsToSetVariable) ((UnaryStatement) eq).getLHS();
             }
@@ -1053,8 +1028,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
     @Override
     public int getSuccNodeCount(PointsToSetVariable v) {
       int result = 0;
-      for (Iterator eqs = getStatementsThatUse(v); eqs.hasNext();) {
-        AbstractStatement eq = (AbstractStatement) eqs.next();
+      for (AbstractStatement eq : Iterator2Iterable.make(getStatementsThatUse(v))) {
         if (isInteresting(eq)) {
           result++;
         }
@@ -1108,12 +1082,7 @@ public class PropagationGraph implements IFixedPointSystem<PointsToSetVariable> 
   }
 
   private int countImplicitEdges() {
-    int result = 0;
-    for (Iterator it = new GlobalImplicitIterator(); it.hasNext();) {
-      it.next();
-      result++;
-    }
-    return result;
+    return IteratorUtil.count(new GlobalImplicitIterator());
   }
 
 }

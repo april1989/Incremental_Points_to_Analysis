@@ -61,6 +61,7 @@ import java.util.Set;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.dalvik.util.AndroidAnalysisScope;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
@@ -124,8 +125,7 @@ public class AndroidAnalysisContext {
 		/*
 		if (options.classHierarchyWarnings()) {
 			// log ClassHierarchy warnings
-			for (Iterator<Warning> wi = Warnings.iterator(); wi.hasNext();) {
-				Warning w = wi.next();
+			for (Warning w : Iterator2Iterable.make(Warnings.iterator())) {
 				
 			}
 		}
@@ -151,7 +151,7 @@ public class AndroidAnalysisContext {
 		// AndroidAppLoader.class.getClassLoader(), methodSpec, cha);
 		addBypassLogic(options, scope, summariesStream, cha, extraSummary);
 
-		return ZeroXCFABuilder.make(cha, options, cache, customSelector,
+		return ZeroXCFABuilder.make(Language.JAVA, cha, options, cache, customSelector,
 				customInterpreter, ZeroXInstanceKeys.ALLOCATIONS
 						| ZeroXInstanceKeys.CONSTANT_SPECIFIC);
 	}
@@ -214,7 +214,7 @@ public class AndroidAnalysisContext {
 			addBypassLogic(options, scope, stream, cha, extraSummary);
 		}
 
-		return ZeroXCFABuilder.make(cha, options, cache, customSelector,
+		return ZeroXCFABuilder.make(Language.JAVA, cha, options, cache, customSelector,
 				customInterpreter, ZeroXInstanceKeys.NONE);
 	}
 
@@ -300,7 +300,6 @@ public class AndroidAnalysisContext {
 	/**
 	 * Returns all concrete classes implementing the given interface or any subinterfaces
 	 * @param iRoot
-	 * @return
 	 */
 	public Collection<IClass> concreteClassesForInterface(IClass iRoot) {
 		Set<IClass> clazzes = HashSetFactory.make();

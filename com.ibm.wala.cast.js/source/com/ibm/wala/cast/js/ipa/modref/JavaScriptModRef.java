@@ -12,7 +12,6 @@
 package com.ibm.wala.cast.js.ipa.modref;
 
 import java.util.Collection;
-import java.util.Iterator;
 
 import com.ibm.wala.cast.ipa.callgraph.AstHeapModel;
 import com.ibm.wala.cast.ipa.modref.AstModRef;
@@ -20,8 +19,6 @@ import com.ibm.wala.cast.js.ssa.JSInstructionVisitor;
 import com.ibm.wala.cast.js.ssa.JavaScriptCheckReference;
 import com.ibm.wala.cast.js.ssa.JavaScriptInstanceOf;
 import com.ibm.wala.cast.js.ssa.JavaScriptInvoke;
-import com.ibm.wala.cast.js.ssa.JavaScriptPropertyRead;
-import com.ibm.wala.cast.js.ssa.JavaScriptPropertyWrite;
 import com.ibm.wala.cast.js.ssa.JavaScriptTypeOfInstruction;
 import com.ibm.wala.cast.js.ssa.JavaScriptWithRegion;
 import com.ibm.wala.cast.js.ssa.PrototypeLookup;
@@ -34,9 +31,9 @@ import com.ibm.wala.ipa.modref.ExtendedHeapModel;
 
 public class JavaScriptModRef<T extends InstanceKey> extends AstModRef<T> {
 
-  protected static class JavaScriptRefVisitor<T extends InstanceKey> extends AstRefVisitor<T> implements JSInstructionVisitor {
+  public static class JavaScriptRefVisitor<T extends InstanceKey> extends AstRefVisitor<T> implements JSInstructionVisitor {
 
-    protected JavaScriptRefVisitor(CGNode n, Collection<PointerKey> result, PointerAnalysis<T> pa, ExtendedHeapModel h) {
+    public JavaScriptRefVisitor(CGNode n, Collection<PointerKey> result, PointerAnalysis<T> pa, ExtendedHeapModel h) {
       super(n, result, pa, (AstHeapModel)h);
     }
 
@@ -47,26 +44,6 @@ public class JavaScriptModRef<T extends InstanceKey> extends AstModRef<T> {
 
     @Override
     public void visitTypeOf(JavaScriptTypeOfInstruction instruction) {
-      // do nothing
-    }
-
-    @Override
-    public void visitJavaScriptPropertyRead(JavaScriptPropertyRead instruction) {
-      PointerKey obj = h.getPointerKeyForLocal(n, instruction.getObjectRef());
-      PointerKey prop = h.getPointerKeyForLocal(n, instruction.getMemberRef());
-      for(InstanceKey o : pa.getPointsToSet(obj)) {
-        for(InstanceKey p : pa.getPointsToSet(prop)) {
-          for(Iterator<PointerKey> keys = h.getPointerKeysForReflectedFieldRead(o, p); keys.hasNext(); ) {
-            PointerKey x = keys.next();
-            assert x != null : instruction;
-            result.add(x);
-          }
-        }
-      }
-    }
-
-    @Override
-    public void visitJavaScriptPropertyWrite(JavaScriptPropertyWrite instruction) {
       // do nothing
     }
 
@@ -103,9 +80,9 @@ public class JavaScriptModRef<T extends InstanceKey> extends AstModRef<T> {
     return new JavaScriptRefVisitor<>(n, result, pa, h);
   }
 
-  protected static class JavaScriptModVisitor<T extends InstanceKey> extends AstModVisitor<T> implements JSInstructionVisitor {
+  public static class JavaScriptModVisitor<T extends InstanceKey> extends AstModVisitor<T> implements JSInstructionVisitor {
 
-    protected JavaScriptModVisitor(CGNode n, Collection<PointerKey> result, ExtendedHeapModel h, PointerAnalysis<T> pa) {
+    public JavaScriptModVisitor(CGNode n, Collection<PointerKey> result, ExtendedHeapModel h, PointerAnalysis<T> pa) {
       super(n, result, (AstHeapModel)h, pa);
     }
 
@@ -119,25 +96,6 @@ public class JavaScriptModRef<T extends InstanceKey> extends AstModRef<T> {
       // do nothing
     }
 
-    @Override
-    public void visitJavaScriptPropertyRead(JavaScriptPropertyRead instruction) {
-      // do nothing
-    }
-
-    @Override
-    public void visitJavaScriptPropertyWrite(JavaScriptPropertyWrite instruction) {
-      PointerKey obj = h.getPointerKeyForLocal(n, instruction.getObjectRef());
-      PointerKey prop = h.getPointerKeyForLocal(n, instruction.getMemberRef());
-      for(T o : pa.getPointsToSet(obj)) {
-        for(T p : pa.getPointsToSet(prop)) {
-          for(Iterator<PointerKey> keys = h.getPointerKeysForReflectedFieldWrite(o, p); keys.hasNext(); ) {
-            PointerKey x = keys.next();
-            assert x != null : instruction;
-            result.add(x);
-          }
-        }
-      }
-    }
 
     @Override
     public void visitJavaScriptInstanceOf(JavaScriptInstanceOf instruction) {

@@ -78,7 +78,7 @@ import com.ibm.wala.util.config.SetOfClasses;
  *  Iterates the ClassHierarchy matching its elements to a set of hardcoded entrypoint-specifications.
  *  Then optionally uses heuristics to select further entrypoints.
  *
- *  @author     Tobias Blaschke <code@tobiasblaschke.de>
+ *  @author     Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
  */
 public final class AndroidEntryPointLocator {
     private static final Logger logger = LoggerFactory.getLogger(AndroidEntryPointLocator.class);
@@ -201,7 +201,7 @@ nextMethod:
                     // Restrict the set
                     bases.add(AndroidTypes.Application);
                     bases.add(AndroidTypes.Activity);
-                    /** @todo TODO: add Fragments in getEntryPoints */
+                    /** TODO: TODO: add Fragments in getEntryPoints */
                     //bases.add(AndroidTypes.Fragment);
                     bases.add(AndroidTypes.Service);
                     bases.add(AndroidTypes.ContentProvider);
@@ -248,7 +248,7 @@ nextMethod:
                     // Don't consider internal overrides
                     continue;
                 }
-                final Collection<IMethod> methods = candid.getDeclaredMethods();
+                final Collection<? extends IMethod> methods = candid.getDeclaredMethods();
                 for (final IMethod method : methods) {
 
 
@@ -329,7 +329,7 @@ nextMethod:
             { // Overridden methods
                 if (isAPIComponent(appClass)) continue;
                 if (isExcluded(appClass)) continue;
-                final Collection<IMethod> methods = appClass.getDeclaredMethods();
+                final Collection<? extends IMethod> methods = appClass.getDeclaredMethods();
                 for (final IMethod method : methods) {
                     if ((method.isInit() || method.isClinit()) && (! this.flags.contains(LocatorFlags.WITH_CTOR))) {
                         logger.debug("Skipping constructor of {}", method); 
@@ -359,7 +359,7 @@ nextMethod:
                     }
                     if (isExcluded(iFace)) continue;
                     logger.debug("Searching Interface {}", iFace);
-                    final Collection<IMethod> ifMethods = iFace.getDeclaredMethods();
+                    final Collection<? extends IMethod> ifMethods = iFace.getDeclaredMethods();
                     for (final IMethod ifMethod : ifMethods) {
                         final IMethod method = appClass.getMethod(ifMethod.getSelector());
                         if (method != null && method.getDeclaringClass().getClassLoader().getReference().equals(ClassLoaderReference.Application)) {

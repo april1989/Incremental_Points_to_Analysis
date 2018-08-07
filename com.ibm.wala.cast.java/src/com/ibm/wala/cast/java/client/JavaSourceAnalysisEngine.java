@@ -43,7 +43,7 @@ import com.ibm.wala.util.io.FileProvider;
 
 /**
  */
-public abstract class JavaSourceAnalysisEngine<I extends InstanceKey> extends AbstractAnalysisEngine<I> {
+public abstract class JavaSourceAnalysisEngine<I extends InstanceKey> extends AbstractAnalysisEngine<I, CallGraphBuilder<I>, Void> {
 
   /**
    * Modules which are user-space code
@@ -159,12 +159,7 @@ public abstract class JavaSourceAnalysisEngine<I extends InstanceKey> extends Ab
     AnalysisOptions options = new AnalysisOptions(getScope(), entrypoints);
 
     SSAOptions ssaOptions = new SSAOptions();
-    ssaOptions.setDefaultValues(new SSAOptions.DefaultValues() {
-      @Override
-      public int getDefaultValue(SymbolTable symtab, int valueNumber) {
-        return symtab.getDefaultValue(valueNumber);
-      }
-    });
+    ssaOptions.setDefaultValues(SymbolTable::getDefaultValue);
 
     options.setSSAOptions(ssaOptions);
 
@@ -172,7 +167,7 @@ public abstract class JavaSourceAnalysisEngine<I extends InstanceKey> extends Ab
   }
 
   @Override
-  protected CallGraphBuilder<I> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache) {
+  protected CallGraphBuilder<? super I> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache) {
     return new ZeroCFABuilderFactory().make(options, cache, cha, scope);
   }
 }

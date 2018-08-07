@@ -46,7 +46,7 @@ public class ArrayBoundsGraphBuilder {
 	public ArrayBoundsGraphBuilder(IR ir) {
 		this.ir = ir;
 
-		this.foundVariables = new HashSet<Integer>();
+		this.foundVariables = new HashSet<>();
 		this.defUse = new DefUse(ir);
 
 		this.arrayReferenceInstructions = new HashSet<>();
@@ -112,16 +112,16 @@ public class ArrayBoundsGraphBuilder {
 	/**
 	 * Case 1: piRestrictor restricts the pi variable for upper/ lower bounds graph
 	 * Given this code below, we want to create a hyper edge
-	 * {piParent, piRestrictor} --> {piVar}.
+	 * {piParent, piRestrictor} --&gt; {piVar}.
 	 *
-	 * If is op in {<, >} we now, that the distance from piRestrictor to piVar
-	 * is +-1 as ( a < b ) <==> ( a <= b - 1), same with "<".
+	 * If is op in {&lt;, &gt;} we now, that the distance from piRestrictor to piVar
+	 * is +-1 as ( a &lt; b ) &lt;==&gt; ( a &lt;= b - 1), same with "&lt;".
 	 * To be more precise we introduce a helper node and add
-	 * {piRestrictor} -- (-)1 --> {helper}
-	 * {piParent, helper} --> {piVar}
+	 * {piRestrictor} -- (-)1 --&gt; {helper}
+	 * {piParent, helper} --&gt; {piVar}
 	 *
 	 * Case 2: no restriction is given by the branch (i.e. the operator is not equal)
-	 * {piParent} --> {piVar}
+	 * {piParent} --&gt; {piVar}
 	 *
 	 * <code>if (piParent op piRestrictor) {piVar = piParent}</code>
 	 *
@@ -210,7 +210,7 @@ public class ArrayBoundsGraphBuilder {
 	 * @param graph
 	 */
 	private static void collapseNonPhiEdges(ArrayBoundsGraph graph) {
-		final Map<HyperNode<Integer>, DirectedHyperEdge<Integer>> inEdges = new HashMap<HyperNode<Integer>, DirectedHyperEdge<Integer>>();
+		final Map<HyperNode<Integer>, DirectedHyperEdge<Integer>> inEdges = new HashMap<>();
 		final Set<DirectedHyperEdge<Integer>> edges = new HashSet<>();
 		edges.addAll(graph.getEdges());
 		for (final DirectedHyperEdge<Integer> edge : edges) {
@@ -323,7 +323,7 @@ public class ArrayBoundsGraphBuilder {
 	}
 
 	private void exploreIr() {
-		final Set<Integer> variablesUsedAsIndex = new HashSet<Integer>();
+		final Set<Integer> variablesUsedAsIndex = new HashSet<>();
 		for (final Set<Integer> variables : this.lowerBoundGraph
 				.getArrayAccess().values()) {
 			variablesUsedAsIndex.addAll(variables);
@@ -386,7 +386,7 @@ public class ArrayBoundsGraphBuilder {
 	 * the given variable.
 	 */
 	private void startDFS(int index) {
-		final Stack<Integer> todo = new Stack<Integer>();
+		final Stack<Integer> todo = new Stack<>();
 		todo.push(index);
 
 		while (!todo.isEmpty()) {

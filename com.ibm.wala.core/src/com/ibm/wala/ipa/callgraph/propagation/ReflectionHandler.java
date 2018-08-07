@@ -12,7 +12,6 @@ package com.ibm.wala.ipa.callgraph.propagation;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -70,21 +69,18 @@ public class ReflectionHandler {
           System.err.println(" " + x);
         }
       }
-      Predicate<Statement> f = new Predicate<Statement>() {
-        @Override
-        public boolean test(Statement s) {
-          if (s.getKind() == Kind.NORMAL) {
-            return ((NormalStatement) s).getInstruction() instanceof SSACheckCastInstruction;
-          } else {
-            return false;
-          }
+      Predicate<Statement> f = s -> {
+        if (s.getKind() == Kind.NORMAL) {
+          return ((NormalStatement) s).getInstruction() instanceof SSACheckCastInstruction;
+        } else {
+          return false;
         }
       };
       Collection<Statement> casts = Iterator2Collection.toSet(new FilterIterator<>(slice.iterator(), f));
       changedNodes.addAll(modifyFactoryInterpreter(st, casts, builder.getContextInterpreter(), builder.getClassHierarchy()));
     }
-    for (Iterator<CGNode> it = changedNodes.iterator(); it.hasNext();) {
-      builder.addConstraintsFromChangedNode(it.next(), monitor);
+    for (CGNode cgNode : changedNodes) {
+      builder.addConstraintsFromChangedNode(cgNode, monitor);
     }
     return changedNodes.size() > 0;
 
@@ -93,8 +89,7 @@ public class ReflectionHandler {
   private Collection<Statement> computeFactoryReturnStatements() {
     // todo: clean up logic with inheritance, delegation.
     HashSet<Statement> result = HashSetFactory.make();
-    for (Iterator it = builder.getCallGraph().iterator(); it.hasNext();) {
-      CGNode n = (CGNode) it.next();
+    for (CGNode n : builder.getCallGraph()) {
       if (n.getMethod() instanceof SyntheticMethod) {
         SyntheticMethod m = (SyntheticMethod) n.getMethod();
         if (m.isFactoryMethod()) {

@@ -70,7 +70,7 @@ import com.ibm.wala.util.intset.IntSetUtil;
  *  @see    com.ibm.wala.dalvik.ipa.callgraph.propagation.cfa.IntentContextInterpreter
  *  @see    com.ibm.wala.dalvik.ipa.callgraph.propagation.cfa.IntentStarters
  *
- *  @author Tobias Blaschke <code@tobiasblaschke.de>
+ *  @author Tobias Blaschke &lt;code@tobiasblaschke.de&gt;
  *  @since  2013-10-14
  */
 public class IntentContextSelector implements ContextSelector {
@@ -126,8 +126,8 @@ public class IntentContextSelector implements ContextSelector {
 
             Intent intent = null;
             { // Seach intent
-                for (int j = 0; j < actualParameters.length; ++j) {
-                    final InstanceKey param = actualParameters[j];
+                for (InstanceKey actualParameter : actualParameters) {
+                    final InstanceKey param = actualParameter;
                     if (param == null) {
                         continue;
                     } else if (param.getConcreteType().getName().equals(AndroidTypes.IntentName)) {
@@ -376,8 +376,8 @@ public class IntentContextSelector implements ContextSelector {
             final int[] relevant = info.getRelevant();
 
             if (relevant != null) {
-                for (int i = 0; i < relevant.length; ++i) {
-                    ret = IntSetUtil.add(ret, relevant[i]);
+                for (int element : relevant) {
+                    ret = IntSetUtil.add(ret, element);
                 }
             }
 

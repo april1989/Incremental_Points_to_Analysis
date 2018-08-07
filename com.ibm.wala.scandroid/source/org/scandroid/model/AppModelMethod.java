@@ -72,9 +72,9 @@ import com.ibm.wala.ipa.summaries.MethodSummary;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
 import com.ibm.wala.shrikeBT.IInvokeInstruction.IDispatch;
 import com.ibm.wala.ssa.ConstantValue;
+import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAArrayStoreInstruction;
 import com.ibm.wala.ssa.SSAInstructionFactory;
-import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.Descriptor;
@@ -89,7 +89,7 @@ public class AppModelMethod {
 	
 	int nextLocal;
     /**
-     * A mapping from String (variable name) -> Integer (local number)
+     * A mapping from String (variable name) -&gt; Integer (local number)
      */
     private Map<String, Integer> symbolTable = null;
     
@@ -203,7 +203,7 @@ public class AppModelMethod {
 		nextLocal = nParams + 1;
 		symbolTable = HashMapFactory.make(5);
 		for (int i = 0; i < nParams; i++) {
-			symbolTable.put("arg" + i, new Integer(i + 1));
+			symbolTable.put("arg" + i, Integer.valueOf(i + 1));
 		}
     }	
     
@@ -424,12 +424,12 @@ public class AppModelMethod {
         return a;
     }
         
-    public SSAInvokeInstruction addInvocation(int[] params, CallSiteReference site) {
+    public SSAAbstractInvokeInstruction addInvocation(int[] params, CallSiteReference site) {
     	if (site == null) {
     		throw new IllegalArgumentException("site is null");
     	}
     	CallSiteReference newSite = CallSiteReference.make(methodSummary.getNumberOfStatements(), site.getDeclaredTarget(), site.getInvocationCode());
-    	SSAInvokeInstruction s = null;
+    	SSAAbstractInvokeInstruction s = null;
     	if (newSite.getDeclaredTarget().getReturnType().equals(TypeReference.Void)) {
     		s = insts.InvokeInstruction(methodSummary.getNumberOfStatements(), params, nextLocal++, newSite, null);
     	} else {

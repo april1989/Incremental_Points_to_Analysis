@@ -333,7 +333,7 @@ public class SSAtoXMLVisitor implements SSAInstruction.IVisitor {
                 elt.setAttribute(XMLSummaryWriter.A_DEF, localName);
             }
 
-            int paramCount = instruction.getNumberOfParameters();
+            int paramCount = instruction.getNumberOfPositionalParameters();
             for (int i=0; i < paramCount; i++) {
             	String argName = getLocalName(instruction.getUse(i));
             	elt.setAttribute(XMLSummaryWriter.A_ARG+i, argName);
@@ -461,11 +461,10 @@ public class SSAtoXMLVisitor implements SSAInstruction.IVisitor {
      * local name associated with it) then this will throw an illegal state
      * exception.
      *
-     * TODO needs to return 'arg0' -> 'argN' for those value numbers...
+     * TODO needs to return 'arg0' -&gt; 'argN' for those value numbers...
      *
      * @param defNum
      *
-     * @return
      * @throws IllegalStateException
      */
     private String getLocalName(int defNum) throws IllegalStateException {

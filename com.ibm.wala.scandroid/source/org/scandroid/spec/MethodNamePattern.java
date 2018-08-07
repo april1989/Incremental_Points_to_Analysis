@@ -85,7 +85,7 @@ public class MethodNamePattern {
 		Collection<IMethod> matching = new LinkedList<>();
 		Atom atom = Atom.findOrCreateUnicodeAtom(memberName);
 		Descriptor desc = descriptor == null ? null : Descriptor.findOrCreateUTF8(descriptor);
-		Collection<IMethod> allMethods = c.getAllMethods();
+		Collection<? extends IMethod> allMethods = c.getAllMethods();
 		for(IMethod m: allMethods) {
 			if(m.getName().equals(atom) && (desc == null || m.getDescriptor().equals(desc))) {
 				matching.add(m);
@@ -98,7 +98,6 @@ public class MethodNamePattern {
 	 * Returns a Collection of IMethods which are found in the following 
 	 * ClassLoaders: Application, Primordial, Extension
 	 * @param cha
-	 * @return
 	 */
 	public Collection<IMethod> getPossibleTargets(IClassHierarchy cha) {
 		Collection<IMethod> matching = new LinkedList<>();

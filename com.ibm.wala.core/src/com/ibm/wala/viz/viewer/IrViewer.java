@@ -47,11 +47,11 @@ public class IrViewer extends JPanel{
   public interface SelectedPcListner{
     void valueChanged(int pc);
   }
-  Set<SelectedPcListner> selectedPcListners = new HashSet<SelectedPcListner>();
+  Set<SelectedPcListner> selectedPcListners = new HashSet<>();
   
   public IrViewer() {
     super(new BorderLayout());
-    irLines = new JList<String>(irLineList);
+    irLines = new JList<>(irLineList);
     methodName = new JTextField("IR");
     this.add(methodName, BorderLayout.PAGE_START);
     this.add(new JScrollPane(irLines, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -59,18 +59,18 @@ public class IrViewer extends JPanel{
     
     
     irLines.addListSelectionListener(new ListSelectionListener() {
+
       @Override
       public void valueChanged(ListSelectionEvent e) {
-        int index = irLines.getSelectedIndex();
-        Integer pc = lineToPc.get(index);
-        if (pc == null) {
-          pc = NA;
-        }
-        for (SelectedPcListner selectedPcListner : selectedPcListners) {
-          selectedPcListner.valueChanged(pc);
-        }
+      int index = irLines.getSelectedIndex();
+      Integer pc = lineToPc.get(index);
+      if (pc == null) {
+        pc = NA;
       }
-    });
+      for (SelectedPcListner selectedPcListner : selectedPcListners) {
+        selectedPcListner.valueChanged(pc);
+      }
+    }});
   }
   
   public void setIR(IR ir) {

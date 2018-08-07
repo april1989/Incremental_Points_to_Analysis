@@ -113,7 +113,7 @@ public class DexSSABuilder extends AbstractIntRegisterMachine {
     final private SymbolTable symbolTable;
 
     /**
-     * A logical mapping from <bcIndex, valueNumber> -> local number if null, don't build it.
+     * A logical mapping from &lt;bcIndex, valueNumber&gt; -&gt; local number if null, don't build it.
      */
     private final SSA2LocalMap localMap;
 
@@ -195,9 +195,9 @@ public class DexSSABuilder extends AbstractIntRegisterMachine {
         @Override
         public int meetLocal(int n, int[] rhs, DexCFG.BasicBlock bb) {
             if (allTheSame(rhs)) {
-                for (int i = 0; i < rhs.length; i++) {
-                    if (rhs[i] != TOP) {
-                        return rhs[i];
+                for (int rh : rhs) {
+                    if (rh != TOP) {
+                        return rh;
                     }
                 }
                 // didn't find anything but TOP
@@ -1378,7 +1378,7 @@ public class DexSSABuilder extends AbstractIntRegisterMachine {
     }
 
     /**
-     * A logical mapping from <pc, valueNumber> -> local number Note: make sure this class remains static: this persists as part of
+     * A logical mapping from &lt;pc, valueNumber&gt; -&gt; local number Note: make sure this class remains static: this persists as part of
      * the IR!!
      */
     private static class SSA2LocalMap implements com.ibm.wala.ssa.IR.SSA2LocalMap {
@@ -1386,7 +1386,7 @@ public class DexSSABuilder extends AbstractIntRegisterMachine {
         private final DexCFG dexCFG;
 
         /**
-         * Mapping Integer -> IntPair where p maps to (vn,L) iff we've started a range at pc p where value number vn corresponds to
+         * Mapping Integer -&gt; IntPair where p maps to (vn,L) iff we've started a range at pc p where value number vn corresponds to
          * local L
          */
         private final IntPair[] localStoreMap;
@@ -1430,8 +1430,7 @@ public class DexSSABuilder extends AbstractIntRegisterMachine {
          * Finish populating the map of local variable information
          */
         private void finishLocalMap(DexSSABuilder builder) {
-            for (Iterator<BasicBlock> it = dexCFG.iterator(); it.hasNext();) {
-                BasicBlock bb = it.next();
+            for (BasicBlock bb : dexCFG) {
                 MachineState S = builder.getIn(bb);
                 int number = bb.getNumber();
                 block2LocalState[number] = S.getLocals();
@@ -1505,8 +1504,8 @@ public class DexSSABuilder extends AbstractIntRegisterMachine {
          */
         private static int[] extractIndices(int[] x, int y) {
             int count = 0;
-            for (int i = 0; i < x.length; i++) {
-                if (x[i] == y) {
+            for (int element : x) {
+                if (element == y) {
                     count++;
                 }
             }

@@ -19,6 +19,7 @@ import com.ibm.wala.cfg.MinimalCFG;
 import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.AbstractNumberedGraph;
 import com.ibm.wala.util.graph.NumberedEdgeManager;
@@ -60,27 +61,24 @@ public class ControlDependenceGraph<T> extends AbstractNumberedGraph<T> {
   private Map<T, Set<T>> buildControlDependence(boolean wantEdgeLabels) {
     Map<T, Set<T>> controlDependence = HashMapFactory.make(cfg.getNumberOfNodes());
 
-    DominanceFrontiers<T> RDF = new DominanceFrontiers<T>(GraphInverter.invert(cfg), cfg.exit());
+    DominanceFrontiers<T> RDF = new DominanceFrontiers<>(GraphInverter.invert(cfg), cfg.exit());
 
     if (wantEdgeLabels) {
       edgeLabels = HashMapFactory.make();
     }
 
-    for (Iterator<? extends T> ns = cfg.iterator(); ns.hasNext();) {
+    for (T name : cfg) {
       HashSet<T> s = HashSetFactory.make(2);
-      controlDependence.put(ns.next(), s);
+      controlDependence.put(name, s);
     }
 
-    for (Iterator<? extends T> ns = cfg.iterator(); ns.hasNext();) {
-      T y = ns.next();
-      for (Iterator<T> ns2 = RDF.getDominanceFrontier(y); ns2.hasNext();) {
-        T x = ns2.next();
+    for (T y : cfg) {
+      for (T x : Iterator2Iterable.make(RDF.getDominanceFrontier(y))) {
         controlDependence.get(x).add(y);
         if (wantEdgeLabels) {
            HashSet<Object> labels = HashSetFactory.make();
           edgeLabels.put(Pair.make(x, y), labels);
-          for (Iterator<? extends T> ss = cfg.getSuccNodes(x); ss.hasNext();) {
-            T s = ss.next();
+          for (T s : Iterator2Iterable.make(cfg.getSuccNodes(x))) {
             if (RDF.isDominatedBy(s, y)) {
               labels.add(makeEdgeLabel(x, y, s));
             }
@@ -104,14 +102,13 @@ public class ControlDependenceGraph<T> extends AbstractNumberedGraph<T> {
     return new NumberedEdgeManager<T>() {
       Map<T, Set<T>> backwardEdges = HashMapFactory.make(forwardEdges.size());
       {
-        for (Iterator<? extends T> x = cfg.iterator(); x.hasNext();) {
+        for (T name : cfg) {
           Set<T> s = HashSetFactory.make();
-          backwardEdges.put(x.next(), s);
+          backwardEdges.put(name, s);
         }
-        for (Iterator<T> ps = forwardEdges.keySet().iterator(); ps.hasNext();) {
-          T p = ps.next();
-          for (Iterator ns = ((Set) forwardEdges.get(p)).iterator(); ns.hasNext();) {
-            Object n = ns.next();
+        for (T p : forwardEdges.keySet()) {
+          for (T t : forwardEdges.get(p)) {
+            Object n = t;
             backwardEdges.get(n).add(p);
           }
         }
@@ -206,15 +203,13 @@ public class ControlDependenceGraph<T> extends AbstractNumberedGraph<T> {
   @Override
   public String toString() {
     StringBuffer sb = new StringBuffer();
-    for (Iterator<? extends T> ns = iterator(); ns.hasNext();) {
-      T n = ns.next();
+    for (T n : this) {
       sb.append(n.toString()).append("\n");
-      for (Iterator ss = getSuccNodes(n); ss.hasNext();) {
-        Object s = ss.next();
+      for (T s : Iterator2Iterable.make(getSuccNodes(n))) {
         sb.append("  --> ").append(s);
         if (edgeLabels != null)
-          for (Iterator labels = ((Set) edgeLabels.get(Pair.make(n, s))).iterator(); labels.hasNext();)
-            sb.append("\n   label: ").append(labels.next());
+          for (Object name : edgeLabels.get(Pair.make(n, s)))
+            sb.append("\n   label: ").append(name);
         sb.append("\n");
       }
     }
@@ -268,8 +263,8 @@ public class ControlDependenceGraph<T> extends AbstractNumberedGraph<T> {
       return false;
     }
 
-    for (Iterator<? extends T> pbs1 = getPredNodes(bb1); pbs1.hasNext();) {
-      if (!hasEdge(pbs1.next(), bb2)) {
+    for (T pb : Iterator2Iterable.make(getPredNodes(bb1))) {
+      if (!hasEdge(pb, bb2)) {
         return false;
       }
     }

@@ -12,7 +12,7 @@ package com.ibm.wala.dataflow.IFDS;
 
 
 /**
- * an individual edge <entry, d1> -> <target, d2>
+ * an individual edge &lt;entry, d1&gt; -&gt; &lt;target, d2&gt;
  * 
  * @param <T> node type in the supergraph
  */
@@ -30,7 +30,7 @@ public final class PathEdge<T> {
     if (n == null) {
       throw new IllegalArgumentException("null n");
     }
-    return new PathEdge<T>(s_p, d1, n, d2);
+    return new PathEdge<>(s_p, d1, n, d2);
   }
   
   private PathEdge(T s_p, int d1, T n, int d2) {

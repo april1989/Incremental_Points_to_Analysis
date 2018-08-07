@@ -165,9 +165,9 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 
 	public IProgressMonitor monitor;
 
-	protected IPASSAPropagationCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache,
+	protected IPASSAPropagationCallGraphBuilder(IMethod abstractRootMethod, AnalysisOptions options, IAnalysisCacheView cache,
 			IPAPointerKeyFactory pointerKeyFactory) {
-		super(cha, options, cache, pointerKeyFactory);
+	    super(abstractRootMethod, options, cache, pointerKeyFactory);
 		// this.usePreTransitiveSolver = options.usePreTransitiveSolver();
 	}
 
@@ -1878,7 +1878,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		}
 		caller.addTarget(instruction.getCallSite(), target);
 
-		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
+		if (callGraph.getFakeRootNode().equals(caller)) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.registerEntrypoint(target);
 			}
@@ -1906,11 +1906,12 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		}
 		((IPACGNode)caller).delTarget(instruction.getCallSite(), target);//bz
 
-		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
+		if (callGraph.getFakeRootNode().equals(caller)) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.deRegisterEntrypoint(target);
 			}
 		}
+
 		processDelCallingConstraints(caller, instruction, target, constParams, uniqueCatchKey);
 
 	}
@@ -1939,7 +1940,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		// }
 		// } else {
 		// generate contraints from parameter passing
-		int nUses = instruction.getNumberOfParameters();
+		int nUses = instruction.getNumberOfPositionalParameters();
 		int nExpected = target.getMethod().getNumberOfParameters();
 
 		/*
@@ -1958,7 +1959,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		// TODO: we need much more precise filters than cones in order to handle
 		// the various types of dispatch logic. We need a filter that expresses
 		// "the set of types s.t. x.foo resolves to y.foo."
-		for (int i = 0; i < instruction.getNumberOfParameters(); i++) {
+		for (int i = 0; i < instruction.getNumberOfPositionalParameters(); i++) {
 			if (target.getMethod().getParameterType(i).isReferenceType()) {
 				PointerKey formal = getTargetPointerKey(target, i);
 				if (constParams != null && constParams[i] != null) {
@@ -2008,12 +2009,12 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	 */
 	protected void processDelCallingConstraints(CGNode caller, SSAAbstractInvokeInstruction instruction, CGNode target,
 			InstanceKey[][] constParams, PointerKey uniqueCatchKey) {
-		if (FakeRootMethod.isFakeRootMethod(caller.getMethod().getReference())) {
+		if (callGraph.getFakeRootNode().equals(caller)) {
 			if (entrypointCallSites.contains(instruction.getCallSite())) {
 				callGraph.deRegisterEntrypoint(target);
 			}
 		}
-		for (int i = 0; i < instruction.getNumberOfParameters(); i++) {
+		for (int i = 0; i < instruction.getNumberOfPositionalParameters(); i++) {
 			if (target.getMethod().getParameterType(i).isReferenceType()) {
 
 				PointerKey formal = getTargetPointerKey(target, i);

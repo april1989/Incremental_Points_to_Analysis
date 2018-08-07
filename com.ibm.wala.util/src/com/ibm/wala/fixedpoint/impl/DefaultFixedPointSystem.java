@@ -10,7 +10,6 @@
  *******************************************************************************/
 package com.ibm.wala.fixedpoint.impl;
 
-import java.util.function.Predicate;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -95,11 +94,7 @@ public class DefaultFixedPointSystem<T extends IVariable<T>> implements IFixedPo
   @Override
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public Iterator<AbstractStatement> getStatements() {
-    return new FilterIterator(graph.iterator(), new Predicate<Object>() {
-      @Override public boolean test(Object x) {
-        return x instanceof AbstractStatement;
-      }
-    });
+    return new FilterIterator(graph.iterator(), AbstractStatement.class::isInstance);
   }
 
   @Override
@@ -133,8 +128,7 @@ public class DefaultFixedPointSystem<T extends IVariable<T>> implements IFixedPo
       graph.addNode(lhs);
       graph.addEdge(s, lhs);
     }
-    for (int i = 0; i < rhs.length; i++) {
-      IVariable<?> v = rhs[i];
+    for (IVariable<?> v : rhs) {
       IVariable<?> variable = v;
       if (variable != null) {
         variables.add(variable);
@@ -233,12 +227,12 @@ public class DefaultFixedPointSystem<T extends IVariable<T>> implements IFixedPo
   }
 
   @Override
-  public Iterator<?> getStatementsThatUse(T v) {
-    return (graph.containsNode(v) ? graph.getSuccNodes(v) : EmptyIterator.instance());
+  public Iterator<? extends INodeWithNumber> getStatementsThatUse(T v) {
+	  return (graph.containsNode(v) ? graph.getSuccNodes(v) : EmptyIterator.instance());
   }
 
   @Override
-  public Iterator<?> getStatementsThatDef(T v) {
+  public Iterator<? extends INodeWithNumber> getStatementsThatDef(T v) {
     return (graph.containsNode(v) ? graph.getPredNodes(v) : EmptyIterator.instance());
   }
 
@@ -258,12 +252,8 @@ public class DefaultFixedPointSystem<T extends IVariable<T>> implements IFixedPo
   }
 
   @Override
-  public Iterator<T> getVariables() {
-    return new FilterIterator<>(graph.iterator(), new Predicate<T>() {
-      @Override public boolean test(T x) {
-        return x != null;
-      }
-    });
+  public Iterator<? extends INodeWithNumber> getVariables() {
+    return new FilterIterator<>(graph.iterator(), x -> x != null);
   }
 
   public int getNumberOfNodes() {

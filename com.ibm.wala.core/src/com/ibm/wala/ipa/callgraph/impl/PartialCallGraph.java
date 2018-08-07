@@ -13,7 +13,6 @@ package com.ibm.wala.ipa.callgraph.impl;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IMethod;
@@ -24,6 +23,7 @@ import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.collections.FilterIterator;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
 import com.ibm.wala.util.graph.impl.DelegatingGraph;
@@ -53,11 +53,7 @@ public class PartialCallGraph extends DelegatingGraph<CGNode> implements CallGra
    * @param nodes set of nodes that will be included in the new, partial call graph
    */
   public static PartialCallGraph make(final CallGraph cg, final Collection<CGNode> partialRoots, final Collection<CGNode> nodes) {
-    Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
-      @Override public boolean test(CGNode o) {
-        return nodes.contains(o);
-      }
-    });
+    Graph<CGNode> partialGraph = GraphSlicer.prune(cg, nodes::contains);
 
     return new PartialCallGraph(cg, partialRoots, partialGraph);
   }
@@ -69,11 +65,7 @@ public class PartialCallGraph extends DelegatingGraph<CGNode> implements CallGra
    */
   public static PartialCallGraph make(CallGraph cg, Collection<CGNode> partialRoots) {
     final Set<CGNode> nodes = DFS.getReachableNodes(cg, partialRoots);
-    Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
-      @Override public boolean test(CGNode o) {
-        return nodes.contains(o);
-      }
-    });
+    Graph<CGNode> partialGraph = GraphSlicer.prune(cg, nodes::contains);
 
     return new PartialCallGraph(cg, partialRoots, partialGraph);
   }
@@ -105,8 +97,7 @@ public class PartialCallGraph extends DelegatingGraph<CGNode> implements CallGra
   @Override
   public Set<CGNode> getNodes(MethodReference m) {
     Set<CGNode> result = HashSetFactory.make();
-    for (Iterator xs = cg.getNodes(m).iterator(); xs.hasNext();) {
-      CGNode x = (CGNode) xs.next();
+    for (CGNode x : cg.getNodes(m)) {
       if (containsNode(x)) {
         result.add(x);
       }
@@ -122,11 +113,7 @@ public class PartialCallGraph extends DelegatingGraph<CGNode> implements CallGra
 
   @Override
   public Iterator<CGNode> iterateNodes(IntSet nodes) {
-    return new FilterIterator<CGNode>(cg.iterateNodes(nodes), new Predicate() {
-      @Override public boolean test(Object o) {
-        return containsNode((CGNode) o);
-      }
-    });
+    return new FilterIterator<>(cg.iterateNodes(nodes), this::containsNode);
   }
 
   @Override
@@ -149,8 +136,7 @@ public class PartialCallGraph extends DelegatingGraph<CGNode> implements CallGra
   public IntSet getSuccNodeNumbers(CGNode node) {
     assert containsNode(node);
     MutableIntSet x = IntSetUtil.make();
-    for (Iterator ns = getSuccNodes(node); ns.hasNext();) {
-      CGNode succ = (CGNode) ns.next();
+    for (CGNode succ : Iterator2Iterable.make(getSuccNodes(node))) {
       if (containsNode(succ)) {
         x.add(getNumber(succ));
       }
@@ -163,8 +149,7 @@ public class PartialCallGraph extends DelegatingGraph<CGNode> implements CallGra
   public IntSet getPredNodeNumbers(CGNode node) {
     assert containsNode(node);
     MutableIntSet x = IntSetUtil.make();
-    for (Iterator ns = getPredNodes(node); ns.hasNext();) {
-      CGNode pred = (CGNode) ns.next();
+    for (CGNode pred : Iterator2Iterable.make(getPredNodes(node))) {
       if (containsNode(pred)) {
         x.add(getNumber(pred));
       }
@@ -189,8 +174,7 @@ public class PartialCallGraph extends DelegatingGraph<CGNode> implements CallGra
       return null;
     }
     Set<CGNode> result = HashSetFactory.make();
-    for (Iterator ns = cg.getPossibleTargets(node, site).iterator(); ns.hasNext();) {
-      CGNode target = (CGNode) ns.next();
+    for (CGNode target : cg.getPossibleTargets(node, site)) {
       if (containsNode(target)) {
         result.add(target);
       }

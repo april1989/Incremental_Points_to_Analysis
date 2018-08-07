@@ -16,16 +16,17 @@ import java.util.Map;
 import java.util.Set;
 
 import com.ibm.wala.cast.ir.translator.AstTranslator;
-import com.ibm.wala.cast.js.loader.JSCallSiteReference;
 import com.ibm.wala.cast.js.loader.JavaScriptLoader;
 import com.ibm.wala.cast.js.ssa.JSInstructionFactory;
 import com.ibm.wala.cast.js.ssa.JavaScriptInstanceOf;
 import com.ibm.wala.cast.js.ssa.PrototypeLookup;
 import com.ibm.wala.cast.js.types.JavaScriptMethods;
 import com.ibm.wala.cast.js.types.JavaScriptTypes;
+import com.ibm.wala.cast.loader.DynamicCallSiteReference;
 import com.ibm.wala.cast.loader.AstMethod.DebuggingInformation;
 import com.ibm.wala.cast.tree.CAstEntity;
 import com.ibm.wala.cast.tree.CAstNode;
+import com.ibm.wala.cast.tree.CAstSourcePositionMap.Position;
 import com.ibm.wala.cast.tree.CAstSymbol;
 import com.ibm.wala.cast.tree.CAstType;
 import com.ibm.wala.cast.tree.impl.CAstSymbolImpl;
@@ -196,7 +197,7 @@ public class JSAstTranslator extends AstTranslator {
 
     context.cfg().addInstruction(
         ((JSInstructionFactory) insts).Invoke(context.cfg().getCurrentInstruction(), receiver, result, arguments, exception, 
-            new JSCallSiteReference(ref, context.cfg().getCurrentInstruction())));
+            new DynamicCallSiteReference(ref, context.cfg().getCurrentInstruction())));
 
     context.cfg().addPreNode(call, context.getUnwindState());
 
@@ -226,7 +227,7 @@ public class JSAstTranslator extends AstTranslator {
     int tmp = super.doGlobalRead(n, context, "Function", JavaScriptTypes.Function);
     context.cfg().addInstruction(
       ((JSInstructionFactory)insts).Invoke(context.cfg().getCurrentInstruction(), tmp, result, new int[]{ nm }, exception,
-        new JSCallSiteReference(JavaScriptMethods.ctorReference, context.cfg().getCurrentInstruction())));
+        new DynamicCallSiteReference(JavaScriptMethods.ctorReference, context.cfg().getCurrentInstruction())));
   }
 
   @Override
@@ -321,35 +322,35 @@ public class JSAstTranslator extends AstTranslator {
       if (name.equals("GlobalNaN")) {
 	context.cfg().addInstruction(
 	    ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-	    resultVal, context.currentScope().getConstantValue(new Float(Float.NaN))));
+	    resultVal, context.currentScope().getConstantValue(Float.valueOf(Float.NaN))));
       } else if (name.equals("GlobalInfinity")) {
         context.cfg().addInstruction(
             ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-            resultVal, context.currentScope().getConstantValue(new Float(Float.POSITIVE_INFINITY))));
+            resultVal, context.currentScope().getConstantValue(Float.valueOf(Float.POSITIVE_INFINITY))));
       } else if (name.equals("MathE")) {
         context.cfg().addInstruction(
             ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-            resultVal, context.currentScope().getConstantValue(new Double(Math.E))));
+            resultVal, context.currentScope().getConstantValue(Double.valueOf(Math.E))));
       } else if (name.equals("MathPI")) {
         context.cfg().addInstruction(
             ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-            resultVal, context.currentScope().getConstantValue(new Double(Math.PI))));
+            resultVal, context.currentScope().getConstantValue(Double.valueOf(Math.PI))));
       } else if (name.equals("MathSQRT1_2")) {
         context.cfg().addInstruction(
             ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-            resultVal, context.currentScope().getConstantValue(new Double(Math.sqrt(.5)))));
+            resultVal, context.currentScope().getConstantValue(Double.valueOf(Math.sqrt(.5)))));
       } else if (name.equals("MathSQRT2")) {
         context.cfg().addInstruction(
             ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-            resultVal, context.currentScope().getConstantValue(new Double(Math.sqrt(2)))));
+            resultVal, context.currentScope().getConstantValue(Double.valueOf(Math.sqrt(2)))));
       } else if (name.equals("MathLN2")) {
         context.cfg().addInstruction(
             ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-            resultVal, context.currentScope().getConstantValue(new Double(Math.log(2)))));
+            resultVal, context.currentScope().getConstantValue(Double.valueOf(Math.log(2)))));
       } else if (name.equals("MathLN10")) {
         context.cfg().addInstruction(
             ((JSInstructionFactory)insts).AssignInstruction(context.cfg().getCurrentInstruction(), 
-            resultVal, context.currentScope().getConstantValue(new Double(Math.log(10)))));
+            resultVal, context.currentScope().getConstantValue(Double.valueOf(Math.log(10)))));
       } else if (name.equals("NewObject")) {
         doNewObject(context, null, resultVal, "Object", null);
 
@@ -483,6 +484,19 @@ public class JSAstTranslator extends AstTranslator {
   @Override
   protected CAstType exceptionType() {
     return Any;
+  }
+
+  @Override
+  protected Position[] getParameterPositions(CAstEntity e) {
+    if (e.getKind() == CAstEntity.SCRIPT_ENTITY) {
+      return new Position[0];
+    } else {
+      Position[] ps = new Position[ e.getArgumentCount() ];
+      for(int i = 2; i < e.getArgumentCount(); i++) {
+        ps[i] = e.getPosition(i-2);
+      }
+      return ps;
+    }
   }
 
 }

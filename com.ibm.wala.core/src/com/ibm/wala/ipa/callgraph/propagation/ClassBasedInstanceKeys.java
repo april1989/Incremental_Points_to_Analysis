@@ -49,6 +49,11 @@ public class ClassBasedInstanceKeys implements InstanceKeyFactory {
       throw new IllegalArgumentException("allocation is null");
     }
 
+    if (String.valueOf(allocation).contains("java/lang/invoke/DirectMethodHandle$StaticAccessor")) {
+      System.err.println("got " + allocation + " in " + node);
+    }
+    
+
     if (options.getClassTargetSelector() == null) {
       throw new IllegalStateException("options did not specify class target selector");
     }
@@ -107,7 +112,7 @@ public class ClassBasedInstanceKeys implements InstanceKeyFactory {
       return null;
     } else {
       if (options.getUseConstantSpecificKeys()) {
-        return new ConstantKey<T>(S, cha.lookupClass(type));
+        return new ConstantKey<>(S, cha.lookupClass(type));
       } else {
         return new ConcreteTypeKey(cha.lookupClass(type));
       }
@@ -130,23 +135,24 @@ public class ClassBasedInstanceKeys implements InstanceKeyFactory {
   public InstanceKey getInstanceKeyForMetadataObject(Object obj, TypeReference objType) {
     IClass cls = cha.lookupClass(objType);
     assert cls != null : objType;
+    
     if (obj instanceof TypeReference) {
       IClass klass = cha.lookupClass((TypeReference)obj);
       if (klass == null) {
         return new ConcreteTypeKey(cls);
       } else {
         // return the IClass itself, wrapped as a constant!
-        return new ConstantKey<IClass>(klass, cls);
+        return new ConstantKey<>(klass, cls);
       }
     } else if (obj instanceof MethodReference) {
       IMethod m = cha.resolveMethod((MethodReference)obj);
       if (m == null) {
-        return new ConcreteTypeKey(cls);
+         return new ConcreteTypeKey(cls);
       } else {
-        return new ConstantKey<IMethod>(m, cls);
+        return new ConstantKey<>(m, cls);
       }
     } else if (obj instanceof Descriptor) {
-      return new ConstantKey<Descriptor>((Descriptor)obj, cls);
+      return new ConstantKey<>((Descriptor)obj, cls);
     } else {
       // other cases
       throw new Error();

@@ -14,11 +14,11 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import com.ibm.wala.analysis.pointers.HeapGraph;
 import com.ibm.wala.cast.ipa.callgraph.AstHeapModel;
 import com.ibm.wala.cast.ir.ssa.AstGlobalWrite;
+import com.ibm.wala.cast.ir.ssa.AstPropertyWrite;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.AbstractVertexVisitor;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.CreationSiteVertex;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.FuncVertex;
@@ -61,6 +61,7 @@ import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
 import com.ibm.wala.util.collections.CompoundIterator;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphReachability;
@@ -106,32 +107,23 @@ public class FlowGraph implements Iterable<Vertex> {
 	
 	private static <T> GraphReachability<Vertex, T> computeClosure(NumberedGraph<Vertex> graph, IProgressMonitor monitor, final Class<?> type) throws CancelException {
 		// prune flowgraph by taking out 'unknown' vertex
-		Graph<Vertex> pruned_flowgraph = GraphSlicer.prune(graph, new Predicate<Vertex>() {
-			@Override
-			public boolean test(Vertex t) {
-				return t.accept(new AbstractVertexVisitor<Boolean>() {
-					@Override
-					public Boolean visitVertex() {
-						return true;
-					}
-					
-					@Override
-					public Boolean visitUnknownVertex(UnknownVertex unknownVertex) {
-						return false;
-					}
-				});
-			}
-		});
+		Graph<Vertex> pruned_flowgraph = GraphSlicer.prune(graph, t -> t.accept(new AbstractVertexVisitor<Boolean>() {
+    	@Override
+    	public Boolean visitVertex() {
+    		return true;
+    	}
+    	
+    	@Override
+    	public Boolean visitUnknownVertex(UnknownVertex unknownVertex) {
+    		return false;
+    	}
+    }));
 		
 		// compute transitive closure
 		GraphReachability<Vertex, T> optimistic_closure = 
 		    new GraphReachability<>(
 		      new InvertedGraph<>(pruned_flowgraph),
-		      new Predicate<Vertex>() {
-		        @Override public boolean test(Vertex o) {
-		          return type.isInstance(o);
-		        } 
-		      }
+		      type::isInstance
 		    );
 		
 		optimistic_closure.solve(monitor);
@@ -204,16 +196,14 @@ public class FlowGraph implements Iterable<Vertex> {
       {
         PropVertex proto = factory.makePropVertex("prototype");
         if (graph.containsNode(proto)) {
-          for(Iterator<Vertex> ps = graph.getPredNodes(proto); ps.hasNext(); ) {
-            Vertex p = ps.next();
+          for(Vertex p : Iterator2Iterable.make(graph.getPredNodes(proto))) {
             if (p instanceof VarVertex) {
               int rval = ((VarVertex) p).getValueNumber();
               FuncVertex func = ((VarVertex) p).getFunction();
               DefUse du = cache.getDefUse(getIR(cache, func));
-              for(Iterator<SSAInstruction> insts = du.getUses(rval); insts.hasNext(); ) {
-                SSAInstruction inst = insts.next();
+              for(SSAInstruction inst : Iterator2Iterable.make(du.getUses(rval))) {
                 if (inst instanceof JavaScriptPropertyWrite) {
-                  int obj = ((JavaScriptPropertyWrite) inst).getObjectRef();
+                  int obj = ((AstPropertyWrite) inst).getObjectRef();
                   VarVertex object = factory.makeVarVertex(func, obj);
                   for(ObjectVertex o : getPointsToSet(object)) {
                     PrototypeFieldVertex prototype = get(PrototypeField.prototype, o);
@@ -285,15 +275,10 @@ public class FlowGraph implements Iterable<Vertex> {
 
       @Override
       public Iterable<PointerKey> getPointerKeys() {
-        return new Iterable<PointerKey> () {
-          @Override
-          public Iterator<PointerKey> iterator() {
-            return new CompoundIterator<>(factory.getArgVertices().iterator(),
-                new CompoundIterator<>(factory.getRetVertices().iterator(), 
-                    new CompoundIterator<PointerKey>(factory.getVarVertices().iterator(),
-                        factory.getPropVertices().iterator())));
-          }
-        };
+        return () -> new CompoundIterator<>(factory.getArgVertices().iterator(),
+            new CompoundIterator<>(factory.getRetVertices().iterator(), 
+                new CompoundIterator<PointerKey>(factory.getVarVertices().iterator(),
+                    factory.getPropVertices().iterator())));
       }
       
       @Override
@@ -467,16 +452,14 @@ public class FlowGraph implements Iterable<Vertex> {
               for(PropVertex property : factory.getPropVertices()) {
 
                 // edges from objects to properties assigned to them
-                for(Iterator<Vertex> ps = dataflow.getPredNodes(property); ps.hasNext(); ) {
-                  Vertex p = ps.next();
+                for(Vertex p : Iterator2Iterable.make(dataflow.getPredNodes(property))) {
                   if (p instanceof VarVertex) {
                     int rval = ((VarVertex) p).getValueNumber();
                     FuncVertex func = ((VarVertex) p).getFunction();
                     DefUse du = cache.getDefUse(getIR(cache, func));
-                    for(Iterator<SSAInstruction> insts = du.getUses(rval); insts.hasNext(); ) {
-                      SSAInstruction inst = insts.next();
+                    for(SSAInstruction inst : Iterator2Iterable.make(du.getUses(rval))) {
                       if (inst instanceof JavaScriptPropertyWrite) {
-                        int obj = ((JavaScriptPropertyWrite) inst).getObjectRef();
+                        int obj = ((AstPropertyWrite) inst).getObjectRef();
                         VarVertex object = factory.makeVarVertex(func, obj);
                         for(ObjectVertex o : getPointsToSet(object)) {
                           addEdge(ensureNode(o), ensureNode(propertyKey(property.getPropName(), o)));
@@ -517,8 +500,7 @@ public class FlowGraph implements Iterable<Vertex> {
               // prototype dataflow for object creations
               for(CreationSiteVertex cs : factory.creationSites()) {
                 if (cg.getNode(cs.getMethod(), Everywhere.EVERYWHERE) != null) {
-                for(Iterator<Pair<CGNode, NewSiteReference>> sites = cs.getCreationSites(cg); sites.hasNext(); ) {
-                  Pair<CGNode, NewSiteReference> site = sites.next();
+                for(Pair<CGNode, NewSiteReference> site : Iterator2Iterable.make(cs.getCreationSites(cg))) {
                   IR ir = site.fst.getIR();
                   SSAInstruction creation = ir.getInstructions()[ site.snd.getProgramCounter() ];
                   if (creation instanceof JavaScriptInvoke) {
@@ -548,11 +530,7 @@ public class FlowGraph implements Iterable<Vertex> {
 
             @Override
             public Collection<Object> getReachableInstances(Set<Object> roots) {
-              return DFS.getReachableNodes(this, roots, new Predicate<Object>() {
-                @Override public boolean test(Object o) {
-                  return o instanceof ObjectVertex;
-                } 
-              });
+              return DFS.getReachableNodes(this, roots, ObjectVertex.class::isInstance);
             }
 
             @Override

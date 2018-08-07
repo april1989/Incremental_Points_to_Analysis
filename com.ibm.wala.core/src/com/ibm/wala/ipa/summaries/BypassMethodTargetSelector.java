@@ -45,7 +45,7 @@ public class BypassMethodTargetSelector implements MethodTargetSelector {
   static final boolean DEBUG = false;
 
   /**
-   * Method summaries collected for methods. Mapping Object -> MethodSummary where Object is either a
+   * Method summaries collected for methods. Mapping Object -&gt; MethodSummary where Object is either a
    * <ul>
    * <li>MethodReference
    * <li>TypeReference
@@ -75,7 +75,7 @@ public class BypassMethodTargetSelector implements MethodTargetSelector {
   private final ClassHierarchyMethodTargetSelector chaMethodTargetSelector;
 
   /**
-   * Mapping from MethodReference -> SyntheticMethod We may call syntheticMethod.put(m,null) .. in which case we use containsKey()
+   * Mapping from MethodReference -&gt; SyntheticMethod We may call syntheticMethod.put(m,null) .. in which case we use containsKey()
    * to check for having already considered m.
    */
   final private HashMap<MethodReference, SummarizedMethod> syntheticMethods = HashMapFactory.make();
@@ -112,7 +112,14 @@ public class BypassMethodTargetSelector implements MethodTargetSelector {
     IMethod target = (chaTarget == null) ? findOrCreateSyntheticMethod(ref, site.isStatic()) : findOrCreateSyntheticMethod(chaTarget,
         site.isStatic());
 
-
+    // try synthetic method that matches receiver type
+    if (dispatchType != null) {
+      ref = MethodReference.findOrCreate(dispatchType.getReference(), ref.getSelector());
+      chaTarget = chaMethodTargetSelector.getCalleeTarget(caller, site, dispatchType);
+      target = (chaTarget == null) ? findOrCreateSyntheticMethod(ref, site.isStatic()) : findOrCreateSyntheticMethod(chaTarget,
+          site.isStatic());      
+    }
+    
     if (DEBUG) {
       System.err.println("target is initially " + target);
     }
@@ -179,7 +186,7 @@ public class BypassMethodTargetSelector implements MethodTargetSelector {
           syntheticMethods.put(m, null);
           return null;
         }
-        SummarizedMethod n = new SummarizedMethod(m, summ, C);
+        SummarizedMethod n = new SummarizedMethodWithNames(m, summ, C);
         syntheticMethods.put(m, n);
         return n;
       } else {

@@ -174,7 +174,6 @@ public class JDT2CAstUtils {
    * Returns true if type is char, byte, short, int, or long. Return false otherwise (including boolean!)
    * 
    * @param type
-   * @return
    */
   public static boolean isLongOrLess(ITypeBinding type) {
     String t = type.getBinaryName();
@@ -186,11 +185,10 @@ public class JDT2CAstUtils {
    * CAstSymbol.NULL_DEFAULT_VALUE.
    * 
    * @param type
-   * @return
    */
   public static Object defaultValueForType(ITypeBinding type) {
     if (isLongOrLess(type))
-      return new Integer(0);
+      return Integer.valueOf(0);
     else if (type.getBinaryName().equals("D") || type.getBinaryName().equals("F"))
       return new Double(0.0);
     else
@@ -237,7 +235,6 @@ public class JDT2CAstUtils {
    * 
    * @param returnType
    * @param ast
-   * @return
    */
   public static ITypeBinding getErasedType(ITypeBinding returnType, AST ast) {
     if (returnType.isTypeVariable() || returnType.isCapture())

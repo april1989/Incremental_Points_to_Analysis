@@ -55,16 +55,16 @@ public abstract class Decoder implements Constants {
 
     table[OP_aconst_null] = ConstantInstruction.make(TYPE_null, null);
     for (int i = OP_iconst_m1; i <= OP_iconst_5; i++) {
-      table[i] = ConstantInstruction.make(TYPE_int, new Integer(i - OP_iconst_m1 - 1));
+      table[i] = ConstantInstruction.make(TYPE_int, Integer.valueOf(i - OP_iconst_m1 - 1));
     }
     for (int i = OP_lconst_0; i <= OP_lconst_1; i++) {
-      table[i] = ConstantInstruction.make(TYPE_long, new Long(i - OP_lconst_0));
+      table[i] = ConstantInstruction.make(TYPE_long, Long.valueOf(i - OP_lconst_0));
     }
     for (int i = OP_fconst_0; i <= OP_fconst_2; i++) {
-      table[i] = ConstantInstruction.make(TYPE_float, new Float(i - OP_fconst_0));
+      table[i] = ConstantInstruction.make(TYPE_float, Float.valueOf(i - OP_fconst_0));
     }
     for (int i = OP_dconst_0; i <= OP_dconst_1; i++) {
-      table[i] = ConstantInstruction.make(TYPE_double, new Double(i - OP_dconst_0));
+      table[i] = ConstantInstruction.make(TYPE_double, Double.valueOf(i - OP_dconst_0));
     }
 
     for (int i = OP_iload_0; i <= OP_aload_3; i++) {
@@ -255,8 +255,8 @@ public abstract class Decoder implements Constants {
   }
 
   private boolean doesSubroutineReturn(int sub) {
-    for (int j = 0; j < retInfo.length; j++) {
-      if (retInfo[j] != null && retInfo[j].sub == sub) {
+    for (RetInfo element : retInfo) {
+      if (element != null && element.sub == sub) {
         return true;
       }
     }
@@ -314,9 +314,9 @@ public abstract class Decoder implements Constants {
             }
 
             int[] targets = instr.getBranchTargets();
-            for (int k = 0; k < targets.length; k++) {
-              if (targets[k] >= 0) {
-                int r = findReturnToVar(v, targets[k], visited);
+            for (int target : targets) {
+              if (target >= 0) {
+                int r = findReturnToVar(v, target, visited);
                 if (r != 0) {
                   return r;
                 }
@@ -407,10 +407,10 @@ public abstract class Decoder implements Constants {
         int offset = decodedOffset[addr];
         instr = decoded.get(offset + size - 1);
         int[] targets = instr.getBranchTargets();
-        for (int k = 0; k < targets.length; k++) {
-          if (targets[k] >= 0) {
+        for (int target : targets) {
+          if (target >= 0) {
             // only chase real gotos; ignore rets
-            assignReachablesToSubroutine(targets[k], sub);
+            assignReachablesToSubroutine(target, sub);
           }
         }
       }
@@ -513,10 +513,11 @@ public abstract class Decoder implements Constants {
       case OP_dup2_x1:
         i = DupInstruction.make(elemCount(stackWords, stackLen - 1), 1);
         break;
-      case OP_dup2_x2:
-        i = DupInstruction.make(elemCount(stackWords, stackLen - 1), elemCount(stackWords, stackLen - 2));
+      case OP_dup2_x2: {
+        int twoDown = elemCount(stackWords, stackLen - 1);
+        i = DupInstruction.make(twoDown, elemCount(stackWords, stackLen - twoDown - 1));
         break;
-      case OP_iinc: {
+      } case OP_iinc: {
         int v = wide ? decodeUShort(index) : (code[index] & 0xFF);
         int c = wide ? decodeShort(index + 2) : code[index + 1];
 
@@ -761,9 +762,7 @@ public abstract class Decoder implements Constants {
           Instruction instr = decoded.get(s + instrCount - 1);
           int[] targets = instr.getBranchTargets();
 
-          for (int i = 0; i < targets.length; i++) {
-            int t = targets[i];
-
+          for (int t : targets) {
             if (t >= 0) {
               decodeAt(t, stackLen, stackWords.clone());
             }

@@ -12,7 +12,6 @@ package com.ibm.wala.classLoader;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -81,8 +80,8 @@ public final class ShrikeClass extends JVMClass<IClassLoader> {
   private void computeFields() throws InvalidClassFileException {
     ClassReader cr = reader.get();
     int fieldCount = cr.getFieldCount();
-    List<FieldImpl> instanceList = new ArrayList<FieldImpl>(fieldCount);
-    List<FieldImpl> staticList = new ArrayList<FieldImpl>(fieldCount);
+    List<FieldImpl> instanceList = new ArrayList<>(fieldCount);
+    List<FieldImpl> staticList = new ArrayList<>(fieldCount);
     try {
       for (int i = 0; i < fieldCount; i++) {
         int accessFlags = cr.getFieldAccessFlags(i);
@@ -228,8 +227,8 @@ public final class ShrikeClass extends JVMClass<IClassLoader> {
   public void clearSoftCaches() {
     // toss optional information from each method.
     if (methodMap != null) {
-      for (Iterator it = getDeclaredMethods().iterator(); it.hasNext();) {
-        ShrikeCTMethod m = (ShrikeCTMethod) it.next();
+      for (IMethod iMethod : getDeclaredMethods()) {
+        ShrikeCTMethod m = (ShrikeCTMethod) iMethod;
         m.clearCaches();
       }
     }
@@ -343,12 +342,7 @@ public final class ShrikeClass extends JVMClass<IClassLoader> {
     ClassReader.AttrIterator attrs = new ClassReader.AttrIterator();
     getReader().initClassAttributeIterator(attrs);
 
-    return getReader(attrs, "SourceFile", new GetReader<SourceFileReader>() {
-      @Override
-      public SourceFileReader getReader(AttrIterator iter) throws InvalidClassFileException {
-        return new SourceFileReader(iter);
-      }
-    });
+    return getReader(attrs, "SourceFile", SourceFileReader::new);
   }
 
   private AnnotationsReader getFieldAnnotationsReader(boolean runtimeInvisible, int fieldIndex) throws InvalidClassFileException {

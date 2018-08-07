@@ -15,7 +15,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Predicate;
 
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.shrikeBT.Constants;
@@ -24,6 +23,7 @@ import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.FilterIterator;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.Iterator2Collection;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.IteratorPlusOne;
 import com.ibm.wala.util.collections.IteratorPlusTwo;
 import com.ibm.wala.util.collections.NonNullSingletonIterator;
@@ -53,25 +53,25 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
   /**
    * An object to track nodes in this cfg
    */
-  final private DelegatingNumberedNodeManager<T> nodeManager = new DelegatingNumberedNodeManager<T>();
+  final private DelegatingNumberedNodeManager<T> nodeManager = new DelegatingNumberedNodeManager<>();
 
   /**
    * An object to track most normal edges in this cfg
    */
-  final private SparseNumberedEdgeManager<T> normalEdgeManager = new SparseNumberedEdgeManager<T>(nodeManager, 2,
+  final private SparseNumberedEdgeManager<T> normalEdgeManager = new SparseNumberedEdgeManager<>(nodeManager, 2,
       BasicNaturalRelation.SIMPLE);
 
   /**
    * An object to track not-to-exit exceptional edges in this cfg
    */
-  final private SparseNumberedEdgeManager<T> exceptionalEdgeManager = new SparseNumberedEdgeManager<T>(nodeManager, 0,
+  final private SparseNumberedEdgeManager<T> exceptionalEdgeManager = new SparseNumberedEdgeManager<>(nodeManager, 0,
       BasicNaturalRelation.SIMPLE);
 
   /**
    * An object to track not-to-exit exceptional edges in this cfg, indexed by block number. exceptionalEdges[i] is a list of block
    * numbers that are non-exit exceptional successors of block i, in order of increasing "catch scope".
    */
-  final private SimpleVector<SimpleIntVector> exceptionalSuccessors = new SimpleVector<SimpleIntVector>();
+  final private SimpleVector<SimpleIntVector> exceptionalSuccessors = new SimpleVector<>();
 
   /**
    * Which basic blocks have a normal edge to exit()?
@@ -228,12 +228,9 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
       throw new IllegalArgumentException("N is null");
     }
     if (N.equals(exit())) {
-      return new FilterIterator<>(iterator(), new Predicate<T>() {
-        @Override
-        public boolean test(T o) {
-          int i = getNumber(o);
-          return normalToExit.get(i) || exceptionalToExit.get(i);
-        }
+      return new FilterIterator<>(iterator(), o -> {
+        int i = getNumber(o);
+        return normalToExit.get(i) || exceptionalToExit.get(i);
       });
     } else {
       int number = getNumber(N);
@@ -309,9 +306,9 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
   public Iterator<T> getSuccNodes(T N) {
     int number = getNumber(N);
     if (normalToExit.get(number) && exceptionalToExit.get(number)) {
-      return new CompoundIterator<T>(iterateNormalSuccessorsWithoutExit(number), iterateExceptionalSuccessors(number));
+      return new CompoundIterator<>(iterateNormalSuccessorsWithoutExit(number), iterateExceptionalSuccessors(number));
     } else {
-      return new CompoundIterator<T>(iterateNormalSuccessors(number), iterateExceptionalSuccessors(number));
+      return new CompoundIterator<>(iterateNormalSuccessors(number), iterateExceptionalSuccessors(number));
     }
   }
 
@@ -321,7 +318,7 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
    */
   private Iterator<T> iterateExceptionalSuccessors(int number) {
     if (exceptionalEdgeManager.hasAnySuccessor(number)) {
-      List<T> result = new ArrayList<T>();
+      List<T> result = new ArrayList<>();
       SimpleIntVector v = exceptionalSuccessors.get(number);
       for (int i = 0; i <= v.getMaxIndex(); i++) {
         result.add(getNode(v.get(i)));
@@ -332,7 +329,7 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
       return result.iterator();
     } else {
       if (exceptionalToExit.get(number)) {
-        return new NonNullSingletonIterator<T>(exit());
+        return new NonNullSingletonIterator<>(exit());
       } else {
         return EmptyIterator.instance();
       }
@@ -341,12 +338,9 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
 
   Iterator<T> iterateExceptionalPredecessors(T N) {
     if (N.equals(exit())) {
-      return new FilterIterator<>(iterator(), new Predicate<T>() {
-        @Override
-        public boolean test(T o) {
-          int i = getNumber(o);
-          return exceptionalToExit.get(i);
-        }
+      return new FilterIterator<>(iterator(), o -> {
+        int i = getNumber(o);
+        return exceptionalToExit.get(i);
       });
     } else {
       return exceptionalEdgeManager.getPredNodes(N);
@@ -355,12 +349,9 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
 
   Iterator<T> iterateNormalPredecessors(T N) {
     if (N.equals(exit())) {
-      return new FilterIterator<>(iterator(), new Predicate<T>() {
-        @Override
-        public boolean test(T o) {
-          int i = getNumber(o);
-          return normalToExit.get(i);
-        }
+      return new FilterIterator<>(iterator(), o -> {
+        int i = getNumber(o);
+        return normalToExit.get(i);
       });
     } else {
       int number = getNumber(N);
@@ -375,7 +366,7 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
   private Iterator<T> iterateNormalSuccessors(int number) {
     if (fallThru.get(number)) {
       if (normalToExit.get(number)) {
-        return new IteratorPlusTwo<T>(normalEdgeManager.getSuccNodes(number), getNode(number + 1), exit());
+        return new IteratorPlusTwo<>(normalEdgeManager.getSuccNodes(number), getNode(number + 1), exit());
       } else {
         return IteratorPlusOne.make(normalEdgeManager.getSuccNodes(number), getNode(number + 1));
       }
@@ -547,8 +538,7 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
   @Override
   public String toString() {
     StringBuffer s = new StringBuffer("");
-    for (Iterator<T> it = iterator(); it.hasNext();) {
-      T bb = it.next();
+    for (T bb : this) {
       s.append("BB").append(getNumber(bb)).append("\n");
 
       Iterator<T> succNodes = getSuccNodes(bb);
@@ -602,9 +592,9 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
     if (b == null) {
       throw new IllegalArgumentException("b is null");
     }
-    List<T> result = new ArrayList<T>();
-    for (Iterator<T> it = iterateExceptionalSuccessors(b.getNumber()); it.hasNext();) {
-      result.add(it.next());
+    List<T> result = new ArrayList<>();
+    for (T s : Iterator2Iterable.make(iterateExceptionalSuccessors(b.getNumber()))) {
+      result.add(s);
     }
     return result;
   }
@@ -625,7 +615,7 @@ public abstract class AbstractCFG<I, T extends IBasicBlock<I>> implements Contro
    */
   @Override
   public Iterator<T> iterateNodes(IntSet s) {
-    return new NumberedNodeIterator<T>(s, this);
+    return new NumberedNodeIterator<>(s, this);
   }
 
   @Override

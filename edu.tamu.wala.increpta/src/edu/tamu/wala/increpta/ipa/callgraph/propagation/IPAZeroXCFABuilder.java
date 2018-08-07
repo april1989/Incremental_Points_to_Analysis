@@ -4,13 +4,14 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
 package edu.tamu.wala.increpta.ipa.callgraph.propagation;
 
 import com.ibm.wala.analysis.reflection.ReflectionContextInterpreter;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.ContextSelector;
@@ -19,6 +20,7 @@ import com.ibm.wala.ipa.callgraph.impl.DefaultContextSelector;
 import com.ibm.wala.ipa.callgraph.impl.DelegatingContextSelector;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.DefaultPointerKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.DefaultSSAInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.DelegatingSSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys;
@@ -26,10 +28,10 @@ import com.ibm.wala.ipa.cha.IClassHierarchy;
 
 public class IPAZeroXCFABuilder extends IPASSAPropagationCallGraphBuilder{
 
-	public IPAZeroXCFABuilder(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache, ContextSelector appContextSelector,
-			SSAContextInterpreter appContextInterpreter, int instancePolicy) {
+	public IPAZeroXCFABuilder(Language l, IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache, ContextSelector appContextSelector,
+		      SSAContextInterpreter appContextInterpreter, int instancePolicy) {
 
-		super(cha, options, cache, new IPADefaultPointerKeyFactory());
+		super(l.getFakeRootMethod(cha, options, cache), options, cache, new IPADefaultPointerKeyFactory());
 
 		ContextSelector def = new DefaultContextSelector(options, cha);
 		ContextSelector contextSelector = appContextSelector == null ? def : new DelegatingContextSelector(appContextSelector, def);
@@ -79,15 +81,15 @@ public class IPAZeroXCFABuilder extends IPASSAPropagationCallGraphBuilder{
 			 Util.addBypassLogic(options, scope, cl, xmlFiles[i], cha);
 		 }
 
-		 return new IPAZeroXCFABuilder(cha, options, cache, null, null, instancePolicy);
+		 return new IPAZeroXCFABuilder(Language.JAVA, cha, options, cache, null, null, instancePolicy);
 	 }
 
-	 public static IPAZeroXCFABuilder make(IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache,
+	 public static IPAZeroXCFABuilder make(Language l, IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache,
 			 ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter, int instancePolicy) throws IllegalArgumentException {
 		 if (options == null) {
 			 throw new IllegalArgumentException("options == null");
 		 }
-		 return new IPAZeroXCFABuilder(cha, options, cache, appContextSelector, appContextInterpreter, instancePolicy);
+		 return new IPAZeroXCFABuilder(l, cha, options, cache, appContextSelector, appContextInterpreter, instancePolicy);
 	 }
 
 

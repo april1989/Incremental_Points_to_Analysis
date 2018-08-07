@@ -10,8 +10,6 @@
  *******************************************************************************/
 package com.ibm.wala.dataflow.IFDS;
 
-import java.util.Iterator;
-
 import com.ibm.wala.util.collections.SparseVector;
 import com.ibm.wala.util.intset.BasicNaturalRelation;
 import com.ibm.wala.util.intset.IBinaryNaturalRelation;
@@ -27,10 +25,10 @@ import com.ibm.wala.util.math.LongUtil;
 public class LocalSummaryEdges {
 
   /**
-   * A map from integer n -> (IBinaryNonNegativeIntRelation)
+   * A map from integer n -&gt; (IBinaryNonNegativeIntRelation)
    * 
    * Let s_p be an entry to this procedure, and x be an exit. n is a integer which uniquely identifies an (s_p,x) relation. For any
-   * such n, summaries[n] gives a relation R=(d1,d2) s.t. (<s_p, d1> -> <x,d2>) is a summary edge.
+   * such n, summaries[n] gives a relation R=(d1,d2) s.t. (&lt;s_p, d1&gt; -&gt; &lt;x,d2&gt;) is a summary edge.
    * 
    * Note that this representation is a little different from the representation described in the PoPL 95 paper. We cache summary
    * edges at the CALLEE, not at the CALLER!!! This allows us to avoid eagerly installing summary edges at all call sites to a
@@ -41,7 +39,7 @@ public class LocalSummaryEdges {
    * 
    * TODO: more representation optimization.
    */
-  private final SparseVector<IBinaryNaturalRelation> summaries = new SparseVector<IBinaryNaturalRelation>(1, 1.1f);
+  private final SparseVector<IBinaryNaturalRelation> summaries = new SparseVector<>(1, 1.1f);
 
   /**
    * Let (s_p,x) be an entry-exit pair, and let l := the long whose high word is s_p and low word is x.
@@ -63,7 +61,7 @@ public class LocalSummaryEdges {
   }
 
   /**
-   * Record a summary edge for the flow d1 -> d2 from an entry s_p to an exit x.
+   * Record a summary edge for the flow d1 -&gt; d2 from an entry s_p to an exit x.
    * 
    * @param s_p local block number an entry
    * @param x local block number of an exit block
@@ -133,8 +131,7 @@ public class LocalSummaryEdges {
       return null;
     } else {
       MutableSparseIntSet result = MutableSparseIntSet.makeEmpty();
-      for (Iterator it = R.iterator(); it.hasNext();) {
-        IntPair p = (IntPair) it.next();
+      for (IntPair p : R) {
         if (p.getY() == d2) {
           result.add(p.getX());
         }

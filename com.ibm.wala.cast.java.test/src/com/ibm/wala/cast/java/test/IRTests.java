@@ -40,6 +40,7 @@ import com.ibm.wala.classLoader.SourceFileModule;
 import com.ibm.wala.client.AbstractAnalysisEngine;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.CallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -53,6 +54,7 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.types.annotations.Annotation;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.HashSetFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.strings.Atom;
@@ -190,9 +192,7 @@ public abstract class IRTests {
         CGNode tgtNode = tgtNodes.iterator().next();
 
         boolean found = false;
-        for (Iterator<? extends CGNode> succIter = callGraph.getSuccNodes(srcNode); succIter.hasNext();) {
-          CGNode succ = succIter.next();
-
+        for (CGNode succ : Iterator2Iterable.make(callGraph.getSuccNodes(srcNode))) {
           if (tgtNode == succ) {
             found = true;
             break;
@@ -346,11 +346,11 @@ public abstract class IRTests {
     return new String[] { "L" + pkgName + "/" + getTestName().substring(4) };
   }
 
-  protected abstract <I extends InstanceKey> AbstractAnalysisEngine<I> getAnalysisEngine(String[] mainClassDescriptors, Collection<String> sources, List<String> libs);
+  protected abstract <I extends InstanceKey> AbstractAnalysisEngine<I, CallGraphBuilder<I>, ?> getAnalysisEngine(String[] mainClassDescriptors, Collection<String> sources, List<String> libs);
 
-  public <I extends InstanceKey> Pair<CallGraph, PointerAnalysis<I>> runTest(Collection<String> sources, List<String> libs,
+  public <I extends InstanceKey> Pair<CallGraph, PointerAnalysis<? extends InstanceKey>> runTest(Collection<String> sources, List<String> libs,
         String[] mainClassDescriptors, List<? extends IRAssertion> ca, boolean assertReachable) throws IllegalArgumentException, CancelException, IOException {
-      AbstractAnalysisEngine<I> engine = getAnalysisEngine(mainClassDescriptors, sources, libs);
+      AbstractAnalysisEngine<I, CallGraphBuilder<I>, ?> engine = getAnalysisEngine(mainClassDescriptors, sources, libs);
 
       CallGraph callGraph;
         callGraph = engine.buildDefaultCallGraph();
@@ -378,8 +378,7 @@ public abstract class IRTests {
     Set<IMethod> unreachable = HashSetFactory.make();
     IClassHierarchy cha = cg.getClassHierarchy();
     IClassLoader sourceLoader = cha.getLoader(JavaSourceAnalysisScope.SOURCE);
-    for (Iterator<IClass> iter = sourceLoader.iterateAllClasses(); iter.hasNext();) {
-      IClass clazz = iter.next();
+    for (IClass clazz : Iterator2Iterable.make(sourceLoader.iterateAllClasses())) {
 
       System.err.println(clazz);
       if (clazz.isInterface())
