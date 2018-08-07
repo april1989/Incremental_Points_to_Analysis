@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -20,9 +20,7 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 
 public class IncrementalPtrTest extends IPAAbstractPtrTest{
 
-  /**bz:
-   *
-   * testdata_1.0.0.jar includes all test cases in com.ibm.wala.core.testdata/src/demandpa for pointer analysis,
+  /**testdata_1.0.0.jar includes all test cases in com.ibm.wala.core.testdata/src/demandpa for pointer analysis,
    * you can change the argument of doIncrementalPTATest() to test the cases in TesfInfo.
    *
    *
@@ -34,13 +32,13 @@ public class IncrementalPtrTest extends IPAAbstractPtrTest{
    * the one after incremental computation. If they are the same, it means we correctly updated the points-to graph.
    * Otherwise, it violates the assertion.
    *
-   * for the parallel version, change com.ibm.wala.ipa.callgraph.propagation.PropagationSystem.nrOfWorkers to any number > 1.
+   * for the parallel version, change edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationSystem.nrOfWorkers to any number > 1.
    * nrOfWorkers means the number of threads to perform parallel work.
    *
    *
    */
   public IncrementalPtrTest() {
-    super(TestInfo.SCOPE_FILE);//SCOPE_FILE2
+    super(TestInfo.SCOPE_FILE);
   }
 
   @Test

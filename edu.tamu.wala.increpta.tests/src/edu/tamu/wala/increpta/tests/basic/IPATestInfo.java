@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -21,5 +21,14 @@ public class IPATestInfo {
 	//jython:
 	public static final String SCOPE_FILE5 = "wala.testdata_jython.txt";
 	public static final String TEST_JYTHON = "Lorg/python/util/jython";
+	//h2
+	public static final String SCOPE_FILE6 = "wala.testdata_h2.txt";
+	public static final String TEST_H2 = "Lorg/h2/tools/Shell";
+	//tsp
+	public static final String SCOPE_FILE7 = "wala.testdata_tsp.txt";
+	public static final String TEST_TSP = "Ltsp/Tsp";
 
+	//scctest
+	public static final String SCOPE_FILE8 = "wala.testdata_scctest.txt";
+	public static final String TEST_SCCTEST = "Lscctest/SCCTest";
 }

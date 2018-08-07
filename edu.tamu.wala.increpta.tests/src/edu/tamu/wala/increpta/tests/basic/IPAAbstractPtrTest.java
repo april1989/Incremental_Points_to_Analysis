@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -19,10 +19,6 @@ import org.junit.Assert;
 
 import com.ibm.wala.core.tests.callGraph.CallGraphTestUtil;
 import com.ibm.wala.core.tests.demandpa.AbstractPtrTest;
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointerAnalysisImpl;
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder;
-import edu.tamu.wala.increpta.util.IPAUtil;
 import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
@@ -42,6 +38,11 @@ import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.intset.OrdinalSetMapping;
+
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointerAnalysisImpl;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder;
+import edu.tamu.wala.increpta.util.IPAUtil;
 
 public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 
@@ -69,15 +70,14 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 		IAnalysisCacheView cache = new AnalysisCacheImpl();
 		//works for different call graph/ptg builders
 		IPASSAPropagationCallGraphBuilder builder = IPAUtil.makeIPAZeroCFABuilder(options, cache, cha, scope);
-		//	    SSAPropagationCallGraphBuilder builder = Util.makeZeroOneContainerCFABuilder(options, cache, cha, scope);
-		//	    SSAPropagationCallGraphBuilder builder = Util.makeVanillaZeroOneCFABuilder(options, cache, cha, scope);
+		//SSAPropagationCallGraphBuilder builder = Util.makeZeroOneContainerCFABuilder(options, cache, cha, scope);
+		//SSAPropagationCallGraphBuilder builder = Util.makeVanillaZeroOneCFABuilder(options, cache, cha, scope);
 
 		CallGraph callGraph = builder.makeCallGraph(options, null);
 		PointerAnalysis<InstanceKey> pta = builder.getPointerAnalysis();
 		long whole_analysis_time = System.currentTimeMillis() - start_time;
 		//copy pts
 		copyPointsToSet(builder, pta);
-
 		System.err.println("Finish the whole program pta analysis for " + mainClassName + " using " + whole_analysis_time + "ms");
 		System.err.println("Start the correctness check for incremental pointer analysis in " + mainClassName);
 		Iterator<CGNode> iter = callGraph.iterator();
@@ -85,7 +85,10 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 		while(iter.hasNext()){
 			storeCG.add(iter.next());
 		}
-
+		//initial and set scc
+		builder.getSystem().createSCCEngine();
+ 		builder.getSystem().getPropagationGraph().initialRunSCCEngine();
+		builder.getSystem().getPropagationGraph().setChange(true);
 		//initialize parallel system
 		builder.getSystem().initialParallelSystem(false);
 		doIncrementalCheck(builder, storeCG);
@@ -121,26 +124,29 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 	}
 
 	private static void doIncrementalCheck(IPASSAPropagationCallGraphBuilder builder, HashSet<CGNode> storeCG) {
+		//true: by perform the performance comparison
+		//false: not perform the performance comparison, no output for performance
+		boolean performance = true;
 		for(CGNode n: storeCG){
-			if(!n.getMethod().getSignature().contains("com.ibm.wala")){
+			if(!n.getMethod().getSignature().contains("com.ibm.wala")
+					&& !n.getMethod().getSignature().contains("java.") ){
 				System.out.println("-- Test Method " + n.getMethod().getSignature());
-				//true: by perform the performance comparison
-				boolean correct = builder.testChange(n, var_pts_map, true);
-				//false: not perform the performance comparison
-				//	        boolean correct = builder.testChange(n, var_pts_map, false);
+				boolean correct = builder.testChange(n, var_pts_map, performance);
 				Assert.assertTrue("Points-to sets are different after changing " + n.getMethod().getSignature(), correct);
 				System.out.println();
 			}
 		}
-		//to compute average time
-		int total_inst = IPAPropagationCallGraphBuilder.total_inst;
-		long total_add = IPAPropagationCallGraphBuilder.total_add;
-		long total_del = IPAPropagationCallGraphBuilder.total_del;
-		double avg_add = (double)total_add/total_inst;
-		double avg_del = (double)total_del/total_inst;
+		if(performance){
+			//to compute average time
+			int total_inst = IPAPropagationCallGraphBuilder.total_inst;
+			long total_add = IPAPropagationCallGraphBuilder.total_add;
+			long total_del = IPAPropagationCallGraphBuilder.total_del;
+			double avg_add = (double)total_add/total_inst;
+			double avg_del = (double)total_del/total_inst;
 
-		System.err.println("The average time to compute the incremental analysis for deleting insts is " + avg_del);
-		System.err.println("The average time to compute the incremental analysis for adding insts is " + avg_add);
+			System.err.println("The average time to compute the incremental analysis for deleting insts is " + avg_del + "ms");
+			System.err.println("The average time to compute the incremental analysis for adding insts is " + avg_add + "ms");
+		}
 	}
 
 
