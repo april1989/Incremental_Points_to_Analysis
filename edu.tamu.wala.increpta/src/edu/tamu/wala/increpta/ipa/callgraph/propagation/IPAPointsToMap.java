@@ -27,6 +27,9 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntegerUnionFind;
 import com.ibm.wala.util.intset.MutableMapping;
 
+import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
+import edu.tamu.wala.increpta.pointerkey.IPALocalPointerKeyWithFilter;
+
 public class IPAPointsToMap {
 
 	/**

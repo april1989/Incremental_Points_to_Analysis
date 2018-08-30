@@ -16,6 +16,8 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 
+import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
+
 public interface IPAHeapModel extends InstanceKeyFactory, IPAPointerKeyFactory {
 
 	/**

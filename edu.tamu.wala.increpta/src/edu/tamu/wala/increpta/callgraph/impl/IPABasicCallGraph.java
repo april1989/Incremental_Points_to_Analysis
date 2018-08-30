@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -23,6 +23,7 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Context;
 import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
+import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.callgraph.propagation.ReceiverInstanceContext;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeBT.IInvokeInstruction;
@@ -38,6 +39,8 @@ import com.ibm.wala.util.graph.NumberedNodeManager;
 import com.ibm.wala.util.graph.impl.DelegatingNumberedNodeManager;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 import com.ibm.wala.util.graph.traverse.DFS;
+
+import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph.IPAExplicitNode;
 
 public abstract class IPABasicCallGraph<T> extends AbstractNumberedGraph<CGNode> implements CallGraph {
 
@@ -114,6 +117,31 @@ public abstract class IPABasicCallGraph<T> extends AbstractNumberedGraph<CGNode>
 	 */
 	public abstract CGNode findOrCreateNode(IMethod method, Context C) throws CancelException;
 
+	/**
+	 *for plugin
+	 * @param m_old
+	 * @param m
+	 * @param everywhere
+	 * @param astnode
+	 */
+	public void updateNode(IMethod m_old, IMethod m, Everywhere C, IPAExplicitNode node) {
+		Key oldkey = new Key(m_old, C);
+		deRegisterNode(oldkey, node);
+		Key newkey = new Key(m, C);
+		registerNode(newkey, node);
+	}
+
+	protected void deRegisterNode(Key K, CGNode N) {
+		nodes.remove(K);
+		removeNode(N);
+		Set<CGNode> s = findOrCreateMr2Nodes(K.m);
+		s.remove(N);
+		if (DEBUG) {
+			System.err.println(("registered Node: " + N + " for key " + K));
+			System.err.println(("now size = " + getNumberOfNodes()));
+		}
+	}
+
 	protected void registerNode(Key K, CGNode N) {
 		nodes.put(K, N);
 		addNode(N);
@@ -179,7 +207,7 @@ public abstract class IPABasicCallGraph<T> extends AbstractNumberedGraph<CGNode>
 		/**
 		 * The method this node represents.
 		 */
-		protected final IMethod method;
+		protected IMethod method;//remove final for plugin
 
 		/**
 		 * The context this node represents.

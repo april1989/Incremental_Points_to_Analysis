@@ -91,7 +91,7 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
  		builder.getSystem().getPropagationGraph().initialRunSCCEngine();
 		builder.getSystem().getPropagationGraph().setChange(true);
 		//initialize parallel system
-		builder.getSystem().initialParallelSystem(false);
+		builder.getSystem().initialParallelSystem(false, 8);
 		doIncrementalCheck(builder, storeCG);
 		System.err.println("========= Complete the correctness check for incremental pointer analysis in " + mainClassName + "\n");
 	}

@@ -26,6 +26,8 @@ import com.ibm.wala.ipa.callgraph.propagation.cfa.DelegatingSSAContextInterprete
 import com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 
+import edu.tamu.wala.increpta.pointerkey.IPADefaultPointerKeyFactory;
+
 public class IPAZeroXCFABuilder extends IPASSAPropagationCallGraphBuilder{
 
 	public IPAZeroXCFABuilder(Language l, IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache, ContextSelector appContextSelector,

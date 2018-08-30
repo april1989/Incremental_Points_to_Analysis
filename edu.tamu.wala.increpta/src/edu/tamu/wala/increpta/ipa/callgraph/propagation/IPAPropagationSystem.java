@@ -67,6 +67,8 @@ import edu.tamu.wala.increpta.operators.IPAUnaryOperator;
 import edu.tamu.wala.increpta.operators.IPAUnarySideEffect;
 import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
 import edu.tamu.wala.increpta.parallel.ThreadHub;
+import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
+import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
 import edu.tamu.wala.increpta.scc.SCCEngine;
 import edu.tamu.wala.increpta.scc.SCCVariable;
 import edu.tamu.wala.increpta.util.DeletionUtil;
@@ -151,7 +153,6 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 */
 	// public ActorSystem akkaSys;
 	// public ActorRef hub;
-	int nrOfWorkers;
 	/**
 	 * bz: thread pool system
 	 */
@@ -184,13 +185,14 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 
 	/**bz:
 	 * initialze parallel system
+	 * parallel when nrOfWorkers > 1
 	 * false: use the thread pool
 	 * true: use akka
+	 * @param i
 	 */
-	public void initialParallelSystem(boolean useAkka){
+	public void initialParallelSystem(boolean useAkka, int nrOfWorkers){
 		IPAPropagationSystem.useAkka = useAkka;
 		//bz: parallel system
-		nrOfWorkers = 8;//parallel when nrOfWorkers > 1
 		if(useAkka){
 			//bz: initialize akka system
 			// startAkkaSys();

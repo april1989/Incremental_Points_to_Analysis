@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -99,7 +100,10 @@ import com.ibm.wala.util.warnings.Warnings;
 
 import edu.tamu.wala.increpta.callgraph.impl.IPACGNode;
 import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder.ConstraintVisitor;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
+import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
+import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
 
 public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBuilder implements IPAHeapModel {
 
@@ -261,7 +265,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	/**
 	 * @return a visitor to examine instructions in the ir
 	 */
-	protected ConstraintVisitor makeVisitor(CGNode node) {
+	public ConstraintVisitor makeVisitor(CGNode node) {
 		return new ConstraintVisitor(this, node);
 	}
 
@@ -641,7 +645,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	/**
 	 * A visitor that generates constraints based on statements in SSA form.
 	 */
-	protected static class ConstraintVisitor extends SSAInstruction.Visitor {
+	public static class ConstraintVisitor extends SSAInstruction.Visitor {
 
 		/**
 		 * The governing call graph builder. This field is used instead of an inner class in order to allow more flexible reuse of this
@@ -2982,6 +2986,38 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	        } while (!system.emptyWorkList());
 	        system.clearChanges();
 		}
+
+	}
+
+	public void updatePointerAnalaysis(CGNode node, HashMap<SSAInstruction, ISSABasicBlock> deleted,
+			IR ir_old) {
+		DefUse du_old = new DefUse(ir_old);
+		ConstraintVisitor v_old = this.makeVisitor(node);
+		v_old.setIR(ir_old);
+		v_old.setDefUse(du_old);
+
+	    try {
+	    	//true -> Perform SSAInstruction Deletion
+	    	system.setChange(true);
+	    	this.setDelete(true);
+	    	for(Object key: deleted.keySet()){
+	    		SSAInstruction diff = (SSAInstruction)key;
+	    		ISSABasicBlock bb = (ISSABasicBlock)deleted.get(key);
+	    		v_old.setBasicBlock(bb);
+
+	    		system.setFirstDel(true);
+	    		diff.visit(v_old);
+	    		system.setFirstDel(false);
+	    		do{
+	    			system.solveDel(null);
+	    		}while(!system.emptyWorkList());
+	    	}
+	    	this.setDelete(false);
+		    //false -> Perform SSAInstruction Addition
+	    	//solved when updating call graph
+	    }catch(Exception e) {
+	    	e.printStackTrace();
+	    }
 
 	}
 

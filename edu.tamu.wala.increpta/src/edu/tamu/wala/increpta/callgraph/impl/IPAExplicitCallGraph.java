@@ -52,6 +52,8 @@ import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 import com.ibm.wala.util.intset.SparseIntSet;
 
+import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph.IPAExplicitNode;
+
 public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterpreter> implements BytecodeConstants{
 	protected final IClassHierarchy cha;
 
@@ -375,6 +377,19 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	        return false;
 	      return true;
 	    }
+
+	    /**
+	     * for plugin
+	     * @param m
+	     * @param ir
+	     */
+	    public void updateMethod(IMethod m, IR ir) {
+	    	this.method = m;
+	    	//if changed, may not be able to find it
+	    	this.ir = new WeakReference<IR>(ir);
+	        this.du.clear();
+	    }
+
 	  }
 
 	  /*
@@ -546,5 +561,6 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	  public IAnalysisCacheView getAnalysisCache() {
 	    return cache;
 	  }
+
 
 }

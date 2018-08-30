@@ -58,6 +58,9 @@ import com.ibm.wala.util.intset.MutableMapping;
 import com.ibm.wala.util.intset.MutableSparseIntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
+import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
+import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
+
 public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 
 	/**

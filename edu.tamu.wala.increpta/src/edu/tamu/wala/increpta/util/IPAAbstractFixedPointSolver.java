@@ -82,6 +82,15 @@ VerboseAction{
 	private int nCreated = 0;
 
 	/**
+	 * for d4 plugin
+	 */
+	public boolean updatechange = false;
+	public void setUpdateChange(boolean p){
+		updatechange = p;
+	}
+
+
+	/**
 	 * bz: flags
 	 */
 	public boolean isChange = false;
@@ -619,9 +628,11 @@ VerboseAction{
 		if (lhs != null)
 			lhs.setOrderNumber(nextOrderNumber++);
 		IPAGeneralStatement<T> s = new Statement(lhs, operator, rhs);
-		if (getFixedPointSystem().containsStatement(s)) {
-			nextOrderNumber--;
-			return false;
+		if(!updatechange){//for plugin : converthandler
+			if (getFixedPointSystem().containsStatement(s)) {
+				nextOrderNumber--;
+				return false;
+			}
 		}
 		nCreated++;
 		getFixedPointSystem().addStatement(s);

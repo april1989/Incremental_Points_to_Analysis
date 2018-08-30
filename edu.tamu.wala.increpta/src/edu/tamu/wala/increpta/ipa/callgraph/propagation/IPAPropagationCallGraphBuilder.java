@@ -76,6 +76,8 @@ import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGra
 import edu.tamu.wala.increpta.operators.IPAAssignOperator;
 import edu.tamu.wala.increpta.operators.IPAUnaryOperator;
 import edu.tamu.wala.increpta.operators.IPAUnarySideEffect;
+import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
+import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
 import edu.tamu.wala.increpta.util.IPAAbstractFixedPointSolver;
 
 public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder<InstanceKey> {
@@ -295,14 +297,8 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		try {
 			solver.solve(monitor);
 		} catch (CancelException e) {
-//			CallGraphBuilderCancelException c = CallGraphBuilderCancelException.createCallGraphBuilderCancelException(e, callGraph,
-//					system.extractPointerAnalysis(this));
-//			throw c;
 			e.printStackTrace();
 		} catch (CancelRuntimeException e) {
-//			CallGraphBuilderCancelException c = CallGraphBuilderCancelException.createCallGraphBuilderCancelException(e, callGraph,
-//					system.extractPointerAnalysis(this));
-//			throw c;
 			e.printStackTrace();
 		}
 
@@ -355,7 +351,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	 * @return true iff any new constraints are added.
 	 * @throws CancelException
 	 */
-	protected boolean addConstraintsFromNewNodes(IProgressMonitor monitor) throws CancelException {
+	public boolean addConstraintsFromNewNodes(IProgressMonitor monitor) throws CancelException {
 		boolean result = false;
 		while (!discoveredNodes.isEmpty()) {
 			Iterator<CGNode> it = discoveredNodes.iterator();
@@ -794,7 +790,6 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	 * @return the CGNode to which this particular call should dispatch.
 	 */
 	protected CGNode getTargetForCall(CGNode caller, CallSiteReference site, IClass recv, InstanceKey iKey[]) {
-
 		IMethod targetMethod = options.getMethodTargetSelector().getCalleeTarget(caller, site, recv);
 
 		// this most likely indicates an exclusion at work; the target selector
