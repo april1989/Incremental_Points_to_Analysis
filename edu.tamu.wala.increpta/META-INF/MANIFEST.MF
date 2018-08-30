@@ -8,7 +8,9 @@ Bundle-ActivationPolicy: lazy
 Bundle-Vendor: %Bundle-Vendor
 Require-Bundle: com.ibm.wala.util,
  com.ibm.wala.core,
- com.ibm.wala.shrike;bundle-version="1.4.4"
+ com.ibm.wala.shrike;bundle-version="1.4.4",
+ com.ibm.wala.cast.java,
+ com.ibm.wala.cast
 Export-Package: edu.tamu.wala.increpta.callgraph.impl,
  edu.tamu.wala.increpta.ipa.callgraph.propagation,
  edu.tamu.wala.increpta.operators,
