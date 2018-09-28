@@ -1005,9 +1005,9 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 			// also register that we have an instanceKey for the klass
 			assert value.getConcreteType() != null;
 
-			//      if (!value.getConcreteType().getReference().equals(TypeReference.JavaLangObject)) {
-			//        registerInstanceOfClass(value.getConcreteType(), index);
-			//      }
+			if (!value.getConcreteType().getReference().equals(TypeReference.JavaLangObject)) {
+				registerInstanceOfClass(value.getConcreteType(), index);
+			}
 
 			// we'd better update the worklist appropriately
 			// if graphNodeId == -1, then there are no equations that use this

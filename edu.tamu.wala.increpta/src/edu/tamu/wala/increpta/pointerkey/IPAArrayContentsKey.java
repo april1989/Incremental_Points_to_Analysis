@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -22,9 +22,9 @@ public final class IPAArrayContentsKey extends AbstractFieldPointerKey implement
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof ArrayContentsKey) {
-			ArrayContentsKey other = (ArrayContentsKey) obj;
-			return instance.equals(other.getInstanceKey());
+		if (obj instanceof IPAArrayContentsKey) {
+			IPAArrayContentsKey other = (IPAArrayContentsKey) obj;
+			return this.instance.equals(other.getInstanceKey());
 		} else {
 			return false;
 		}

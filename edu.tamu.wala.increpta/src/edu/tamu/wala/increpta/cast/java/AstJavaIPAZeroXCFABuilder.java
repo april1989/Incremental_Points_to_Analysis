@@ -26,11 +26,8 @@ public class AstJavaIPAZeroXCFABuilder extends AstJavaIPACFABuilder{
 
 	    setContextSelector(contextSelector);
 
-	    ZeroXInstanceKeys zik = new ZeroXInstanceKeys(options, cha, contextInterpreter, instancePolicy);
-	    setInstanceKeys(zik);
-
-//	    setInstanceKeys(new JavaScopeMappingInstanceKeys(this, new ZeroXInstanceKeys(options, cha, contextInterpreter,
-//	        instancePolicy)));
+	    setInstanceKeys(new IPAJavaScopeMappingInstanceKeys(this, new ZeroXInstanceKeys(options, cha, contextInterpreter,
+	        instancePolicy)));
 	}
 
 	public static AstJavaIPACFABuilder make(AnalysisOptions options, IAnalysisCacheView cache, IClassHierarchy cha, ClassLoader cl,

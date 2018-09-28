@@ -310,6 +310,8 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			MonitorUtil.throwExceptionIfCanceled(monitor);
 			SSAInstruction s = it.next();
 			if (s != null) {
+				if(s.toString().contains("16 = arrayload 4[6]"))
+					System.out.println();
 				s.visit(v);
 				if (wasChanged(node)) {
 					return;

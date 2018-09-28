@@ -358,6 +358,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			discoveredNodes = HashSetFactory.make();
 			while (it.hasNext()) {
 				CGNode n = it.next();
+				System.err.println(" *** " + n.toString());
 				result |= addConstraintsFromNode(n, monitor);
 			}
 		}

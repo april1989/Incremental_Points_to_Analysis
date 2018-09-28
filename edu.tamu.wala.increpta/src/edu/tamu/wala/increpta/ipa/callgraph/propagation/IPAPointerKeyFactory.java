@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -12,6 +12,8 @@ package edu.tamu.wala.increpta.ipa.callgraph.propagation;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKeyFactory;
+
+import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
 
 public interface IPAPointerKeyFactory extends PointerKeyFactory{
 
