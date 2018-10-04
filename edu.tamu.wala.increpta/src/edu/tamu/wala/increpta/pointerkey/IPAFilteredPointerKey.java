@@ -17,13 +17,13 @@ import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.ContextItem;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationSystem;
 import edu.tamu.wala.increpta.util.DeletionUtil;
 
@@ -31,9 +31,9 @@ public interface IPAFilteredPointerKey extends PointerKey{
 
 	public interface IPATypeFilter extends ContextItem {
 
-		boolean addFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R);
+		boolean addFiltered(IPAPropagationSystem system, IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs);
 
-		boolean addInverseFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R);
+		boolean addInverseFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R);
 
 		boolean isRootFilter();
 
@@ -44,8 +44,9 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		 * @param rhs
 		 * @return
 		 */
-		boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable lhs, PointsToSetVariable rhs);
-		boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable lhs, MutableSharedBitVectorIntSet set);
+		boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs);
+		//used for propagation
+		boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable lhs, MutableSharedBitVectorIntSet set);
 
 	}
 
@@ -76,15 +77,14 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean addFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			IntSet f = system.getInstanceKeysForClass(concreteType);
 			return (f == null) ? false : L.addAllInIntersection(R, f);
 		}
 
 		@Override
-		public boolean addInverseFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addInverseFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			IntSet f = system.getInstanceKeysForClass(concreteType);
-
 			// SJF: this is horribly inefficient. we really don't want to do
 			// diffs in here. TODO: fix it. probably keep not(f) cached and
 			// use addAllInIntersection
@@ -100,7 +100,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		 * bz
 		 */
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R){
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R){
 			IntSet f = system.getInstanceKeysForClass(concreteType);
 			if(f == null)
 				return false;
@@ -116,7 +116,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		 * bz
 		 */
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
 			IntSet f = system.getInstanceKeysForClass(concreteType);
 			if(f == null)
 				return false;
@@ -184,13 +184,13 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean addFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			IntSet f = bits(system);
 			return (f == null) ? false : L.addAllInIntersection(R, f);
 		}
 
 		@Override
-		public boolean addInverseFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addInverseFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			IntSet f = bits(system);
 
 			// SJF: this is horribly inefficient. we really don't want to do
@@ -222,7 +222,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R){
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R){
 			if(L.getValue() == null){
 				return false;
 			}
@@ -238,7 +238,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
 			if(L.getValue() == null){
 				return false;
 			}
@@ -281,7 +281,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean addFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			int idx = system.findOrCreateIndexForInstanceKey(concreteType);
 			if (R.contains(idx)) {
 				if (!L.contains(idx)) {
@@ -294,7 +294,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean addInverseFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addInverseFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			int idx = system.findOrCreateIndexForInstanceKey(concreteType);
 			if (!R.contains(idx) || L.contains(idx)) {
 				return L.addAll(R);
@@ -312,7 +312,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 
 		//bz
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R){
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R){
 			int idx = system.findOrCreateIndexForInstanceKey(concreteType);
 			if(R.contains(idx) && L.contains(idx)){
 				L.remove(idx);
@@ -322,7 +322,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		};
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
 			int idx = system.findOrCreateIndexForInstanceKey(concreteType);
 			if(set.contains(idx) && L.contains(idx)){
 				L.remove(idx);
@@ -361,13 +361,13 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		private class UpdateAction implements IntSetAction {
 			private boolean result = false;
 
-			private final PointsToSetVariable L;
+			private final IPAPointsToSetVariable L;
 
 			private final IPAPropagationSystem system;
 
 			private final boolean sense;
 
-			private UpdateAction(IPAPropagationSystem system, PointsToSetVariable L, boolean sense) {
+			private UpdateAction(IPAPropagationSystem system, IPAPointsToSetVariable L, boolean sense) {
 				this.L = L;
 				this.sense = sense;
 				this.system = system;
@@ -387,7 +387,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean addFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			if (R.getValue() == null) {
 				return false;
 			} else {
@@ -398,7 +398,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean addInverseFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R) {
+		public boolean addInverseFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R) {
 			if (R.getValue() == null) {
 				return false;
 			} else {
@@ -420,13 +420,13 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		private class ReverseUpdateAction implements IntSetAction {
 			private boolean result = false;
 
-			private final PointsToSetVariable L;
+			private final IPAPointsToSetVariable L;
 
 			private final IPAPropagationSystem system;
 
 			private final boolean sense;
 
-			private ReverseUpdateAction(IPAPropagationSystem system, PointsToSetVariable L, boolean sense) {
+			private ReverseUpdateAction(IPAPropagationSystem system, IPAPointsToSetVariable L, boolean sense) {
 				this.L = L;
 				this.sense = sense;
 				this.system = system;
@@ -447,7 +447,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, PointsToSetVariable R){
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAPointsToSetVariable R){
 			if (R.getValue() == null) {
 				return false;
 			} else {
@@ -458,7 +458,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, PointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
 			if (set == null) {
 				return false;
 			} else {

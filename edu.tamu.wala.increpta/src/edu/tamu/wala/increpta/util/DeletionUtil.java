@@ -10,12 +10,13 @@
  ******************************************************************************/
 package edu.tamu.wala.increpta.util;
 
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
+
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 public class DeletionUtil {
 
@@ -24,9 +25,26 @@ public class DeletionUtil {
 	 * @param set
 	 * @return
 	 */
-	public static MutableSharedBitVectorIntSet removeSome(PointsToSetVariable v, IntSet set){
+	public static MutableSharedBitVectorIntSet removeSome(IPAPointsToSetVariable v, IntSet set){
 		MutableSharedBitVectorIntSet removed = new MutableSharedBitVectorIntSetFactory().make();
 		MutableIntSet V = v.getValue();
+		if(V != null && set != null){
+			IntIterator iterator = set.intIterator();
+			while(iterator.hasNext()){
+				Integer del = iterator.next();
+				if(V.contains(del)){
+					V.remove(del);
+					removed.add(del);
+					if(removed.size() == set.size())
+						break;
+				}
+			}
+		}
+		return removed;
+	}
+
+	public static MutableSharedBitVectorIntSet removeSome(MutableSharedBitVectorIntSet V, IntSet set) {
+		MutableSharedBitVectorIntSet removed = new MutableSharedBitVectorIntSetFactory().make();
 		if(V != null && set != null){
 			IntIterator iterator = set.intIterator();
 			while(iterator.hasNext()){

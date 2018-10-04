@@ -19,13 +19,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
 
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder.IPAFilterOperator;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationSystem;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
@@ -43,7 +43,7 @@ public class ThreadHub {
 	private static int nrOfWorks;
 	private static boolean finished = false;
 
-	public static HashSet<PointsToSetVariable> processed = new HashSet<>();
+	public static HashSet<IPAPointsToSetVariable> processed = new HashSet<>();
 
 	public ThreadHub(int nrOfWorkers) {
 		threadrouter = Executors.newWorkStealingPool(nrOfWorkers);
@@ -53,7 +53,7 @@ public class ThreadHub {
 		return threadrouter;
 	}
 
-	public void initialRRTasks(MutableIntSet targets, ArrayList<PointsToSetVariable> firstusers,
+	public void initialRRTasks(MutableIntSet targets, ArrayList<IPAPointsToSetVariable> firstusers,
 			IPAPropagationSystem system) throws InterruptedException, ExecutionException{
 		//    System.err.println("RR is called. ");
 		ArrayList<Callable<ResultFromRR>> tasks = distributeRRTasks(targets, firstusers, system);
@@ -63,17 +63,17 @@ public class ThreadHub {
 	}
 
 	private void continueRRTasks(ArrayList<Future<ResultFromRR>> results,MutableIntSet targets, IPAPropagationSystem system) throws InterruptedException, ExecutionException {
-		ArrayList<com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable> firstusers = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> firstusers = new ArrayList<>();
 		for (Future<ResultFromRR> future : results) {
 			nrOfResults ++;
 			ResultFromRR result = future.get();
 			MutableIntSet newtarget = result.getNewTargets();
-			ArrayList<com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable> nexts = result.getCheckNext();
+			ArrayList<IPAPointsToSetVariable> nexts = result.getCheckNext();
 			if(nexts != null){
 				if(!nexts.isEmpty() && newtarget.size() > 0){
-					Iterator<PointsToSetVariable> iterator = nexts.iterator();
+					Iterator<IPAPointsToSetVariable> iterator = nexts.iterator();
 					while(iterator.hasNext()){
-						PointsToSetVariable next = iterator.next();
+						IPAPointsToSetVariable next = iterator.next();
 						if(next.getValue() != null){
 							firstusers.add(next);
 						}
@@ -87,12 +87,12 @@ public class ThreadHub {
 		doWeTerminate();
 	}
 
-	private static ArrayList<Callable<ResultFromRR>> distributeRRTasks(final MutableIntSet targets, ArrayList<PointsToSetVariable> firstusers,
+	private static ArrayList<Callable<ResultFromRR>> distributeRRTasks(final MutableIntSet targets, ArrayList<IPAPointsToSetVariable> firstusers,
 			final IPAPropagationSystem system) {
 		ArrayList<Callable<ResultFromRR>> tasks = new ArrayList<>();
-		Iterator<PointsToSetVariable> users = firstusers.iterator();
+		Iterator<IPAPointsToSetVariable> users = firstusers.iterator();
 		while(users.hasNext()){
-			final PointsToSetVariable user = users.next();
+			final IPAPointsToSetVariable user = users.next();
 			if(processed.contains(user))
 				continue;
 			nrOfWorks++;
@@ -108,7 +108,7 @@ public class ThreadHub {
 	}
 
 
-	public void initialSpecialTasks(ArrayList<PointsToSetVariable> lhss, MutableIntSet targets,  boolean isAddition,
+	public void initialSpecialTasks(ArrayList<IPAPointsToSetVariable> lhss, MutableIntSet targets,  boolean isAddition,
 			IPAPropagationSystem system) throws InterruptedException, ExecutionException{
 		//    System.err.println("Speical is called. ");
 		ArrayList<Callable<ResultFromSpecial>> tasks = distributeSpecialTasks(targets, lhss, isAddition, system);
@@ -119,17 +119,17 @@ public class ThreadHub {
 
 	private void continueSpecialTasks(ArrayList<Future<ResultFromSpecial>> results, MutableIntSet targets, boolean isAddition,
 			IPAPropagationSystem system) throws InterruptedException, ExecutionException {
-		ArrayList<PointsToSetVariable> firstusers = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> firstusers = new ArrayList<>();
 		for (Future<ResultFromSpecial> future : results) {
 			nrOfResults++;
 			ResultFromSpecial result = future.get();
 			MutableIntSet newtarget = result.getNewTargets();
-			ArrayList<PointsToSetVariable> nexts = result.getCheckNext();
+			ArrayList<IPAPointsToSetVariable> nexts = result.getCheckNext();
 			if(nexts != null){
 				if(!nexts.isEmpty() && newtarget.size() > 0){
-					Iterator<PointsToSetVariable> iterator = nexts.iterator();
+					Iterator<IPAPointsToSetVariable> iterator = nexts.iterator();
 					while(iterator.hasNext()){
-						PointsToSetVariable next = iterator.next();
+						IPAPointsToSetVariable next = iterator.next();
 						if(next.getValue() != null){
 							firstusers.add(next);
 						}
@@ -143,12 +143,12 @@ public class ThreadHub {
 		doWeTerminate();
 	}
 
-	private static ArrayList<Callable<ResultFromSpecial>> distributeSpecialTasks(final MutableIntSet targets, ArrayList<PointsToSetVariable> lhss,
+	private static ArrayList<Callable<ResultFromSpecial>> distributeSpecialTasks(final MutableIntSet targets, ArrayList<IPAPointsToSetVariable> lhss,
 			final boolean isAddition, final IPAPropagationSystem system) {
 		ArrayList<Callable<ResultFromSpecial>> tasks = new ArrayList<>();
-		Iterator<PointsToSetVariable> users = lhss.iterator();
+		Iterator<IPAPointsToSetVariable> users = lhss.iterator();
 		while(users.hasNext()){
-			final PointsToSetVariable user = users.next();
+			final IPAPointsToSetVariable user = users.next();
 			if(processed.contains(user))
 				continue;
 			nrOfWorks++;
@@ -179,15 +179,15 @@ public class ThreadHub {
 	}
 
 	private static ResultFromRR processRRTask(TaskForRR work) {
-		final PointsToSetVariable user = work.getUser();
+		final IPAPointsToSetVariable user = work.getUser();
 		final MutableIntSet targets = work.getTargets();
 		final IPAPropagationSystem system = work.getPropagationSystem();
-		ArrayList<PointsToSetVariable> next = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 		//check
 		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(targets);
 		if(system.isTransitiveRoot(user.getPointerKey()))
 			return new ResultFromRR(user, next, remaining);
-		for (PointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
+		for (IPAPointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
 			if(remaining.isEmpty())
 				break;
 			if(pv instanceof SCCVariable){
@@ -232,12 +232,12 @@ public class ThreadHub {
 					IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 					IPAAbstractOperator op = s.getOperator();
 					if(op instanceof IPAAssignOperator){
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(pv.getValue() != null)
 							next.add(pv);
 					}else if(op instanceof IPAFilterOperator){
 						IPAFilterOperator filter = (IPAFilterOperator) op;
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(system.isTransitiveRoot(pv.getPointerKey()))
 							continue;
 						synchronized (pv) {
@@ -261,19 +261,23 @@ public class ThreadHub {
 		return new ResultFromRR(user, next, remaining);
 	}
 
-	private static void classifyPointsToConstraints(PointsToSetVariable L, final MutableIntSet targets,
-			ArrayList<PointsToSetVariable> next, IPAPropagationSystem system){
+	private static void classifyPointsToConstraints(IPAPointsToSetVariable L, final MutableIntSet targets,
+			ArrayList<IPAPointsToSetVariable> next, IPAPropagationSystem system){
 		for (Iterator it = system.getPropagationGraph().getStatementsThatUse(L); it.hasNext();) {
 			IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 			IPAAbstractOperator op = s.getOperator();
 			if(op instanceof IPAAssignOperator){
-				PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+				if(system.checkSelfRecursive(s))
+					continue;
+				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(pv.getValue() != null){
 					next.add(pv);
 				}
 			}else if(op instanceof IPAFilterOperator){
+				if(system.checkSelfRecursive(s))
+					continue;
 				IPAFilterOperator filter = (IPAFilterOperator) op;
-				PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(system.isTransitiveRoot(pv.getPointerKey()))
 					continue;
 				byte mark = filter.evaluateDel(pv, (MutableSharedBitVectorIntSet)targets);
@@ -288,10 +292,10 @@ public class ThreadHub {
 	}
 
 	private static ResultFromSpecial processSpecialWorkAddition(TaskForSpecial work) {
-		final PointsToSetVariable user = work.getUser();
+		final IPAPointsToSetVariable user = work.getUser();
 		final MutableIntSet targets = work.getTargets();
 		final IPAPropagationSystem system = work.getPropagationSystem();
-		ArrayList<PointsToSetVariable> next = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 		if(user.getValue() == null)
 			return new ResultFromSpecial(user, next, (MutableSharedBitVectorIntSet) targets, work.getIsAdd());
 
@@ -316,13 +320,13 @@ public class ThreadHub {
 				IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 				IPAAbstractOperator op = s.getOperator();
 				if(op instanceof IPAAssignOperator){
-					PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+					IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 					if(pv.getValue() != null)
 						next.add(pv);
 				}else if(op instanceof IPAFilterOperator){
 					IPAFilterOperator filter = (IPAFilterOperator) op;
-					PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
-					byte mark = filter.evaluate(pv, (PointsToSetVariable)((IPAUnaryStatement)s).getRightHandSide());
+					IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
+					byte mark = filter.evaluate(pv, (IPAPointsToSetVariable)((IPAUnaryStatement)s).getRightHandSide());
 					if(mark == 1){
 						IPAAbstractFixedPointSolver.addToChanges(pv);
 						next.add(pv);
@@ -338,15 +342,15 @@ public class ThreadHub {
 	}
 
 	private static ResultFromSpecial processSpecialWorkDeletion(TaskForSpecial work) {
-		final PointsToSetVariable user = work.getUser();
+		final IPAPointsToSetVariable user = work.getUser();
 		final MutableIntSet targets = work.getTargets();
 		final IPAPropagationSystem system = work.getPropagationSystem();
-		ArrayList<PointsToSetVariable> next = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 
 		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(targets);
 		if(system.isTransitiveRoot(user.getPointerKey()))
 			return new ResultFromSpecial(user, next, remaining, work.getIsAdd());
-		for (PointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
+		for (IPAPointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
 			if(remaining.isEmpty())
 				break;
 			if(pv instanceof SCCVariable){
@@ -391,12 +395,12 @@ public class ThreadHub {
 					IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 					IPAAbstractOperator op = s.getOperator();
 					if(op instanceof IPAAssignOperator){
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(pv.getValue() != null)
 							next.add(pv);
 					}else if(op instanceof IPAFilterOperator){
 						IPAFilterOperator filter = (IPAFilterOperator) op;
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(system.isTransitiveRoot(pv.getPointerKey()))
 							continue;
 						synchronized (pv) {

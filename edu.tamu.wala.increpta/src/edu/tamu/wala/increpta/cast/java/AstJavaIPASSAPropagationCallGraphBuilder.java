@@ -18,7 +18,6 @@ import com.ibm.wala.ipa.callgraph.propagation.AbstractFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.ssa.SymbolTable;
@@ -26,6 +25,7 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.strings.Atom;
 
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.operators.IPAUnaryOperator;
 import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
 
@@ -160,9 +160,9 @@ public class AstJavaIPASSAPropagationCallGraphBuilder extends AstIPASSAPropagati
 				}
 
 			} else {
-				system.newSideEffect(new IPAUnaryOperator<PointsToSetVariable>() {
+				system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 					@Override
-					public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+					public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 						IntSetVariable<?> tv = rhs;
 						if (tv.getValue() != null) {
 							tv.getValue().foreach(ptr -> {
@@ -175,7 +175,7 @@ public class AstJavaIPASSAPropagationCallGraphBuilder extends AstIPASSAPropagati
 					}
 
 					@Override
-					public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+					public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 						// TODO Auto-generated method stub
 						return NOT_CHANGED;
 					}

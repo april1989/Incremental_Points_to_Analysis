@@ -32,7 +32,6 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.callgraph.propagation.StringConstantCharArray;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ssa.DefUse;
@@ -64,7 +63,7 @@ import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
 public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 
 	/**
-	 * mapping from PointerKey to PointsToSetVariable
+	 * mapping from PointerKey to IPAPointsToSetVariable
 	 */
 	private final IPAPointsToMap pointsToMap;
 
@@ -148,7 +147,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 			}
 		}
 
-		PointsToSetVariable v = pointsToMap.getPointsToSet(key);
+		IPAPointsToSetVariable v = pointsToMap.getPointsToSet(key);
 
 		if (v == null) {
 			return OrdinalSet.empty();
@@ -166,7 +165,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 		if (pointsToMap.isImplicit(key)) {
 			return false;
 		}
-		PointsToSetVariable v = pointsToMap.getPointsToSet(key);
+		IPAPointsToSetVariable v = pointsToMap.getPointsToSet(key);
 		if (v == null) {
 			return false;
 		} else {

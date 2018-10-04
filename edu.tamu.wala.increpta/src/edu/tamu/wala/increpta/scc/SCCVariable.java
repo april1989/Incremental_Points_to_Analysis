@@ -3,7 +3,6 @@ package edu.tamu.wala.increpta.scc;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.util.graph.INodeWithNumber;
 import com.ibm.wala.util.graph.NumberedNodeManager;
 import com.ibm.wala.util.intset.IntSet;
@@ -16,11 +15,13 @@ import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAAssignOperator;
 import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
-public class SCCVariable extends PointsToSetVariable{
+
+public class SCCVariable extends IPAPointsToSetVariable{
 
 	private HashSet<Integer> variable_ids;
-	private HashSet<PointsToSetVariable> variables;
+	private HashSet<IPAPointsToSetVariable> variables;
 	private IPAPropagationGraph flowGraph;//save for later solve add/delete()
 
 	/**
@@ -40,7 +41,7 @@ public class SCCVariable extends PointsToSetVariable{
 	}
 
 	/**
-	 * include all PointsToSetVariable, set its value as the union of all PointsToSetVariable
+	 * include all IPAPointsToSetVariable, set its value as the union of all IPAPointsToSetVariable
 	 * @param flowGraph
 	 */
 	public void fillInVariables(IPAPropagationGraph flowGraph){
@@ -48,9 +49,9 @@ public class SCCVariable extends PointsToSetVariable{
 		NumberedNodeManager<INodeWithNumber> manager = flowGraph.getNodeManager();
 		for (Integer id : variable_ids) {
 			INodeWithNumber node = manager.getNode(id);
-			if(node instanceof PointsToSetVariable){
-				variables.add((PointsToSetVariable) node);
-				MutableIntSet intset = ((PointsToSetVariable) node).getValue();
+			if(node instanceof IPAPointsToSetVariable){
+				variables.add((IPAPointsToSetVariable) node);
+				MutableIntSet intset = ((IPAPointsToSetVariable) node).getValue();
 				if(intset != null && intset.size() > 0){
 					addAll(intset);
 				}
@@ -67,11 +68,11 @@ public class SCCVariable extends PointsToSetVariable{
 		return variable_ids.contains(id);
 	}
 
-	public boolean belongToThisSCC(PointsToSetVariable v){
+	public boolean belongToThisSCC(IPAPointsToSetVariable v){
 	  return variables.contains(v);
 	}
 
-	public HashSet<PointsToSetVariable> getInvolvedVariables() {
+	public HashSet<IPAPointsToSetVariable> getInvolvedVariables() {
 		return variables;
 	}
 
@@ -83,13 +84,13 @@ public class SCCVariable extends PointsToSetVariable{
 	 * @param flowGraph
 	 * @return
 	 */
-	public boolean ifOthersCanProvide(PointsToSetVariable exclude, MutableSharedBitVectorIntSet remaining,
+	public boolean ifOthersCanProvide(IPAPointsToSetVariable exclude, MutableSharedBitVectorIntSet remaining,
 	    MutableIntSet set, IPAPropagationGraph flowGraph){
-		for (PointsToSetVariable v : variables) {
+		for (IPAPointsToSetVariable v : variables) {
 			if(!v.equals(exclude)){
 				for (IPAAbstractStatement def : flowGraph.getImplicitStatementsThatDef(v)) {
 					IPAUnaryStatement udef = (IPAUnaryStatement) def;
-					PointsToSetVariable rhs = (PointsToSetVariable) udef.getRightHandSide();
+					IPAPointsToSetVariable rhs = (IPAPointsToSetVariable) udef.getRightHandSide();
 					MutableIntSet value = rhs.getValue();
 					if(value != null){
 						value.foreach(new IntSetAction() {
@@ -125,15 +126,15 @@ public class SCCVariable extends PointsToSetVariable{
 	 * @param rhs
 	 * @param filter: true -> newly added filters
 	 */
-	public void updateForAdd(HashSet<Integer> adds, IPAPropagationGraph flowGraph, int rhs) {
+	public void updateForAdd(HashSet<Integer> adds, IPAPropagationGraph flowGraph) {
 		variable_ids.addAll(adds);
 		NumberedNodeManager<INodeWithNumber> manager = flowGraph.getNodeManager();
 		for (Integer add : adds) {
 			INodeWithNumber v = manager.getNode(add);
-			variables.add((PointsToSetVariable) v);
+			variables.add((IPAPointsToSetVariable) v);
 		}
-    //////inner PointsToSetVariable update is performed by outside worklist algorithm
-//    PointsToSetVariable rhs_v = (PointsToSetVariable) manager.getNode(rhs);//start point
+    //////inner IPAPointsToSetVariable update is performed by outside worklist algorithm
+//    IPAPointsToSetVariable rhs_v = (IPAPointsToSetVariable) manager.getNode(rhs);//start point
 //    //update this value
 //    if(rhs_v.getValue() != null)
 //      addAll(rhs_v.getValue());
@@ -143,11 +144,11 @@ public class SCCVariable extends PointsToSetVariable{
 //    int k = adds.size();
 //    while(k > 0){//only update the int in adds
 //    	for (IPAAbstractStatement use : uses) {
-//    		PointsToSetVariable lhs_v = (PointsToSetVariable) use.getLHS();
+//    		IPAPointsToSetVariable lhs_v = (IPAPointsToSetVariable) use.getLHS();
 //    		int lhs = lhs_v.getGraphNodeId();
 //    		if(adds.contains(lhs)){
 //    			use.evaluate();
-//    			rhs_v = (PointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
+//    			rhs_v = (IPAPointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
 //    			temp = flowGraph.getImplicitStatementsThatUse(rhs_v);
 //    			k --;
 //    			break;
@@ -163,15 +164,15 @@ public class SCCVariable extends PointsToSetVariable{
 	 * @param deletes
 	 * @param filter: true -> remains still have filters.
 	 */
-	public void updateForDelete(HashSet<Integer> deletes, IPAPropagationGraph flowGraph, int rhs) {
+	public void updateForDelete(HashSet<Integer> deletes, IPAPropagationGraph flowGraph) {
 		variable_ids.removeAll(deletes);
 		NumberedNodeManager<INodeWithNumber> manager = flowGraph.getNodeManager();
 		for (Integer delete : deletes) {
 			INodeWithNumber v = manager.getNode(delete);
-			variables.remove((PointsToSetVariable) v);
+			variables.remove((IPAPointsToSetVariable) v);
 		}
-	    //////inner PointsToSetVariable update is performed by outside worklist algorithm
-//    PointsToSetVariable rhs_v = (PointsToSetVariable) manager.getNode(rhs);//start point
+	    //////inner IPAPointsToSetVariable update is performed by outside worklist algorithm
+//    IPAPointsToSetVariable rhs_v = (IPAPointsToSetVariable) manager.getNode(rhs);//start point
 //    //update this value
 //    if(rhs_v.getValue() != null)
 //      removeAll(rhs_v.getValue());
@@ -181,7 +182,7 @@ public class SCCVariable extends PointsToSetVariable{
 //    int k = deletes.size();
 //    while(k > 0){//only update the int in adds
 //      for (IPAAbstractStatement use : uses) {
-//        PointsToSetVariable lhs_v = (PointsToSetVariable) use.getLHS();
+//        IPAPointsToSetVariable lhs_v = (IPAPointsToSetVariable) use.getLHS();
 //        int lhs = lhs_v.getGraphNodeId();
 //        if(deletes.contains(lhs)){
 //          IPAAbstractOperator op = use.getOperator();
@@ -190,7 +191,7 @@ public class SCCVariable extends PointsToSetVariable{
 //          }else{
 //            use.evaluateDel();
 //          }
-//          rhs_v = (PointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
+//          rhs_v = (IPAPointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
 //          temp = flowGraph.getImplicitStatementsThatUse(rhs_v);
 //          k --;
 //          break;
@@ -204,7 +205,7 @@ public class SCCVariable extends PointsToSetVariable{
 
 
 	/**
-    //////inner PointsToSetVariable update is performed by outside worklist algorithm
+    //////inner IPAPointsToSetVariable update is performed by outside worklist algorithm
     //we need to solve each pts for each variable here
 	 * @param that
 	 * @param rhs
@@ -212,7 +213,7 @@ public class SCCVariable extends PointsToSetVariable{
 	 */
   public boolean addAll(MutableSharedBitVectorIntSet that, int rhs){
     NumberedNodeManager<INodeWithNumber> manager = flowGraph.getNodeManager();
-    PointsToSetVariable rhs_v = (PointsToSetVariable) manager.getNode(rhs);//start point
+    IPAPointsToSetVariable rhs_v = (IPAPointsToSetVariable) manager.getNode(rhs);//start point
     //update this value
     if(rhs_v.getValue() != null)
       addAll(rhs_v.getValue());
@@ -222,10 +223,10 @@ public class SCCVariable extends PointsToSetVariable{
     int k = variables.size();
     while(k > 0){//only update the int in adds
       for (IPAAbstractStatement use : uses) {
-        PointsToSetVariable lhs_v = (PointsToSetVariable) use.getLHS();
+        IPAPointsToSetVariable lhs_v = (IPAPointsToSetVariable) use.getLHS();
         if(variables.contains(lhs_v)){
           use.evaluate();
-          rhs_v = (PointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
+          rhs_v = (IPAPointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
           temp = flowGraph.getImplicitStatementsThatUse(rhs_v);
           k --;
           break;
@@ -239,15 +240,16 @@ public class SCCVariable extends PointsToSetVariable{
   }
 
   /**
-    //////inner PointsToSetVariable update is performed by outside worklist algorithm
+    //////inner IPAPointsToSetVariable update is performed by outside worklist algorithm
     //we need to solve each pts for each variable here
    * @param that
    * @param rhs
    * @return
    */
+  @SuppressWarnings("unused")
   public boolean removeAll(MutableSharedBitVectorIntSet that, int rhs){
     NumberedNodeManager<INodeWithNumber> manager = flowGraph.getNodeManager();
-    PointsToSetVariable rhs_v = (PointsToSetVariable) manager.getNode(rhs);//start point
+    IPAPointsToSetVariable rhs_v = (IPAPointsToSetVariable) manager.getNode(rhs);//start point
     //update this value
     if(rhs_v.getValue() != null)
       removeAll(rhs_v.getValue());
@@ -257,7 +259,7 @@ public class SCCVariable extends PointsToSetVariable{
     int k = variables.size();
     while(k > 0){//only update the int in adds
       for (IPAAbstractStatement use : uses) {
-        PointsToSetVariable lhs_v = (PointsToSetVariable) use.getLHS();
+        IPAPointsToSetVariable lhs_v = (IPAPointsToSetVariable) use.getLHS();
         if(variables.contains(lhs_v)){
           IPAAbstractOperator op = use.getOperator();
           if(op instanceof IPAAssignOperator){
@@ -265,7 +267,7 @@ public class SCCVariable extends PointsToSetVariable{
           }else{
             use.evaluateDel();
           }
-          rhs_v = (PointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
+          rhs_v = (IPAPointsToSetVariable) ((IPAUnaryStatement) use).getRightHandSide();
           temp = flowGraph.getImplicitStatementsThatUse(rhs_v);
           k --;
           break;
@@ -281,7 +283,7 @@ public class SCCVariable extends PointsToSetVariable{
   /*
    * evaluateDel() for assign operator
    */
-  public boolean evaluateAssignDel(PointsToSetVariable lhs, PointsToSetVariable rhs){
+  public boolean evaluateAssignDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs){
     boolean removed = false;
     MutableIntSet value = lhs.getValue();
     rhs.getValue().foreach(new IntSetAction() {
@@ -311,7 +313,7 @@ public class SCCVariable extends PointsToSetVariable{
   }
 
 ////////do not use, other than initialize the scc
-//////inner PointsToSetVariable update is performed by outside worklist algorithm
+//////inner IPAPointsToSetVariable update is performed by outside worklist algorithm
 	@Override
 	public boolean addAll(IntSet B) {
 		return super.addAll(B);

@@ -10,34 +10,34 @@
  ******************************************************************************/
 package edu.tamu.wala.increpta.operators;
 
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
-public abstract class IPAUnarySideEffect extends IPAUnaryOperator<PointsToSetVariable> {
-	private PointsToSetVariable fixedSet;
+public abstract class IPAUnarySideEffect extends IPAUnaryOperator<IPAPointsToSetVariable> {
+	private IPAPointsToSetVariable fixedSet;
 
-	public IPAUnarySideEffect(PointsToSetVariable fixedSet) {
+	public IPAUnarySideEffect(IPAPointsToSetVariable fixedSet) {
 		this.fixedSet = fixedSet;
 	}
 
 	@Override
-	public final byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+	public final byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 		return evaluate(rhs);
 	}
 
-	public abstract byte evaluate(PointsToSetVariable rhs);
+	public abstract byte evaluate(IPAPointsToSetVariable rhs);
 
 	@Override
-	public final byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+	public final byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 		return evaluateDel(rhs);
 	}
 
-	public abstract byte evaluateDel(PointsToSetVariable rhs);
+	public abstract byte evaluateDel(IPAPointsToSetVariable rhs);
 
 
 	/**
 	 * @return Returns the fixed points-to-set associated with this side effect.
 	 */
-	protected PointsToSetVariable getFixedSet() {
+	protected IPAPointsToSetVariable getFixedSet() {
 		return fixedSet;
 	}
 
@@ -67,7 +67,7 @@ public abstract class IPAUnarySideEffect extends IPAUnaryOperator<PointsToSetVar
 	/**
 	 * Update the fixed points-to-set associated with this side effect.
 	 */
-	public void replaceFixedSet(PointsToSetVariable p) {
+	public void replaceFixedSet(IPAPointsToSetVariable p) {
 		fixedSet = p;
 	}
 }

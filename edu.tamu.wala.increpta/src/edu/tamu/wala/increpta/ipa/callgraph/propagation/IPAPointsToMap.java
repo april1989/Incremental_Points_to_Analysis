@@ -15,7 +15,6 @@ import java.util.function.Predicate;
 
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.callgraph.propagation.ReturnValueKey;
 import com.ibm.wala.util.collections.FilterIterator;
 import com.ibm.wala.util.collections.IVector;
@@ -29,6 +28,7 @@ import com.ibm.wala.util.intset.MutableMapping;
 
 import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
 import edu.tamu.wala.increpta.pointerkey.IPALocalPointerKeyWithFilter;
+import edu.tamu.wala.increpta.pointerkey.IPAReturnValueKeyWithFilter;
 
 public class IPAPointsToMap {
 
@@ -41,7 +41,7 @@ public class IPAPointsToMap {
 	 * pointsToSets[i] says something about the representation of the points-to set for the ith {@link PointerKey}, as determined by
 	 * the pointerKeys mapping. pointsToSets[i] can be one of the following:
 	 * <ul>
-	 * <li>a PointsToSetVariable
+	 * <li>a IPAPointsToSetVariable
 	 * <li>IMPLICIT
 	 * <li>UNIFIED
 	 * </ul>
@@ -87,7 +87,7 @@ public class IPAPointsToMap {
 	/**
 	 * If p is unified, returns the representative for p.
 	 */
-	public PointsToSetVariable getPointsToSet(PointerKey p) {
+	public IPAPointsToSetVariable getPointsToSet(PointerKey p) {
 		if (p == null) {
 			throw new IllegalArgumentException("null p");
 		}
@@ -99,7 +99,7 @@ public class IPAPointsToMap {
 			return null;
 		}
 		int repI = uf.find(i);
-		PointsToSetVariable result = (PointsToSetVariable) pointsToSets.get(repI);
+		IPAPointsToSetVariable result = (IPAPointsToSetVariable) pointsToSets.get(repI);
 		if (result != null && p instanceof IPAFilteredPointerKey && (!(result.getPointerKey() instanceof IPAFilteredPointerKey))) {
 			upgradeToFilter(result, ((IPAFilteredPointerKey) p).getTypeFilter());
 		}
@@ -107,11 +107,11 @@ public class IPAPointsToMap {
 	}
 
 	/**
-	 * @return the {@link PointsToSetVariable} recorded for a particular id
+	 * @return the {@link IPAPointsToSetVariable} recorded for a particular id
 	 */
-	public PointsToSetVariable getPointsToSet(int id) {
+	public IPAPointsToSetVariable getPointsToSet(int id) {
 		int repI = uf.find(id);
-		return (PointsToSetVariable) pointsToSets.get(repI);
+		return (IPAPointsToSetVariable) pointsToSets.get(repI);
 	}
 
 	/**
@@ -125,7 +125,7 @@ public class IPAPointsToMap {
 		pointsToSets.set(i, IMPLICIT);
 	}
 
-	public void put(PointerKey key, PointsToSetVariable v) {
+	public void put(PointerKey key, IPAPointsToSetVariable v) {
 		int i = findOrCreateIndex(key);
 		pointsToSets.set(i, v);
 	}
@@ -195,7 +195,7 @@ public class IPAPointsToMap {
 		for (Iterator it = iterateKeys(); it.hasNext();) {
 			PointerKey key = (PointerKey) it.next();
 			if (!isTransitiveRoot(key) && !isImplicit(key) && !isUnified(key)) {
-				PointsToSetVariable v = getPointsToSet(key);
+				IPAPointsToSetVariable v = getPointsToSet(key);
 				v.removeAll();
 			}
 		}
@@ -239,17 +239,17 @@ public class IPAPointsToMap {
 		int repI = uf.find(i);
 		int repJ = uf.find(j);
 		if (repI != repJ) {
-			PointsToSetVariable pi = (PointsToSetVariable) pointsToSets.get(repI);
-			PointsToSetVariable pj = (PointsToSetVariable) pointsToSets.get(repJ);
+			IPAPointsToSetVariable pi = (IPAPointsToSetVariable) pointsToSets.get(repI);
+			IPAPointsToSetVariable pj = (IPAPointsToSetVariable) pointsToSets.get(repJ);
 			if (pi == null) {
-				throw new IllegalArgumentException("No PointsToSetVariable for i: " + i);
+				throw new IllegalArgumentException("No IPAPointsToSetVariable for i: " + i);
 			}
 			if (pj == null) {
-				throw new IllegalArgumentException("No PointsToSetVariable for j: " + j);
+				throw new IllegalArgumentException("No IPAPointsToSetVariable for j: " + j);
 			}
 			uf.union(repI, repJ);
 			int rep = uf.find(repI);
-			PointsToSetVariable p = (PointsToSetVariable) pointsToSets.get(rep);
+			IPAPointsToSetVariable p = (IPAPointsToSetVariable) pointsToSets.get(rep);
 			if (pi.getValue() != null) {
 				p.addAll(pi.getValue());
 			}
@@ -270,7 +270,7 @@ public class IPAPointsToMap {
 		}
 	}
 
-	private void upgradeTypeFilter(PointsToSetVariable src, PointsToSetVariable dest) {
+	private void upgradeTypeFilter(IPAPointsToSetVariable src, IPAPointsToSetVariable dest) {
 		if (src.getPointerKey() instanceof IPAFilteredPointerKey) {
 			IPAFilteredPointerKey fpk = (IPAFilteredPointerKey) src.getPointerKey();
 			if (dest.getPointerKey() instanceof IPAFilteredPointerKey) {
@@ -284,7 +284,7 @@ public class IPAPointsToMap {
 		}
 	}
 
-	private void upgradeToFilter(PointsToSetVariable p, IPAFilteredPointerKey.IPATypeFilter typeFilter) {
+	private void upgradeToFilter(IPAPointsToSetVariable p, IPAFilteredPointerKey.IPATypeFilter typeFilter) {
 		if (p.getPointerKey() instanceof LocalPointerKey) {
 			LocalPointerKey lpk = (LocalPointerKey) p.getPointerKey();
 			IPALocalPointerKeyWithFilter f = new IPALocalPointerKeyWithFilter(lpk.getNode(), lpk.getValueNumber(), typeFilter);

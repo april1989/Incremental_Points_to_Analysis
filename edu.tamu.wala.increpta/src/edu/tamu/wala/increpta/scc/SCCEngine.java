@@ -12,6 +12,9 @@ public class SCCEngine {
 	private IPAPropagationGraph flowGraph;
 	private AdjacencyLists adjGraph;
 
+	private boolean groupwork = false;
+	private HashSet<Pair> groups = new HashSet<>();
+
 	//maintain a mapping of existing sccs <-> ptsv ids:
 	//3 maps maintained together
 	private HashMap<Integer, Integer> vid_sccid = new HashMap<>();
@@ -52,6 +55,13 @@ public class SCCEngine {
 		}
 	}
 
+	/**
+	 * for put/getfield,summarize all the edges then incremental compute scc
+	 * @param b
+	 */
+	public void setGroupWork(boolean b) {
+		this.groupwork = b;
+	}
 
 	/**
 	 * find existing or create SCC for a scc
@@ -59,7 +69,7 @@ public class SCCEngine {
 	 */
 	private SCCVariable findOrCreateSCCs(HashSet<Integer> scc) {
 		Object[] array = scc.toArray();
-		SCCVariable sccV = sccid_sccV.get(vid_sccid.get(((int)array[0])));
+		SCCVariable sccV = sccid_sccV.get(vid_sccid.get(((Integer)array[0])));
 		if(sccV == null){
 			//create and initialize scc variable
 			SSCPointerKey pKey = getFakePointerKey();
@@ -108,7 +118,7 @@ public class SCCEngine {
 	 * @param vid
 	 * @return
 	 */
-	public boolean belongToSCC(int vid) {
+	public boolean belongToSCC(Integer vid) {
 		return vid_sccid.containsKey(vid);
 	}
 
@@ -118,7 +128,7 @@ public class SCCEngine {
 	 * @param vid
 	 * @return
 	 */
-	public HashSet<Integer> getCorrespondingVIDsInSCC(int vid){
+	public HashSet<Integer> getCorrespondingVIDsInSCC(Integer vid){
 		return sccid_vid.get(vid_sccid.get(vid));
 	}
 
@@ -128,8 +138,9 @@ public class SCCEngine {
 	 * @param vid
 	 * @return
 	 */
-	public SCCVariable getCorrespondingSCCVariable(int vid){
-		return sccid_sccV.get(vid_sccid.get(vid));
+	public SCCVariable getCorrespondingSCCVariable(Integer vid){
+		SCCVariable temp = sccid_sccV.get(vid_sccid.get(vid));
+		return temp;
 	}
 
 	/**
@@ -149,12 +160,38 @@ public class SCCEngine {
 	 * @return boolean
 	 */
 	public boolean addEdge(int lhs, int rhs, boolean isFilter){
+		if(lhs == rhs)//**phi instruction => lhs == rhs
+			return false;
+		if(groupwork){
+			Pair pair = new Pair(lhs, rhs, isFilter);
+			groups.add(pair);
+			return false;
+		}
 		adjGraph.addEdge(rhs, lhs, isFilter);
 		boolean has_new = adjGraph.hasNewSCCs();
 		if(has_new){
-			update3MapsForAddEdge(rhs);
+			update3MapsForAddEdge();
 		}
 		return has_new;
+	}
+
+	public void addMultiEdges() {
+		ArrayList<Integer> lhss = new ArrayList<>();
+		ArrayList<Integer> rhss = new ArrayList<>();
+		for (Pair pair : groups) {
+			int lhs = pair.getLhs();
+			int rhs = pair.getRhs();
+			boolean isFilter = pair.getIsFilter();
+			adjGraph.addEdgeOnly(rhs, lhs, isFilter);
+			lhss.add(lhs);
+			rhss.add(rhs);
+		}
+		adjGraph.incrementalSCCForAddEdges(rhss, lhss);
+		boolean has_new = adjGraph.hasNewSCCs();
+		if(has_new){
+			update3MapsForAddEdge();
+		}
+		groups.clear();
 	}
 
 	/**
@@ -166,21 +203,47 @@ public class SCCEngine {
 	 * @return boolean
 	 */
 	public boolean removeEdge(int lhs, int rhs, boolean isFilter){
+		if(groupwork){
+			Pair pair = new Pair(lhs, rhs, isFilter);
+			groups.add(pair);
+			return false;
+		}
 		adjGraph.removeEdge(rhs, lhs, isFilter);
 		boolean has_remove = adjGraph.hasRemovedSCCs();
 		if(has_remove){
-			update3MapsForDeleteEdge(rhs);
+			update3MapsForDeleteEdge();
 		}
 		return has_remove;
 	}
+
+
+	public void removeMultiEdges() {
+		ArrayList<Integer> lhss = new ArrayList<>();
+		ArrayList<Integer> rhss = new ArrayList<>();
+		for (Pair pair : groups) {
+			int lhs = pair.getLhs();
+			int rhs = pair.getRhs();
+			boolean isFilter = pair.getIsFilter();
+			adjGraph.removeEdgeOnly(rhs, lhs, isFilter);
+			lhss.add(lhs);
+			rhss.add(rhs);
+		}
+		adjGraph.incrementalSCCForRemoveEdges(rhss, lhss);
+		boolean has_remove = adjGraph.hasRemovedSCCs();
+		if(has_remove){
+			update3MapsForDeleteEdge();
+		}
+		groups.clear();
+	}
+
 
 	/**
 	 * remove no longer used v in graph
 	 * @param v
 	 */
-	public void removeNode(int v){
+	public void removeNode(Integer v){
 		adjGraph.removeVertex(v);
-		adjGraph.removeFilterVertex(v);
+//		adjGraph.removeFilterVertex(v);
 	}
 
 
@@ -189,13 +252,28 @@ public class SCCEngine {
 	 * for add edges
 	 * @param rhs
 	 */
-	private void update3MapsForAddEdge(int rhs){
+	private void update3MapsForAddEdge(){
 		ArrayList<HashSet<Integer>> new_sccs = adjGraph.getNewSCCs();
 		for (HashSet<Integer> scc : new_sccs) {
 			boolean shortcut = false;
 			//check if remove sccs might exist
 			ArrayList<HashSet<Integer>> remove_sccs = adjGraph.getRemovedSCCs();
-			for (HashSet<Integer> remove : remove_sccs) {
+			if(remove_sccs.size() > 1){
+				//many remove: remove them and create new
+				for (HashSet<Integer> remove : remove_sccs) {
+					SCCVariable remove_sccV = findOrCreateSCCs(remove);
+					remove3Maps(remove, remove_sccV);
+				}
+				//add a new
+				SCCVariable sccV = findOrCreateSCCs(scc);
+				maintain3Maps(scc, sccV);
+			}else if(remove_sccs.size() == 1){
+				//only one inner: use short cut
+				HashSet<Integer> remove = remove_sccs.get(0);
+				if(remove.containsAll(scc) && scc.containsAll(remove)){
+					//all the same
+					continue;
+				}
 				if(scc.containsAll(remove)){
 					shortcut = true;
 					//reuse
@@ -209,19 +287,21 @@ public class SCCEngine {
 					adds.removeAll(remove);//scc only contains the add ids currently
 					//update 3maps, just add the id
 					Integer hashcode = sccV.hashCode();//assume no duplicate hashcode
-					sccid_vid.get(hashcode).addAll(adds);
 					for (Integer vid : adds) {
 						vid_sccid.put(vid, hashcode);
 					}
 					//update sccV
-					sccV.updateForAdd(adds, flowGraph, rhs);
+					sccV.updateForAdd(adds, flowGraph);
 				}
+				if(shortcut){
+					continue;
+				}
+				SCCVariable sccV = findOrCreateSCCs(scc);
+				maintain3Maps(scc, sccV);
+			}else{
+				SCCVariable sccV = findOrCreateSCCs(scc);
+				maintain3Maps(scc, sccV);
 			}
-			if(shortcut){
-				continue;
-			}
-			SCCVariable sccV = findOrCreateSCCs(scc);
-			maintain3Maps(scc, sccV);
 		}
 	}
 
@@ -229,7 +309,7 @@ public class SCCEngine {
 	 * incrementally update the 3 maps for sccs <-> vids
 	 * for remove edges
 	 */
-	private void update3MapsForDeleteEdge(int rhs){
+	private void update3MapsForDeleteEdge(){
 		ArrayList<HashSet<Integer>> remove_sccs = adjGraph.getRemovedSCCs();
 		for (HashSet<Integer> scc : remove_sccs) {
 			SCCVariable sccV = findOrCreateSCCs(scc);
@@ -239,7 +319,21 @@ public class SCCEngine {
 			//check if inner sccs might exist
 			boolean shortcut = false;
 			ArrayList<HashSet<Integer>> inner_sccs = adjGraph.getInnerSCCs();
-			for (HashSet<Integer> inner : inner_sccs) {
+			if(inner_sccs.size() > 1){
+				//many inner: remove original and create new for inner
+				//remove it from all 3 maps
+				remove3Maps(scc, sccV);
+				for (HashSet<Integer> inner : inner_sccs) {
+					SCCVariable inner_sccV = findOrCreateSCCs(inner);
+					maintain3Maps(inner, inner_sccV);
+				}
+			}else if(inner_sccs.size() == 1){
+				//only one inner: use short cut
+				HashSet<Integer> inner = inner_sccs.get(0);
+				if(inner.containsAll(scc) && scc.containsAll(inner)){
+					//all the same
+					continue;
+				}
 				if(scc.containsAll(inner)){
 					shortcut = true;
 					//should keep the SCCVariable, just remove the id
@@ -247,22 +341,47 @@ public class SCCEngine {
 					deletes.addAll(scc);
 					deletes.removeAll(inner);//scc only contains the removed ids currently
 					//update 3maps, just remove the id
-					Integer hashcode = sccV.hashCode();//assume no duplicate hashcode
-					sccid_vid.get(hashcode).removeAll(deletes);
 					for (Integer vid : deletes) {
 						vid_sccid.remove(vid);
 					}
 					//update sccV
-					sccV.updateForDelete(deletes, flowGraph, rhs);
+					sccV.updateForDelete(deletes, flowGraph);
 				}
+				if(shortcut){
+					continue;
+				}
+				//remove it from all 3 maps
+				remove3Maps(scc, sccV);
+			}else{
+				//remove it from all 3 maps
+				remove3Maps(scc, sccV);
 			}
-			if(shortcut){
-				continue;
-			}
-			//remove it from all 3 maps
-			remove3Maps(scc, sccV);
 		}
 	}
 
+
+	private class Pair{
+		private int lhs;
+		private int rhs;
+		private boolean isFilter;
+
+		public Pair(int lhs, int rhs, boolean isFilter) {
+			this.lhs = lhs;
+			this.rhs = rhs;
+			this.isFilter = isFilter;
+		}
+
+		public boolean getIsFilter() {
+			return isFilter;
+		}
+
+		public int getLhs() {
+			return lhs;
+		}
+
+		public int getRhs() {
+			return rhs;
+		}
+	}
 
 }

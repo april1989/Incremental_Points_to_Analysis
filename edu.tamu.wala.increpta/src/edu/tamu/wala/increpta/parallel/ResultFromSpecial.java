@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -12,29 +12,29 @@ package edu.tamu.wala.increpta.parallel;
 
 import java.util.ArrayList;
 
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 
 
 public class ResultFromSpecial {
 
-  private PointsToSetVariable user;
-  private ArrayList<PointsToSetVariable> next;
+  private IPAPointsToSetVariable user;
+  private ArrayList<IPAPointsToSetVariable> next;
   private MutableSharedBitVectorIntSet newtargets;
   private boolean isAdd;
 
-  public ResultFromSpecial(PointsToSetVariable user, ArrayList<PointsToSetVariable> next, MutableSharedBitVectorIntSet remaining, boolean isAdd) {
+  public ResultFromSpecial(IPAPointsToSetVariable user, ArrayList<IPAPointsToSetVariable> next, MutableSharedBitVectorIntSet remaining, boolean isAdd) {
     this.user = user;
     this.newtargets = remaining;
     this.next = next;
     this.isAdd = isAdd;
   }
 
-  public PointsToSetVariable getUser(){
+  public IPAPointsToSetVariable getUser(){
     return user;
   }
 
-  public ArrayList<PointsToSetVariable> getCheckNext(){
+  public ArrayList<IPAPointsToSetVariable> getCheckNext(){
     return next;
   }
 

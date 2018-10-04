@@ -69,7 +69,7 @@ VerboseAction{
 	/**
 	 * The next order number to assign to a new equation
 	 */
-	int nextOrderNumber = 1;
+	protected int nextOrderNumber = 1;
 
 	/**
 	 * During verbose evaluation, holds the number of dataflow equations evaluated
@@ -121,7 +121,6 @@ VerboseAction{
 				changes.add(tar);
 		}
 	}
-
 
 	/**
 	 * worklist for the iterative solver
@@ -204,6 +203,23 @@ VerboseAction{
 		return globalChange;
 	}
 
+	public boolean checkSelfRecursive(IPAAbstractStatement s){
+		IVariable lhs = s.getLHS();
+		if(lhs != null){
+			if(s instanceof IPAUnaryStatement){
+				int lhs_id = lhs.getGraphNodeId();
+				int rhs_id = ((IPAUnaryStatement) s).getRightHandSide().getGraphNodeId();
+				if(lhs_id == rhs_id){
+					//bz: **probably from phi instruction => lhs == rhs
+					//propagation following this edge will generate wrong result
+					//do not consider it in this adjlist
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 
 	@SuppressWarnings("unchecked")
 	public boolean solveDel(IProgressMonitor monitor) throws CancelException {
@@ -215,6 +231,8 @@ VerboseAction{
 
 			// duplicate insertion detection
 			IPAAbstractStatement s = workList.takeStatement();
+			if(checkSelfRecursive(s))
+				continue;
 			byte code = s.evaluateDel();
 			if (verbose) {
 				nEvaluated++;
@@ -264,11 +282,11 @@ VerboseAction{
 			}
 			if (isChanged(code)) {
 				if(isChange){
-					IVariable lhs = s.getLHS();
-					if(lhs != null){
-						if(!changes.contains(lhs))
-							changes.add(s.getLHS());
-					}
+//					IVariable lhs = s.getLHS();
+//					if(lhs != null){
+//						if(!changes.contains(lhs))
+//							changes.add(s.getLHS());
+//					}
 					updateWorkList(s);
 				}
 				globalChange = true;
@@ -430,6 +448,8 @@ VerboseAction{
 	@SuppressWarnings("unchecked")
 	private void incorporateDelStatement(boolean toWorkList, boolean eager, IPAAbstractStatement delS) {
 		if (eager) {
+			if(checkSelfRecursive(delS))
+				return;
 			byte code = delS.evaluateDel();
 			if(isChanged(code)){
 				IVariable lhs = delS.getLHS();
@@ -471,21 +491,21 @@ VerboseAction{
 		return true;
 	}
 
-	/**bz:*/
-	public boolean addStatement(T lhs, IPAUnaryOperator<T> operator, T rhs) {
+	public boolean newStatementChange(T lhs, IPAUnaryOperator<T> operator, T rhs, boolean toWorkList, boolean eager) {
 		if (operator == null) {
 			throw new IllegalArgumentException("operator is null");
 		}
 		// add to the list of graph
 		IPAUnaryStatement<T> s = operator.makeEquation(lhs, rhs);
-		if (getFixedPointSystem().containsStatement(s)) {
-			return false;
-		}
 		if (lhs != null) {
-			if(lhs.getOrderNumber() <= 0)
-				lhs.setOrderNumber(nextOrderNumber++);
+			lhs.setOrderNumber(nextOrderNumber++);
 		}
-		getFixedPointSystem().addStatement(s);
+		if (!getFixedPointSystem().containsStatement(s)) {
+			getFixedPointSystem().addStatement(s);
+			nCreated++;
+		}
+		incorporateNewStatement(toWorkList, eager, s);
+		topologicalCounter++;
 		return true;
 	}
 
@@ -526,6 +546,9 @@ VerboseAction{
 	 * @return
 	 */
 	public boolean delStatement(T lhs, IPAAbstractOperator<T> operator, T[] rhs, boolean toWorkList, boolean eager) {
+		if (operator == null) {
+			throw new IllegalArgumentException("operator is null");
+		}
 		IPAGeneralStatement<T> s = new Statement(lhs, operator, rhs);
 		if (!getFixedPointSystem().containsStatement(s)) {
 			return false;
@@ -628,14 +651,28 @@ VerboseAction{
 		if (lhs != null)
 			lhs.setOrderNumber(nextOrderNumber++);
 		IPAGeneralStatement<T> s = new Statement(lhs, operator, rhs);
-		if(!updatechange){//for plugin : converthandler
-			if (getFixedPointSystem().containsStatement(s)) {
-				nextOrderNumber--;
-				return false;
-			}
+		if (getFixedPointSystem().containsStatement(s)) {
+			nextOrderNumber--;
+			return false;
 		}
 		nCreated++;
 		getFixedPointSystem().addStatement(s);
+		incorporateNewStatement(toWorkList, eager, s);
+		topologicalCounter++;
+		return true;
+	}
+
+	public boolean newStatementChange(T lhs, IPAAbstractOperator<T> operator, T[] rhs, boolean toWorkList, boolean eager) {
+		// add to the list of graph
+		if (lhs != null)
+			lhs.setOrderNumber(nextOrderNumber++);
+		IPAGeneralStatement<T> s = new Statement(lhs, operator, rhs);
+		if(!updatechange){//for plugin : converthandler
+			if (!getFixedPointSystem().containsStatement(s)) {
+				getFixedPointSystem().addStatement(s);
+				nCreated++;
+			}
+		}
 		incorporateNewStatement(toWorkList, eager, s);
 		topologicalCounter++;
 		return true;
@@ -663,6 +700,8 @@ VerboseAction{
 		if (v == null) {
 			return;
 		}
+		if(isChange && s.toString().contains("[Node: < Application, Lorg/eclipse/osgi/internal/baseadaptor/BaseStorage, createBundleFile(Ljava/lang/Object;Lorg/eclipse/osgi/baseadaptor/BaseData;)Lorg/eclipse/osgi/baseadaptor/bundlefile/BundleFile; > Context: Everywhere, v3]"))
+			System.out.println();
 		changedVariable(v);
 	}
 

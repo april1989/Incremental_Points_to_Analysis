@@ -8,12 +8,10 @@
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
-package edu.tamu.wala.increpta.ipa.callgraph.propagation;
+package edu.tamu.wala.increpta.pointerkey;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.propagation.ReturnValueKey;
-
-import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
 
 public class IPAReturnValueKeyWithFilter extends ReturnValueKey implements IPAFilteredPointerKey {
 

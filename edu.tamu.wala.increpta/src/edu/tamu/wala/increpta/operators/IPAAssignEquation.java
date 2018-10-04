@@ -4,27 +4,27 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
 package edu.tamu.wala.increpta.operators;
 
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
 
 /**
  * A specialized equation class introduced for efficiency.
  */
-public final class IPAAssignEquation extends IPAUnaryStatement<PointsToSetVariable> {
+public final class IPAAssignEquation extends IPAUnaryStatement<IPAPointsToSetVariable> {
 
-  public IPAAssignEquation(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+  public IPAAssignEquation(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
     super(lhs, rhs);
   }
 
   @Override
-  public IPAUnaryOperator<PointsToSetVariable> getOperator() {
+  public IPAUnaryOperator<IPAPointsToSetVariable> getOperator() {
     return IPAPropagationCallGraphBuilder.assignOperator;
   }
 

@@ -31,7 +31,6 @@ import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
@@ -44,6 +43,7 @@ import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointerAnalysisImpl;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder;
 import edu.tamu.wala.increpta.util.IPAUtil;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 
@@ -51,6 +51,8 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 	 * var_pts_map: a map to record pointer keys and their original points-to sets
 	 */
 	private static HashMap<PointerKey, MutableIntSet> var_pts_map = new HashMap<>();
+	public static String MY_EXCLUSIONS = "EclipseDefaultExclusions.txt";
+
 
 	public IPAAbstractPtrTest(String scopeFile) {
 		super(scopeFile);
@@ -64,7 +66,7 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 		// perform incremental pta test on the testcase in com.ibm.wala.core.testdata
 		System.err.println("Start the test of incremental pointer analysis for test case: " + mainClassName);
 		long start_time = System.currentTimeMillis();
-		AnalysisScope scope = CallGraphTestUtil.makeJ2SEAnalysisScope(scopeFile, CallGraphTestUtil.REGRESSION_EXCLUSIONS);
+		AnalysisScope scope = CallGraphTestUtil.makeJ2SEAnalysisScope(scopeFile, MY_EXCLUSIONS);//CallGraphTestUtil.REGRESSION_EXCLUSIONS
 		ClassHierarchy cha = ClassHierarchyFactory.make(scope);
 		Iterable<Entrypoint> entrypoints = com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints(scope, cha, mainClassName);
 		AnalysisOptions options = CallGraphTestUtil.makeAnalysisOptions(scope, entrypoints);
@@ -84,7 +86,8 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 		Iterator<CGNode> iter = callGraph.iterator();
 		HashSet<CGNode> storeCG = new HashSet<>();
 		while(iter.hasNext()){
-			storeCG.add(iter.next());
+			CGNode n = iter.next();
+			storeCG.add(n);
 		}
 		//initial and set scc
 		builder.getSystem().createSCCEngine();
@@ -113,7 +116,7 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 				}
 				var_pts_map.put(key, pts);
 			}else{
-				PointsToSetVariable ptsv = builder.getSystem().findOrCreatePointsToSet(key);
+				IPAPointsToSetVariable ptsv = builder.getSystem().findOrCreatePointsToSet(key);
 				if(ptsv != null){
 					MutableIntSet pts = ptsv.getValue();
 					if(pts != null){
@@ -125,6 +128,8 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 	}
 
 	private static void doIncrementalCheck(IPASSAPropagationCallGraphBuilder builder, HashSet<CGNode> storeCG) {
+		//we set up a time limit for the test
+		long start = System.currentTimeMillis();
 		//true: by perform the performance comparison
 		//false: not perform the performance comparison, no output for performance
 		boolean performance = true;
@@ -136,6 +141,8 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 				Assert.assertTrue("Points-to sets are different after changing " + n.getMethod().getSignature(), correct);
 				System.out.println();
 			}
+			if((System.currentTimeMillis() - start) >= 120000)
+				break;
 		}
 		if(performance){
 			//to compute average time

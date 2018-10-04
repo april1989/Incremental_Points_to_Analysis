@@ -23,7 +23,6 @@ import java.util.function.Predicate;
 import com.ibm.wala.fixpoint.IFixedPointStatement;
 import com.ibm.wala.fixpoint.IFixedPointSystem;
 import com.ibm.wala.fixpoint.IVariable;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.util.collections.CompoundIterator;
 import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.FilterIterator;
@@ -60,7 +59,7 @@ import edu.tamu.wala.increpta.scc.SCCVariable;
 /**
  * A dataflow graph implementation specialized for propagation-based pointer analysis
  */
-public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariable> {
+public class IPAPropagationGraph implements IFixedPointSystem<IPAPointsToSetVariable> {
 
 	private final static boolean DEBUG = false;
 
@@ -92,14 +91,14 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * for IPAUnaryOperator op, let R be implicitMap.get(op) then (i,j) \in R implies i op j is an equation in the graph
 	 *
 	 */
-	private final SmallMap<IPAUnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> implicitUnaryMap = new SmallMap<IPAUnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation>();
+	private final SmallMap<IPAUnaryOperator<IPAPointsToSetVariable>, IBinaryNaturalRelation> implicitUnaryMap = new SmallMap<IPAUnaryOperator<IPAPointsToSetVariable>, IBinaryNaturalRelation>();
 
 	/**
 	 * The inverse of relations in the implicit map
 	 *
 	 * for IPAUnaryOperator op, let R be invImplicitMap.get(op) then (i,j) \in R implies j op i is an equation in the graph
 	 */
-	private final SmallMap<IPAUnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> invImplicitUnaryMap = new SmallMap<IPAUnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation>();
+	private final SmallMap<IPAUnaryOperator<IPAPointsToSetVariable>, IBinaryNaturalRelation> invImplicitUnaryMap = new SmallMap<IPAUnaryOperator<IPAPointsToSetVariable>, IBinaryNaturalRelation>();
 
 	/**
 	 * Number of implicit unary equations registered
@@ -143,8 +142,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	/**
 	 * @return a relation in map m corresponding to a key
 	 */
-	private static IBinaryNaturalRelation findOrCreateRelation(Map<IPAUnaryOperator<PointsToSetVariable>, IBinaryNaturalRelation> m,
-			IPAUnaryOperator<PointsToSetVariable> key) {
+	private static IBinaryNaturalRelation findOrCreateRelation(Map<IPAUnaryOperator<IPAPointsToSetVariable>, IBinaryNaturalRelation> m,
+			IPAUnaryOperator<IPAPointsToSetVariable> key) {
 		IBinaryNaturalRelation result = m.get(key);
 		if (result == null) {
 			result = makeRelation(key);
@@ -186,13 +185,13 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 			Assertions.UNREACHABLE("Don't call me");
 		}
 
-		public void addEquation(IPAAbstractStatement<PointsToSetVariable, ?> eq) {
+		public void addEquation(IPAAbstractStatement<IPAPointsToSetVariable, ?> eq) {
 			assert !containsStatement(eq);
 			equationCount++;
 			super.addNode(eq);
 		}
 
-		public void addVariable(PointsToSetVariable v) {
+		public void addVariable(IPAPointsToSetVariable v) {
 			if (!containsVariable(v)) {
 				varCount++;
 				super.addNode(v);
@@ -230,25 +229,25 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * @param eq
 	 */
 	@SuppressWarnings("unchecked")
-	public void removeStatement(IPAGeneralStatement<PointsToSetVariable> eq){
+	public void removeStatement(IPAGeneralStatement<IPAPointsToSetVariable> eq){
 		if (eq == null) {
 			throw new IllegalArgumentException("eq == null");
 		}
 		if(DEBUG)
 			System.err.println("--- Del Statement2: "+eq.toString());
 
-		eq = (IPAGeneralStatement<PointsToSetVariable>) delegateStatements.remove(eq.hashCode());
+		eq = (IPAGeneralStatement<IPAPointsToSetVariable>) delegateStatements.remove(eq.hashCode());
 
-		PointsToSetVariable lhs = eq.getLHS();
+		IPAPointsToSetVariable lhs = eq.getLHS();
 		if (lhs != null) {
 			delegateGraph.removeEdge(eq, lhs);
-			checkIfDeleteNode(lhs);
+//			checkIfDeleteNode(lhs);
 		}
 		for (int i = 0; i < eq.getRHS().length; i++){
-			PointsToSetVariable rhs = eq.getRHS()[i];
+			IPAPointsToSetVariable rhs = eq.getRHS()[i];
 			if(rhs!=null){
 				delegateGraph.removeEdge(rhs, eq);
-				checkIfDeleteNode(rhs);
+//				checkIfDeleteNode(rhs);
 			}
 		}
 	}
@@ -259,7 +258,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * @throws IllegalArgumentException
 	 */
 	@SuppressWarnings("unchecked")
-	public void removeStatement(IPAUnaryStatement<PointsToSetVariable> eq) throws IllegalArgumentException {
+	public void removeStatement(IPAUnaryStatement<IPAPointsToSetVariable> eq) throws IllegalArgumentException {
 		if (eq == null) {
 			throw new IllegalArgumentException("eq == null");
 		}
@@ -268,23 +267,24 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		if (useImplicitRepresentation(eq)) {
 			removeImplicitStatement(eq);
 		} else {
-			eq = (IPAUnaryStatement<PointsToSetVariable>) delegateStatements.remove(eq.hashCode());
-			PointsToSetVariable lhs = eq.getLHS();
-			PointsToSetVariable rhs = eq.getRightHandSide();
+			eq = (IPAUnaryStatement<IPAPointsToSetVariable>) delegateStatements.remove(eq.hashCode());
+			IPAPointsToSetVariable lhs = eq.getLHS();
+			IPAPointsToSetVariable rhs = eq.getRightHandSide();
 			if (lhs != null) {
 				delegateGraph.removeEdge(eq, lhs);
-				checkIfDeleteNode(lhs);
+//				checkIfDeleteNode(lhs);
 			}
 			try{
 				delegateGraph.removeEdge(rhs, eq);
-				checkIfDeleteNode(rhs);
+//				checkIfDeleteNode(rhs);
 			}catch(Exception e){
 				e.printStackTrace();
 			}
 		}
 	}
 
-	private void checkIfDeleteNode(PointsToSetVariable v) {
+	@SuppressWarnings("unused")
+	private void checkIfDeleteNode(IPAPointsToSetVariable v) {
 		int num_of_use = getNumberOfStatementsThatUse(v);
 		int num_of_def = getNumberOfStatementsThatDef(v);
 		if(num_of_def == 0 && num_of_use == 0){
@@ -298,11 +298,11 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * @throws IllegalArgumentException if eq is null
 	 * rhs -> eq(op) -> lhs
 	 */
-	public void addStatement(IPAGeneralStatement<PointsToSetVariable> eq) {
+	public void addStatement(IPAGeneralStatement<IPAPointsToSetVariable> eq) {
 		if (eq == null) {
 			throw new IllegalArgumentException("eq is null");
 		}
-		PointsToSetVariable lhs = eq.getLHS();
+		IPAPointsToSetVariable lhs = eq.getLHS();
 		delegateGraph.addEquation(eq);
 		//bz
 		delegateStatements.put(eq.hashCode(),eq);
@@ -312,7 +312,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 			delegateGraph.addEdge(eq, lhs);
 		}
 		for (int i = 0; i < eq.getRHS().length; i++) {
-			PointsToSetVariable v = eq.getRHS()[i];
+			IPAPointsToSetVariable v = eq.getRHS()[i];
 			if (v != null) {
 				delegateGraph.addVariable(v);
 				delegateGraph.addEdge(v, eq);
@@ -325,15 +325,15 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * @param eq
 	 * @throws IllegalArgumentException
 	 */
-	public void addStatement(IPAUnaryStatement<PointsToSetVariable> eq) throws IllegalArgumentException {
+	public void addStatement(IPAUnaryStatement<IPAPointsToSetVariable> eq) throws IllegalArgumentException {
 		if (eq == null) {
 			throw new IllegalArgumentException("eq == null");
 		}
 		if (useImplicitRepresentation(eq)) {
 			addImplicitStatement(eq);
 		} else {
-			PointsToSetVariable lhs = eq.getLHS();
-			PointsToSetVariable rhs = eq.getRightHandSide();
+			IPAPointsToSetVariable lhs = eq.getLHS();
+			IPAPointsToSetVariable rhs = eq.getRightHandSide();
 			delegateGraph.addEquation(eq);
 			//bz
 			delegateStatements.put(eq.hashCode(),eq);
@@ -356,13 +356,13 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		return (op instanceof IPAAssignOperator || op instanceof IPAPropagationCallGraphBuilder.IPAFilterOperator);
 	}
 
-	public void removeVariable(PointsToSetVariable p) {
+	public void removeVariable(IPAPointsToSetVariable p) {
 		assert getNumberOfStatementsThatDef(p) == 0;
 		assert getNumberOfStatementsThatUse(p) == 0;
 		delegateGraph.removeNode(p);
 	}
 
-	private void addImplicitStatement(IPAUnaryStatement<PointsToSetVariable> eq) {
+	private void addImplicitStatement(IPAUnaryStatement<IPAPointsToSetVariable> eq) {
 		if (DEBUG) {
 			System.err.println(("addImplicitStatement " + eq));
 		}
@@ -390,12 +390,12 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		}
 	}
 
-	private void removeImplicitStatement(IPAUnaryStatement<PointsToSetVariable> eq) {
+	private void removeImplicitStatement(IPAUnaryStatement<IPAPointsToSetVariable> eq) {
 		if (DEBUG) {
 			System.err.println(("removeImplicitStatement " + eq));
 		}
-		PointsToSetVariable LHS = eq.getLHS();
-		PointsToSetVariable RHS = eq.getRightHandSide();
+		IPAPointsToSetVariable LHS = eq.getLHS();
+		IPAPointsToSetVariable RHS = eq.getRightHandSide();
 		int lhs = LHS.getGraphNodeId();
 		int rhs = RHS.getGraphNodeId();
 		if (DEBUG) {
@@ -413,8 +413,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 				isFilter = true;
 			}
 			boolean remove_old = sccEngine.removeEdge(lhs, rhs, isFilter);
-			checkIfDeleteNode(LHS);
-			checkIfDeleteNode(RHS);
+//			checkIfDeleteNode(LHS);
+//			checkIfDeleteNode(RHS);
 		}
 	}
 
@@ -434,13 +434,13 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 */
 	private final class ImplicitUseIterator implements Iterator<IPAAbstractStatement> {
 
-		final PointsToSetVariable use;
+		final IPAPointsToSetVariable use;
 
 		final IntIterator defs;
 
-		final IPAUnaryOperator<PointsToSetVariable> op;
+		final IPAUnaryOperator<IPAPointsToSetVariable> op;
 
-		ImplicitUseIterator(IPAUnaryOperator<PointsToSetVariable> op, PointsToSetVariable use, IntSet defs) {
+		ImplicitUseIterator(IPAUnaryOperator<IPAPointsToSetVariable> op, IPAPointsToSetVariable use, IntSet defs) {
 			this.op = op;
 			this.use = use;
 			this.defs = defs.intIterator();
@@ -454,7 +454,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		@Override
 		public IPAAbstractStatement next() {
 			int l = defs.next();
-			PointsToSetVariable lhs = (PointsToSetVariable) delegateGraph.getNode(l);
+			IPAPointsToSetVariable lhs = (IPAPointsToSetVariable) delegateGraph.getNode(l);
 			IPAUnaryStatement temp = op.makeEquation(lhs, use);
 			if (DEBUG) {
 				System.err.print(("XX Return temp: " + temp));
@@ -475,13 +475,13 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 */
 	private final class ImplicitDefIterator implements Iterator<IPAAbstractStatement> {
 
-		final PointsToSetVariable def;
+		final IPAPointsToSetVariable def;
 
 		final IntIterator uses;
 
-		final IPAUnaryOperator<PointsToSetVariable> op;
+		final IPAUnaryOperator<IPAPointsToSetVariable> op;
 
-		ImplicitDefIterator(IPAUnaryOperator<PointsToSetVariable> op, IntSet uses, PointsToSetVariable def) {
+		ImplicitDefIterator(IPAUnaryOperator<IPAPointsToSetVariable> op, IntSet uses, IPAPointsToSetVariable def) {
 			this.op = op;
 			this.def = def;
 			this.uses = uses.intIterator();
@@ -495,7 +495,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		@Override
 		public IPAAbstractStatement next() {
 			int r = uses.next();
-			PointsToSetVariable rhs = (PointsToSetVariable) delegateGraph.getNode(r);
+			IPAPointsToSetVariable rhs = (IPAPointsToSetVariable) delegateGraph.getNode(r);
 			IPAUnaryStatement temp = op.makeEquation(def, rhs);
 			if (DEBUG) {
 				System.err.print(("YY Return temp: " + temp));
@@ -515,11 +515,11 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 */
 	private class GlobalImplicitIterator implements Iterator<IPAAbstractStatement> {
 
-		private final Iterator<IPAUnaryOperator<PointsToSetVariable>> outerKeyDelegate = implicitUnaryMap.keySet().iterator();
+		private final Iterator<IPAUnaryOperator<IPAPointsToSetVariable>> outerKeyDelegate = implicitUnaryMap.keySet().iterator();
 
 		private Iterator innerDelegate;
 
-		private IPAUnaryOperator<PointsToSetVariable> currentOperator;
+		private IPAUnaryOperator<IPAPointsToSetVariable> currentOperator;
 
 		GlobalImplicitIterator() {
 			advanceOuter();
@@ -551,8 +551,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 			IntPair p = (IntPair) innerDelegate.next();
 			int lhs = p.getX();
 			int rhs = p.getY();
-			IPAUnaryStatement result = currentOperator.makeEquation((PointsToSetVariable) delegateGraph.getNode(lhs),
-					(PointsToSetVariable) delegateGraph.getNode(rhs));
+			IPAUnaryStatement result = currentOperator.makeEquation((IPAPointsToSetVariable) delegateGraph.getNode(lhs),
+					(IPAPointsToSetVariable) delegateGraph.getNode(rhs));
 			if (!innerDelegate.hasNext()) {
 				advanceOuter();
 			}
@@ -571,14 +571,14 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * bz: override to consider deletion. (delStatement)
 	 */
 	@Override
-	public void removeStatement(IFixedPointStatement<PointsToSetVariable> eq) throws IllegalArgumentException {
+	public void removeStatement(IFixedPointStatement<IPAPointsToSetVariable> eq) throws IllegalArgumentException {
 		if (eq == null) {
 			throw new IllegalArgumentException("statement == null");
 		}
 		if (eq instanceof IPAUnaryStatement) {
-			removeStatement((IPAUnaryStatement<PointsToSetVariable>) eq);
+			removeStatement((IPAUnaryStatement<IPAPointsToSetVariable>) eq);
 		} else if (eq instanceof IPAGeneralStatement) {
-			removeStatement((IPAGeneralStatement<PointsToSetVariable>) eq);
+			removeStatement((IPAGeneralStatement<IPAPointsToSetVariable>) eq);
 		} else {
 			Assertions.UNREACHABLE("unexpected : " + eq.getClass());
 		}
@@ -588,7 +588,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	public void reorder() {
 		VariableGraphView graph = new VariableGraphView();
 
-		Iterator<PointsToSetVariable> order = Topological.makeTopologicalIter(graph).iterator();
+		Iterator<IPAPointsToSetVariable> order = Topological.makeTopologicalIter(graph).iterator();
 
 		int number = 0;
 		while (order.hasNext()) {
@@ -606,13 +606,13 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * Note that this graph trickily and fragilely reuses the nodeManager from the delegateGraph, above. This will work ok as long as
 	 * every variable is inserted in the delegateGraph.
 	 */
-	private class VariableGraphView extends AbstractNumberedGraph<PointsToSetVariable> {
+	private class VariableGraphView extends AbstractNumberedGraph<IPAPointsToSetVariable> {
 
 		/*
 		 * @see com.ibm.wala.util.graph.Graph#removeNodeAndEdges(java.lang.Object)
 		 */
 		@Override
-		public void removeNodeAndEdges(PointsToSetVariable N) {
+		public void removeNodeAndEdges(IPAPointsToSetVariable N) {
 			Assertions.UNREACHABLE();
 		}
 
@@ -620,7 +620,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#iterateNodes()
 		 */
 		@Override
-		public Iterator<PointsToSetVariable> iterator() {
+		public Iterator<IPAPointsToSetVariable> iterator() {
 			return getVariables();
 		}
 
@@ -636,7 +636,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#addNode(java.lang.Object)
 		 */
 		@Override
-		public void addNode(PointsToSetVariable n) {
+		public void addNode(IPAPointsToSetVariable n) {
 			Assertions.UNREACHABLE();
 
 		}
@@ -645,7 +645,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#removeNode(java.lang.Object)
 		 */
 		@Override
-		public void removeNode(PointsToSetVariable n) {
+		public void removeNode(IPAPointsToSetVariable n) {
 			Assertions.UNREACHABLE();
 
 		}
@@ -654,7 +654,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#containsNode(java.lang.Object)
 		 */
 		@Override
-		public boolean containsNode(PointsToSetVariable N) {
+		public boolean containsNode(IPAPointsToSetVariable N) {
 			return delegateGraph.containsNode(N);
 		}
 
@@ -662,9 +662,9 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#getPredNodes(java.lang.Object)
 		 */
 		@Override
-		public Iterator<PointsToSetVariable> getPredNodes(PointsToSetVariable v) {
+		public Iterator<IPAPointsToSetVariable> getPredNodes(IPAPointsToSetVariable v) {
 			final Iterator eqs = getStatementsThatDef(v);
-			return new Iterator<PointsToSetVariable>() {
+			return new Iterator<IPAPointsToSetVariable>() {
 				Iterator<INodeWithNumber> inner;
 
 				@Override
@@ -673,9 +673,9 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 				}
 
 				@Override
-				public PointsToSetVariable next() {
+				public IPAPointsToSetVariable next() {
 					if (inner != null) {
-						PointsToSetVariable result = (PointsToSetVariable)inner.next();
+						IPAPointsToSetVariable result = (IPAPointsToSetVariable)inner.next();
 						if (!inner.hasNext()) {
 							inner = null;
 						}
@@ -683,7 +683,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 					} else {
 						IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
 						if (useImplicitRepresentation(eq)) {
-							return (PointsToSetVariable) ((IPAUnaryStatement) eq).getRightHandSide();
+							return (IPAPointsToSetVariable) ((IPAUnaryStatement) eq).getRightHandSide();
 						} else {
 							inner = delegateGraph.getPredNodes(eq);
 							return next();
@@ -704,7 +704,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 */
 		@SuppressWarnings("unused")
 		public int getPredNodeCount(INodeWithNumber N) {
-			PointsToSetVariable v = (PointsToSetVariable) N;
+			IPAPointsToSetVariable v = (IPAPointsToSetVariable) N;
 			int result = 0;
 			for (Iterator eqs = getStatementsThatDef(v); eqs.hasNext();) {
 				IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
@@ -721,10 +721,10 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#getSuccNodes(java.lang.Object)
 		 */
 		@Override
-		public Iterator<PointsToSetVariable> getSuccNodes(PointsToSetVariable v) {
+		public Iterator<IPAPointsToSetVariable> getSuccNodes(IPAPointsToSetVariable v) {
 			final Iterator eqs = getStatementsThatUse(v);
-			return new Iterator<PointsToSetVariable>() {
-				PointsToSetVariable nextResult;
+			return new Iterator<IPAPointsToSetVariable>() {
+				IPAPointsToSetVariable nextResult;
 				{
 					advance();
 				}
@@ -735,8 +735,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 				}
 
 				@Override
-				public PointsToSetVariable next() {
-					PointsToSetVariable result = nextResult;
+				public IPAPointsToSetVariable next() {
+					IPAPointsToSetVariable result = nextResult;
 					advance();
 					return result;
 				}
@@ -745,7 +745,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 					nextResult = null;
 					while (eqs.hasNext() && nextResult == null) {
 						IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
-						nextResult = (PointsToSetVariable) eq.getLHS();
+						nextResult = (IPAPointsToSetVariable) eq.getLHS();
 					}
 				}
 
@@ -761,7 +761,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#getSuccNodeCount(java.lang.Object)
 		 */
 		@Override
-		public int getSuccNodeCount(PointsToSetVariable v) {
+		public int getSuccNodeCount(IPAPointsToSetVariable v) {
 			int result = 0;
 			for (Iterator eqs = getStatementsThatUse(v); eqs.hasNext();) {
 				IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
@@ -777,7 +777,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#addEdge(java.lang.Object, java.lang.Object)
 		 */
 		@Override
-		public void addEdge(PointsToSetVariable src, PointsToSetVariable dst) {
+		public void addEdge(IPAPointsToSetVariable src, IPAPointsToSetVariable dst) {
 			Assertions.UNREACHABLE();
 		}
 
@@ -785,7 +785,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#removeAllIncidentEdges(java.lang.Object)
 		 */
 		@Override
-		public void removeAllIncidentEdges(PointsToSetVariable node) {
+		public void removeAllIncidentEdges(IPAPointsToSetVariable node) {
 			Assertions.UNREACHABLE();
 		}
 
@@ -813,7 +813,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Iterator<IPAAbstractStatement> getStatementsThatUse(PointsToSetVariable v) {
+	public Iterator<IPAAbstractStatement> getStatementsThatUse(IPAPointsToSetVariable v) {
 		if (v == null) {
 			throw new IllegalArgumentException("v is null");
 		}
@@ -841,7 +841,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	/**
 	 * only return the implicit unary ids
 	 */
-	public ArrayList<IPAAbstractStatement> getImplicitStatementsThatUse(PointsToSetVariable v) {
+	public ArrayList<IPAAbstractStatement> getImplicitStatementsThatUse(IPAPointsToSetVariable v) {
 		if (v == null) {
 			throw new IllegalArgumentException("v is null");
 		}
@@ -867,7 +867,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Iterator<IPAAbstractStatement> getStatementsThatDef(PointsToSetVariable v) {
+	public Iterator<IPAAbstractStatement> getStatementsThatDef(IPAPointsToSetVariable v) {
 		if (v == null) {
 			throw new IllegalArgumentException("v is null");
 		}
@@ -894,7 +894,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	/**
 	 * only return the implicit unary statatements, do not consider scc
 	 */
-	public ArrayList<IPAAbstractStatement> getImplicitStatementsThatDef(PointsToSetVariable v) {
+	public ArrayList<IPAAbstractStatement> getImplicitStatementsThatDef(IPAPointsToSetVariable v) {
 		if (v == null) {
 			throw new IllegalArgumentException("v is null");
 		}
@@ -922,11 +922,11 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * only return the PointsToSetVariables/SCCVariables in its defined implicit unary statatements
 	 * only used for deletion after the initial run, to determine incoming neighbours
 	 */
-	public HashSet<PointsToSetVariable> getPointsToSetVariablesThatDefImplicitly(PointsToSetVariable v) {
+	public HashSet<IPAPointsToSetVariable> getPointsToSetVariablesThatDefImplicitly(IPAPointsToSetVariable v) {
 		if (v == null) {
 			throw new IllegalArgumentException("v is null");
 		}
-		HashSet<PointsToSetVariable> list = new HashSet<>();
+		HashSet<IPAPointsToSetVariable> list = new HashSet<>();
 		int number = v.getGraphNodeId();
 		if (number == -1) {
 			return list;
@@ -946,8 +946,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 								throw new RuntimeException("Cannot locate corresponding SCCVariable for " + id);
 						}else{
 							INodeWithNumber p_v = nodeManager.getNode(id);
-							if(p_v instanceof PointsToSetVariable){
-								list.add((PointsToSetVariable)p_v);
+							if(p_v instanceof IPAPointsToSetVariable){
+								list.add((IPAPointsToSetVariable)p_v);
 							}
 						}
 					}
@@ -965,7 +965,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 *
 	 */
 	@Override
-	public int getNumberOfStatementsThatUse(PointsToSetVariable v) {
+	public int getNumberOfStatementsThatUse(IPAPointsToSetVariable v) {
 		if (v == null) {
 			throw new IllegalArgumentException("v is null");
 		}
@@ -986,7 +986,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	}
 
 	@Override
-	public int getNumberOfStatementsThatDef(PointsToSetVariable v) {
+	public int getNumberOfStatementsThatDef(IPAPointsToSetVariable v) {
 		if (v == null) {
 			throw new IllegalArgumentException("v is null");
 		}
@@ -1008,8 +1008,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Iterator<PointsToSetVariable> getVariables() {
-		Iterator<PointsToSetVariable> it = new FilterIterator(delegateGraph.iterator(), new Predicate() {
+	public Iterator<IPAPointsToSetVariable> getVariables() {
+		Iterator<IPAPointsToSetVariable> it = new FilterIterator(delegateGraph.iterator(), new Predicate() {
 			@Override public boolean test(Object x) {
 				return x instanceof IVariable;
 			}
@@ -1043,12 +1043,12 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	}
 
 	@Override
-	public boolean containsStatement(IFixedPointStatement<PointsToSetVariable> eq) throws IllegalArgumentException {
+	public boolean containsStatement(IFixedPointStatement<IPAPointsToSetVariable> eq) throws IllegalArgumentException {
 		if (eq == null) {
 			throw new IllegalArgumentException("eq == null");
 		}
 		if (useImplicitRepresentation(eq)) {
-			IPAUnaryStatement<PointsToSetVariable> ueq = (IPAUnaryStatement<PointsToSetVariable>) eq;
+			IPAUnaryStatement<IPAPointsToSetVariable> ueq = (IPAUnaryStatement<IPAPointsToSetVariable>) eq;
 			return containsImplicitStatement(ueq);
 		} else {
 			//bz
@@ -1059,7 +1059,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	/**
 	 * @return true iff the graph already contains this equation
 	 */
-	private boolean containsImplicitStatement(IPAUnaryStatement<PointsToSetVariable> eq) {
+	private boolean containsImplicitStatement(IPAUnaryStatement<IPAPointsToSetVariable> eq) {
 		if (!containsVariable(eq.getLHS())) {
 			return false;
 		}
@@ -1078,19 +1078,19 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	}
 
 	@Override
-	public boolean containsVariable(PointsToSetVariable v) {
+	public boolean containsVariable(IPAPointsToSetVariable v) {
 		return delegateGraph.containsNode(v);
 	}
 
 	@Override
-	public void addStatement(IFixedPointStatement<PointsToSetVariable> statement) throws IllegalArgumentException, UnimplementedError {
+	public void addStatement(IFixedPointStatement<IPAPointsToSetVariable> statement) throws IllegalArgumentException, UnimplementedError {
 		if (statement == null) {
 			throw new IllegalArgumentException("statement == null");
 		}
 		if (statement instanceof IPAUnaryStatement) {
-			addStatement((IPAUnaryStatement<PointsToSetVariable>) statement);
+			addStatement((IPAUnaryStatement<IPAPointsToSetVariable>) statement);
 		} else if (statement instanceof IPAGeneralStatement) {
-			addStatement((IPAGeneralStatement<PointsToSetVariable>) statement);
+			addStatement((IPAGeneralStatement<IPAPointsToSetVariable>) statement);
 		} else {
 			Assertions.UNREACHABLE("unexpected: " + statement.getClass());
 		}
@@ -1100,7 +1100,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * A graph of just the variables in the system. v1 -> v2 iff there exists an assignment equation e s.t. e uses v1 and e defs v2.
 	 *
 	 */
-	public NumberedGraph<PointsToSetVariable> getAssignmentGraph() {
+	public NumberedGraph<IPAPointsToSetVariable> getAssignmentGraph() {
 		return new FilteredConstraintGraphView() {
 
 			@Override
@@ -1115,7 +1115,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * defs v2.
 	 *
 	 */
-	public Graph<PointsToSetVariable> getFilterAssignmentGraph() {
+	public Graph<IPAPointsToSetVariable> getFilterAssignmentGraph() {
 		return new FilteredConstraintGraphView() {
 			@Override
 			boolean isInteresting(IPAAbstractStatement eq) {
@@ -1128,7 +1128,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * NOTE: do not use this method unless you really know what you are doing. Functionality is fragile and may not work in the
 	 * future.
 	 */
-	public Graph<PointsToSetVariable> getFlowGraphIncludingImplicitConstraints() {
+	public Graph<IPAPointsToSetVariable> getFlowGraphIncludingImplicitConstraints() {
 		return new VariableGraphView();
 	}
 
@@ -1136,7 +1136,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 	 * A graph of just the variables in the system. v1 -> v2 that are related by def-use with "interesting" operators
 	 *
 	 */
-	private abstract class FilteredConstraintGraphView extends AbstractNumberedGraph<PointsToSetVariable> {
+	private abstract class FilteredConstraintGraphView extends AbstractNumberedGraph<IPAPointsToSetVariable> {
 
 		abstract boolean isInteresting(IPAAbstractStatement eq);
 
@@ -1144,7 +1144,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.Graph#removeNodeAndEdges(java.lang.Object)
 		 */
 		@Override
-		public void removeNodeAndEdges(PointsToSetVariable N) {
+		public void removeNodeAndEdges(IPAPointsToSetVariable N) {
 			Assertions.UNREACHABLE();
 		}
 
@@ -1152,7 +1152,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#iterateNodes()
 		 */
 		@Override
-		public Iterator<PointsToSetVariable> iterator() {
+		public Iterator<IPAPointsToSetVariable> iterator() {
 			return getVariables();
 		}
 
@@ -1168,7 +1168,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#addNode(java.lang.Object)
 		 */
 		@Override
-		public void addNode(PointsToSetVariable n) {
+		public void addNode(IPAPointsToSetVariable n) {
 			Assertions.UNREACHABLE();
 
 		}
@@ -1177,7 +1177,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#removeNode(java.lang.Object)
 		 */
 		@Override
-		public void removeNode(PointsToSetVariable n) {
+		public void removeNode(IPAPointsToSetVariable n) {
 			Assertions.UNREACHABLE();
 
 		}
@@ -1186,7 +1186,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.NodeManager#containsNode(java.lang.Object)
 		 */
 		@Override
-		public boolean containsNode(PointsToSetVariable N) {
+		public boolean containsNode(IPAPointsToSetVariable N) {
 			Assertions.UNREACHABLE();
 			return false;
 		}
@@ -1195,10 +1195,10 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#getPredNodes(java.lang.Object)
 		 */
 		@Override
-		public Iterator<PointsToSetVariable> getPredNodes(PointsToSetVariable v) {
+		public Iterator<IPAPointsToSetVariable> getPredNodes(IPAPointsToSetVariable v) {
 			final Iterator eqs = getStatementsThatDef(v);
-			return new Iterator<PointsToSetVariable>() {
-				PointsToSetVariable nextResult;
+			return new Iterator<IPAPointsToSetVariable>() {
+				IPAPointsToSetVariable nextResult;
 				{
 					advance();
 				}
@@ -1209,8 +1209,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 				}
 
 				@Override
-				public PointsToSetVariable next() {
-					PointsToSetVariable result = nextResult;
+				public IPAPointsToSetVariable next() {
+					IPAPointsToSetVariable result = nextResult;
 					advance();
 					return result;
 				}
@@ -1220,7 +1220,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 					while (eqs.hasNext() && nextResult == null) {
 						IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
 						if (isInteresting(eq)) {
-							nextResult = (PointsToSetVariable) ((IPAUnaryStatement) eq).getRightHandSide();
+							nextResult = (IPAPointsToSetVariable) ((IPAUnaryStatement) eq).getRightHandSide();
 						}
 					}
 				}
@@ -1236,7 +1236,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#getPredNodeCount(java.lang.Object)
 		 */
 		@Override
-		public int getPredNodeCount(PointsToSetVariable v) {
+		public int getPredNodeCount(IPAPointsToSetVariable v) {
 			int result = 0;
 			for (Iterator eqs = getStatementsThatDef(v); eqs.hasNext();) {
 				IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
@@ -1251,10 +1251,10 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#getSuccNodes(java.lang.Object)
 		 */
 		@Override
-		public Iterator<PointsToSetVariable> getSuccNodes(PointsToSetVariable v) {
+		public Iterator<IPAPointsToSetVariable> getSuccNodes(IPAPointsToSetVariable v) {
 			final Iterator eqs = getStatementsThatUse(v);
-			return new Iterator<PointsToSetVariable>() {
-				PointsToSetVariable nextResult;
+			return new Iterator<IPAPointsToSetVariable>() {
+				IPAPointsToSetVariable nextResult;
 				{
 					advance();
 				}
@@ -1265,8 +1265,8 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 				}
 
 				@Override
-				public PointsToSetVariable next() {
-					PointsToSetVariable result = nextResult;
+				public IPAPointsToSetVariable next() {
+					IPAPointsToSetVariable result = nextResult;
 					advance();
 					return result;
 				}
@@ -1276,7 +1276,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 					while (eqs.hasNext() && nextResult == null) {
 						IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
 						if (isInteresting(eq)) {
-							nextResult = (PointsToSetVariable) ((IPAUnaryStatement) eq).getLHS();
+							nextResult = (IPAPointsToSetVariable) ((IPAUnaryStatement) eq).getLHS();
 						}
 					}
 				}
@@ -1293,7 +1293,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#getSuccNodeCount(java.lang.Object)
 		 */
 		@Override
-		public int getSuccNodeCount(PointsToSetVariable v) {
+		public int getSuccNodeCount(IPAPointsToSetVariable v) {
 			int result = 0;
 			for (Iterator eqs = getStatementsThatUse(v); eqs.hasNext();) {
 				IPAAbstractStatement eq = (IPAAbstractStatement) eqs.next();
@@ -1308,7 +1308,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#addEdge(java.lang.Object, java.lang.Object)
 		 */
 		@Override
-		public void addEdge(PointsToSetVariable src, PointsToSetVariable dst) {
+		public void addEdge(IPAPointsToSetVariable src, IPAPointsToSetVariable dst) {
 			Assertions.UNREACHABLE();
 		}
 
@@ -1316,7 +1316,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.EdgeManager#removeAllIncidentEdges(java.lang.Object)
 		 */
 		@Override
-		public void removeAllIncidentEdges(PointsToSetVariable node) {
+		public void removeAllIncidentEdges(IPAPointsToSetVariable node) {
 			Assertions.UNREACHABLE();
 		}
 
@@ -1333,7 +1333,7 @@ public class IPAPropagationGraph implements IFixedPointSystem<PointsToSetVariabl
 		 * @see com.ibm.wala.util.graph.AbstractGraph#getEdgeManager()
 		 */
 		@Override
-		protected NumberedEdgeManager<PointsToSetVariable> getEdgeManager() {
+		protected NumberedEdgeManager<IPAPointsToSetVariable> getEdgeManager() {
 			Assertions.UNREACHABLE();
 			return null;
 		}

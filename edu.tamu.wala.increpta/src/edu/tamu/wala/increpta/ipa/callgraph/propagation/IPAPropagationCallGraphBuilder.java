@@ -46,7 +46,6 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKeyFactory;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.ZeroLengthArrayInNode;
 import com.ibm.wala.ipa.callgraph.propagation.rta.RTAContextInterpreter;
@@ -358,7 +357,6 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			discoveredNodes = HashSetFactory.make();
 			while (it.hasNext()) {
 				CGNode n = it.next();
-				System.err.println(" *** " + n.toString());
 				result |= addConstraintsFromNode(n, monitor);
 			}
 		}
@@ -627,7 +625,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	 * TODO: these need to be canonicalized.
 	 *
 	 */
-	public class IPAFilterOperator extends IPAUnaryOperator<PointsToSetVariable> implements IPointerOperator {
+	public class IPAFilterOperator extends IPAUnaryOperator<IPAPointsToSetVariable> implements IPointerOperator {
 
 		protected IPAFilterOperator() {
 		}
@@ -636,7 +634,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * @see com.ibm.wala.dataflow.UnaryOperator#evaluate(com.ibm.wala.dataflow.IVariable, com.ibm.wala.dataflow.IVariable)
 		 */
 		@Override
-		public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+		public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 
 			IPAFilteredPointerKey pk = (IPAFilteredPointerKey) lhs.getPointerKey();
 
@@ -667,7 +665,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * @return
 		 */
 		@Override
-		public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+		public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 			IPAFilteredPointerKey pk = (IPAFilteredPointerKey) lhs.getPointerKey();
 
 			if (DEBUG_FILTER) {
@@ -685,7 +683,11 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 			boolean changed = false;
 			IPAFilteredPointerKey.IPATypeFilter filter = pk.getTypeFilter();
-			changed = filter.delFiltered(system, lhs, rhs);
+			if(system.getFirstDel()){
+				changed = filter.delFiltered(system, lhs, rhs);
+			}else{//gonna change to other place
+				changed = filter.delFiltered(system, lhs, rhs.getChange());
+			}
 			return changed ? CHANGED : NOT_CHANGED;
 		}
 
@@ -695,7 +697,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * @param set
 		 * @return
 		 */
-		public byte evaluateDel(PointsToSetVariable lhs, MutableSharedBitVectorIntSet set) {
+		public byte evaluateDel(IPAPointsToSetVariable lhs, MutableSharedBitVectorIntSet set) {
 			IPAFilteredPointerKey pk = (IPAFilteredPointerKey) lhs.getPointerKey();
 
 			if(set == null){
@@ -891,15 +893,15 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			return "ArrayLoad";
 		}
 
-		public ArrayLoadOperator(PointsToSetVariable def) {
+		public ArrayLoadOperator(IPAPointsToSetVariable def) {
 			super(def);
 			system.registerFixedSet(def, this);
 		}
 
 		@Override
-		public byte evaluate(PointsToSetVariable rhs) {
+		public byte evaluate(IPAPointsToSetVariable rhs) {
 			if (DEBUG_ARRAY_LOAD) {
-				PointsToSetVariable def = getFixedSet();
+				IPAPointsToSetVariable def = getFixedSet();
 				String S = "EVAL ArrayLoad " + rhs.getPointerKey() + " " + def.getPointerKey();
 				System.err.println(S);
 				System.err.println("EVAL ArrayLoad " + def + " " + rhs);
@@ -912,7 +914,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				return NOT_CHANGED;
 			}
 
-			PointsToSetVariable def = getFixedSet();
+			IPAPointsToSetVariable def = getFixedSet();
 			final PointerKey dVal = def.getPointerKey();
 
 			final MutableBoolean sideEffect = new MutableBoolean();
@@ -952,9 +954,9 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * bz:
 		 */
 		@Override
-		public byte evaluateDel(PointsToSetVariable rhs) {
+		public byte evaluateDel(IPAPointsToSetVariable rhs) {
 			if (DEBUG_ARRAY_LOAD) {
-				PointsToSetVariable def = getFixedSet();
+				IPAPointsToSetVariable def = getFixedSet();
 				String S = "DEL EVAL ArrayLoad " + rhs.getPointerKey() + " " + def.getPointerKey();
 				System.err.println(S);
 				System.err.println("DEl EVAL ArrayLoad " + def + " " + rhs);
@@ -967,12 +969,12 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				return NOT_CHANGED;
 			}
 
-			PointsToSetVariable def = getFixedSet();
+			IPAPointsToSetVariable def = getFixedSet();
 			final PointerKey dVal = def.getPointerKey();
 
 			final MutableBoolean sideEffect_del = new MutableBoolean();
 			final MutableIntSet delset = IntSetUtil.getDefaultIntSetFactory().make();
-			final ArrayList<PointsToSetVariable> rhss = new ArrayList<>();
+			final ArrayList<IPAPointsToSetVariable> rhss = new ArrayList<>();
 			IntSetAction action = new IntSetAction() {
 				@Override
 				public void act(int i) {
@@ -992,16 +994,20 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					if (DEBUG_ARRAY_LOAD) {
 						System.err.println("ArrayLoad del assign: " + dVal + " " + p);
 					}
-					PointsToSetVariable ptv = system.findOrCreatePointsToSet(p);
+					IPAPointsToSetVariable ptv = system.findOrCreatePointsToSet(p);
 					if(ptv.getValue() != null){
 						delset.addAll(ptv.getValue());
 						rhss.add(ptv);
 					}
 				}
 			};
-			rhs.getValue().foreach(action);
+			if(system.getFirstDel()){
+				rhs.getValue().foreach(action);
+			}else{
+				rhs.getChange().foreach(action);
+			}
 			if(rhss.size() != 0)
-				sideEffect_del.b |= system.delConstraintHasMultiR(dVal, assignOperator, rhss, delset, rhs);
+				sideEffect_del.b |= system.delConstraintHasMultiR(def, assignOperator, rhss, delset);
 			priorInstances.foreach(action);
 			priorInstances.clear();
 			delset.clear();
@@ -1043,15 +1049,15 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			return "ArrayStore";
 		}
 
-		public ArrayStoreOperator(PointsToSetVariable val) {
+		public ArrayStoreOperator(IPAPointsToSetVariable val) {
 			super(val);
 			system.registerFixedSet(val, this);
 		}
 
 		@Override
-		public byte evaluate(PointsToSetVariable rhs) {
+		public byte evaluate(IPAPointsToSetVariable rhs) {
 			if (DEBUG_ARRAY_STORE) {
-				PointsToSetVariable val = getFixedSet();
+				IPAPointsToSetVariable val = getFixedSet();
 				String S = "EVAL ArrayStore " + rhs.getPointerKey() + " " + val.getPointerKey();
 				System.err.println(S);
 				System.err.println("EVAL ArrayStore " + rhs + " " + getFixedSet());
@@ -1061,7 +1067,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				return NOT_CHANGED;
 			}
 
-			PointsToSetVariable val = getFixedSet();
+			IPAPointsToSetVariable val = getFixedSet();
 			PointerKey pVal = val.getPointerKey();
 
 			List<InstanceKey> instances = system.getInstances(rhs.getValue());
@@ -1100,9 +1106,9 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 		//bz
 		@Override
-		public byte evaluateDel(PointsToSetVariable rhs) {
+		public byte evaluateDel(IPAPointsToSetVariable rhs) {
 			if (DEBUG_ARRAY_STORE) {
-				PointsToSetVariable val = getFixedSet();
+				IPAPointsToSetVariable val = getFixedSet();
 				String S = "DEL EVAL ArrayStore " + rhs.getPointerKey() + " " + val.getPointerKey();
 				System.err.println(S);
 				System.err.println("DEL EVAL ArrayStore " + rhs + " " + getFixedSet());
@@ -1111,7 +1117,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			if (rhs.size() == 0) {
 				return NOT_CHANGED;
 			}
-			PointsToSetVariable val = getFixedSet();
+			IPAPointsToSetVariable val = getFixedSet();
 			PointerKey pVal = val.getPointerKey();
 
 			List<InstanceKey> instances = system.getInstances(rhs.getValue());
@@ -1177,7 +1183,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IntSetUtil.make() : null;
 
-		public GetFieldOperator(IField field, PointsToSetVariable def) {
+		public GetFieldOperator(IField field, IPAPointsToSetVariable def) {
 			super(def);
 			this.field = field;
 			system.registerFixedSet(def, this);
@@ -1189,18 +1195,18 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		}
 
 		@Override
-		public byte evaluate(PointsToSetVariable rhs) {
+		public byte evaluate(IPAPointsToSetVariable rhs) {
 			if (DEBUG_GET) {
 				String S = "EVAL GetField " + getField() + " " + getFixedSet().getPointerKey() + " " + rhs.getPointerKey() + getFixedSet()
 				+ " " + rhs;
 				System.err.println(S);
 			}
 
-			PointsToSetVariable ref = rhs;
+			IPAPointsToSetVariable ref = rhs;
 			if (ref.size() == 0) {
 				return NOT_CHANGED;
 			}
-			PointsToSetVariable def = getFixedSet();
+			IPAPointsToSetVariable def = getFixedSet();
 			final PointerKey dVal = def.getPointerKey();
 
 			IntSet value = filterInstances(ref.getValue());
@@ -1217,7 +1223,6 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					InstanceKey I = system.getInstanceKey(i);
 					if (!representsNullType(I)) {
 						PointerKey p = getPointerKeyForInstanceField(I, getField());
-
 						if (p != null) {
 							if (DEBUG_GET) {
 								String S = "Getfield add constraint " + dVal + " " + p;
@@ -1228,30 +1233,76 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					}
 				}
 			};
-			if (priorInstances != null) {
-				value.foreachExcluding(priorInstances, action);
-				priorInstances.addAll(value);
-			} else {
-				value.foreach(action);
+
+			final MutableIntSet targets = IntSetUtil.getDefaultIntSetFactory().make();
+			final ArrayList<IPAPointsToSetVariable> rhss = new ArrayList<>();
+			IntSetAction action2 = new IntSetAction() {
+				@Override
+				public void act(int i) {
+					InstanceKey I = system.getInstanceKey(i);
+					if (!representsNullType(I)) {
+						//--- this for getField is the GetFieldOperator
+						PointerKey p = getPointerKeyForInstanceField(I, getField());
+						if (p != null) {
+							if (DEBUG_GET) {
+								String S = "Getfield del constraint " + dVal + " " + p;
+								System.err.println(S);
+							}
+							IPAPointsToSetVariable ptv = system.findOrCreatePointsToSet(p);
+							if(ptv.getValue() != null){
+								targets.addAll(ptv.getValue());
+							}
+							rhss.add(ptv);
+						}
+					}
+				}
+			};
+
+			if(system.isChange){
+				if(value.size() < 10){
+					if (priorInstances != null) {
+						value.foreachExcluding(priorInstances, action);
+						priorInstances.addAll(value);
+					} else {
+						value.foreach(action);
+					}
+				}else{
+					if (priorInstances != null) {
+						value.foreachExcluding(priorInstances, action2);
+						priorInstances.addAll(value);
+					} else {
+						value.foreach(action2);
+					}
+					if(rhss.size() > 0)
+						sideEffect.b |= system.addConstraintHasMultiR(def, assignOperator, rhss, targets);
+				}
+			}else{
+				if (priorInstances != null) {
+					value.foreachExcluding(priorInstances, action);
+					priorInstances.addAll(value);
+				} else {
+					value.foreach(action);
+				}
 			}
+
 			byte sideEffectMask = sideEffect.b ? (byte) SIDE_EFFECT_MASK : 0;
 			return (byte) (NOT_CHANGED | sideEffectMask);
 		}
 
 		//bz
 		@Override
-		public byte evaluateDel(PointsToSetVariable rhs) {
+		public byte evaluateDel(IPAPointsToSetVariable rhs) {
 			if (DEBUG_GET) {
 				String S = "DEL EVAL GetField " + getField() + " " + getFixedSet().getPointerKey() + " " + rhs.getPointerKey() + getFixedSet()
 				+ " " + rhs;
 				System.err.println(S);
 			}
 
-			PointsToSetVariable ref = rhs;
+			IPAPointsToSetVariable ref = rhs;
 			if (ref.size() == 0) {
 				return NOT_CHANGED;
 			}
-			PointsToSetVariable def = getFixedSet();
+			IPAPointsToSetVariable def = getFixedSet();
 			final PointerKey dVal = def.getPointerKey();
 			//~~~ did not implement filter part
 			IntSet value = filterInstances(ref.getValue());
@@ -1263,7 +1314,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			}
 			final MutableBoolean sideEffect_del = new MutableBoolean();
 			final MutableIntSet delset = IntSetUtil.getDefaultIntSetFactory().make();
-			final ArrayList<PointsToSetVariable> rhss = new ArrayList<>();
+			final ArrayList<IPAPointsToSetVariable> rhss = new ArrayList<>();
 			IntSetAction action = new IntSetAction() {
 				@Override
 				public void act(int i) {
@@ -1278,23 +1329,26 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 								System.err.println(S);
 							}
 							//              sideEffect_del.b |= system.delConstraint(dVal, assignOperator, p);
-							PointsToSetVariable ptv = system.findOrCreatePointsToSet(p);
+							IPAPointsToSetVariable ptv = system.findOrCreatePointsToSet(p);
 							if(ptv.getValue() != null){
 								delset.addAll(ptv.getValue());
-								rhss.add(ptv);
 							}
+							rhss.add(ptv);
 						}
 					}
 				}
 			};
 			//*** always do it for all instance
-			value.foreach(action);
-			priorInstances.foreach(action);
+			if(system.getFirstDel()){
+				value.foreach(action);
+				priorInstances.foreach(action);
+			}else{
+				rhs.getChange().foreach(action);
+			}
 			if(rhss.size() != 0)
-				sideEffect_del.b |= system.delConstraintHasMultiR(dVal, assignOperator, rhss, delset, ref);
+				sideEffect_del.b |= system.delConstraintHasMultiR(def, assignOperator, rhss, delset);
 			//--- remove all priorInstance
 			priorInstances.clear();
-			delset.clear();
 
 			byte sideEffectMask = sideEffect_del.b ? (byte) SIDE_EFFECT_MASK : 0;
 			return (byte) (NOT_CHANGED | sideEffectMask);
@@ -1353,7 +1407,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			return "PutField" + getField();
 		}
 
-		public PutFieldOperator(IField field, PointsToSetVariable val) {
+		public PutFieldOperator(IField field, IPAPointsToSetVariable val) {
 			super(val);
 			this.field = field;
 			system.registerFixedSet(val, this);
@@ -1368,7 +1422,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		}
 
 		@Override
-		public byte evaluate(PointsToSetVariable rhs) {
+		public byte evaluate(IPAPointsToSetVariable rhs) {
 			if (DEBUG_PUT) {
 				String S = "EVAL PutField " + getField() + " " + (getFixedSet()).getPointerKey() + " " + rhs.getPointerKey()
 				+ getFixedSet() + " " + rhs;
@@ -1379,11 +1433,11 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				return NOT_CHANGED;
 			}
 
-			PointsToSetVariable val = getFixedSet();
+			IPAPointsToSetVariable val = getFixedSet();
 			final PointerKey pVal = val.getPointerKey();
 			IntSet value = rhs.getValue();
 			value = filterInstances(value);
-			final IPAUnaryOperator<PointsToSetVariable> assign = getPutAssignmentOperator();
+			final IPAUnaryOperator<IPAPointsToSetVariable> assign = getPutAssignmentOperator();
 			if (assign == null) {
 				Assertions.UNREACHABLE();
 			}
@@ -1408,11 +1462,52 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					}
 				}
 			};
-			if (priorInstances != null) {
-				value.foreachExcluding(priorInstances, action);
-				priorInstances.addAll(value);
-			} else {
-				value.foreach(action);
+
+			final ArrayList<IPAPointsToSetVariable> lhss = new ArrayList<>();
+			IntSetAction action2 = new IntSetAction() {
+				@Override
+				public void act(int i) {
+					InstanceKey I = system.getInstanceKey(i);
+					if (!representsNullType(I)) {
+						PointerKey p = getPointerKeyForInstanceField(I, getField());
+						if(p != null){
+							IPAPointsToSetVariable pptv = system.findOrCreatePointsToSet(p);
+//							MutableIntSet set = pptv.getValue();
+//							if(set != null)
+							lhss.add(pptv);
+						}
+					}
+				}
+			};
+
+			if(system.isChange){
+				if(value.size() < 10){
+					if (priorInstances != null) {
+						value.foreachExcluding(priorInstances, action);
+						priorInstances.addAll(value);
+					} else {
+						value.foreach(action);
+					}
+				}else{
+					if (priorInstances != null) {
+						value.foreachExcluding(priorInstances, action2);
+						priorInstances.addAll(value);
+					} else {
+						value.foreach(action2);
+					}
+					MutableIntSet targets = IntSetUtil.getDefaultIntSetFactory().make();
+					if(val.getValue() != null){
+						targets.addAll(val.getValue());
+					}
+					system.addConstraintHasMultiL(lhss, assignOperator, val, targets);
+				}
+			}else{
+				if (priorInstances != null) {
+					value.foreachExcluding(priorInstances, action);
+					priorInstances.addAll(value);
+				} else {
+					value.foreach(action);
+				}
 			}
 			byte sideEffectMask = sideEffect.b ? (byte) SIDE_EFFECT_MASK : 0;
 			return (byte) (NOT_CHANGED | sideEffectMask);
@@ -1422,7 +1517,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * bz:
 		 */
 		@Override
-		public byte evaluateDel(PointsToSetVariable rhs) {
+		public byte evaluateDel(IPAPointsToSetVariable rhs) {
 			if (DEBUG_PUT) {
 				String S = "DEL EVAL PutField " + getField() + " " + (getFixedSet()).getPointerKey() + " " + rhs.getPointerKey()
 				+ getFixedSet() + " " + rhs;
@@ -1433,11 +1528,9 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				return NOT_CHANGED;
 			}
 
-			final PointsToSetVariable val = getFixedSet();
+			final IPAPointsToSetVariable val = getFixedSet();
 			final PointerKey pVal = val.getPointerKey();
-			IntSet value = rhs.getValue();
-			value = filterInstances(value);
-			final IPAUnaryOperator<PointsToSetVariable> assign = getPutAssignmentOperator();
+			final IPAUnaryOperator<IPAPointsToSetVariable> assign = getPutAssignmentOperator();
 			if (assign == null) {
 				Assertions.UNREACHABLE();
 			}
@@ -1463,7 +1556,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				}
 			};
 
-			final ArrayList<PointsToSetVariable> lhss = new ArrayList<>();
+			final ArrayList<IPAPointsToSetVariable> lhss = new ArrayList<>();
 			IntSetAction action2 = new IntSetAction() {
 				@Override
 				public void act(int i) {
@@ -1471,24 +1564,33 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					if (!representsNullType(I)) {
 						PointerKey p = getPointerKeyForInstanceField(I, getField());
 						if(p != null){
-							PointsToSetVariable pptv = system.findOrCreatePointsToSet(p);
-							MutableIntSet set = pptv.getValue();
-							if(set != null)
+							IPAPointsToSetVariable pptv = system.findOrCreatePointsToSet(p);
+//							MutableIntSet set = pptv.getValue();
+//							if(set != null)
 								lhss.add(pptv);
 						}
 					}
 				}
 			};
 
-			if(val.getValue() != null){
-				if(value.size() < 10)
-					value.foreach(action);
-				else{
-					value.foreach(action2);
-					MutableIntSet targets = IntSetUtil.makeMutableCopy(val.getValue());
-					system.delConstraintHasMultiL(lhss, assignOperator, val, targets);
-				}
+			IntSet value = null;
+			if(system.getFirstDel()){
+				value = rhs.getValue();
+			}else{
+				value = rhs.getChange();
 			}
+			value = filterInstances(value);
+			if(value.size() < 10)
+				value.foreach(action);
+			else{
+				value.foreach(action2);
+				MutableIntSet targets = IntSetUtil.getDefaultIntSetFactory().make();
+				if(val.getValue() != null){
+					targets.addAll(val.getValue());
+				}
+				system.delConstraintHasMultiL(lhss, assignOperator, val, targets);
+			}
+			//always do this for all instances
 			priorInstances.foreach(action);
 			priorInstances.clear();
 
@@ -1521,7 +1623,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		/**
 		 * subclasses (e.g. XTA) can override this to enforce a filtered assignment. returns null if there's a problem.
 		 */
-		public IPAUnaryOperator<PointsToSetVariable> getPutAssignmentOperator() {
+		public IPAUnaryOperator<IPAPointsToSetVariable> getPutAssignmentOperator() {
 			return assignOperator;
 		}
 
@@ -1541,7 +1643,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	/**
 	 * Update the points-to-set for a field to include a particular instance key.
 	 */
-	public final class InstancePutFieldOperator extends IPAUnaryOperator<PointsToSetVariable> implements IPointerOperator {
+	public final class InstancePutFieldOperator extends IPAUnaryOperator<IPAPointsToSetVariable> implements IPointerOperator {
 		final private IField field;
 
 		final private InstanceKey instance;
@@ -1562,8 +1664,8 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * Simply add the instance to each relevant points-to set.
 		 */
 		@Override
-		public byte evaluate(PointsToSetVariable dummyLHS, PointsToSetVariable var) {
-			PointsToSetVariable ref = var;
+		public byte evaluate(IPAPointsToSetVariable dummyLHS, IPAPointsToSetVariable var) {
+			IPAPointsToSetVariable ref = var;
 			if (ref.size() == 0) {
 				return NOT_CHANGED;
 			}
@@ -1594,14 +1696,19 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		/**bz
 		 */
 		@Override
-		public byte evaluateDel(PointsToSetVariable dummyLHS, PointsToSetVariable var) {
-			PointsToSetVariable ref = var;
+		public byte evaluateDel(IPAPointsToSetVariable dummyLHS, IPAPointsToSetVariable var) {
+			IPAPointsToSetVariable ref = var;
 			if (ref.size() == 0) {
 				return NOT_CHANGED;
 			}
-			IntSet value = ref.getValue();
+			IntSet value = null;
+			if(system.getFirstDel()){
+				value = ref.getValue();
+			}else{
+				value = ref.getChange();
+			}
 			final MutableBoolean sideEffect_del = new MutableBoolean();
-			final ArrayList<PointsToSetVariable> lhss = new ArrayList<>();
+			final ArrayList<IPAPointsToSetVariable> lhss = new ArrayList<>();
 			IntSetAction action = new IntSetAction() {
 				@Override
 				public void act(int i) {
@@ -1610,7 +1717,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 						PointerKey p = getPointerKeyForInstanceField(I, field);
 						if (p != null) {
 							//              sideEffect_del.b |= system.delConstraint(p, instance);
-							PointsToSetVariable lhs = system.findOrCreatePointsToSet(p);
+							IPAPointsToSetVariable lhs = system.findOrCreatePointsToSet(p);
 							if(lhs != null)
 								lhss.add(lhs);
 						}
@@ -1655,7 +1762,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	/**
 	 * Update the points-to-set for an array contents to include a particular instance key.
 	 */
-	public final class InstanceArrayStoreOperator extends IPAUnaryOperator<PointsToSetVariable> implements IPointerOperator {
+	public final class InstanceArrayStoreOperator extends IPAUnaryOperator<IPAPointsToSetVariable> implements IPointerOperator {
 		final private InstanceKey instance;
 
 		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IntSetUtil.make() : null;
@@ -1673,8 +1780,8 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * Simply add the instance to each relevant points-to set.
 		 */
 		@Override
-		public byte evaluate(PointsToSetVariable dummyLHS, PointsToSetVariable var) {
-			PointsToSetVariable arrayref = var;
+		public byte evaluate(IPAPointsToSetVariable dummyLHS, IPAPointsToSetVariable var) {
+			IPAPointsToSetVariable arrayref = var;
 			if (arrayref.size() == 0) {
 				return NOT_CHANGED;
 			}
@@ -1722,14 +1829,19 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 		/*bz*/
 		@Override
-		public byte evaluateDel(PointsToSetVariable dummyLHS, PointsToSetVariable var) {
-			PointsToSetVariable arrayref = var;
+		public byte evaluateDel(IPAPointsToSetVariable dummyLHS, IPAPointsToSetVariable var) {
+			IPAPointsToSetVariable arrayref = var;
 			if (arrayref.size() == 0) {
 				return NOT_CHANGED;
 			}
-			IntSet value = arrayref.getValue();
+			IntSet value = null;
+			if(system.getFirstDel()){
+				value = arrayref.getValue();
+			}else{
+				value = arrayref.getChange();
+			}
 			final MutableBoolean sideEffect_del = new MutableBoolean();
-			final ArrayList<PointsToSetVariable> lhss = new ArrayList<>();
+			final ArrayList<IPAPointsToSetVariable> lhss = new ArrayList<>();
 			IntSetAction action = new IntSetAction() {
 				@Override
 				public void act(int i) {
@@ -1832,6 +1944,10 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		return filter;
 	}
 
+	/**
+	 * pi should never be deleted...
+	 * @author Bozhen
+	 */
 	protected class InverseFilterOperator extends IPAFilterOperator {
 		public InverseFilterOperator() {
 			super();
@@ -1856,7 +1972,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * @see com.ibm.wala.dataflow.UnaryOperator#evaluate(com.ibm.wala.dataflow.IVariable, com.ibm.wala.dataflow.IVariable)
 		 */
 		@Override
-		public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+		public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 
 			IPAFilteredPointerKey pk = (IPAFilteredPointerKey) lhs.getPointerKey();
 			IPAFilteredPointerKey.IPATypeFilter filter = pk.getTypeFilter();
@@ -1947,6 +2063,9 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			if(inst==null)
 				continue;//skip null
 
+//			if(!inst.toString().contains("59 = invokevirtual < Application, Lorg/eclipse/osgi/baseadaptor/BaseData, getBundleFile()Lorg/eclipse/osgi/baseadaptor/bundlefile/BundleFile; > 54 @231 exception:58"))
+//				continue;
+
 			total_inst++;
 			ISSABasicBlock bb = cfg.getBlockForInstruction(inst.iindex);
 			//delete
@@ -1958,15 +2077,16 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 				long start_delete = System.currentTimeMillis();
 				inst.visit(v);
+				system.setFirstDel(false);
 				do{
 					system.solveDel(null);
 				}while(!system.emptyWorkList());
 
 				setDelete(false);
 				long delete_time = System.currentTimeMillis() - start_delete;
-				HashSet<IVariable> temp = new HashSet<>();
-				temp.addAll(IPAAbstractFixedPointSolver.changes);
-				system.clearChanges();
+//				HashSet<IVariable> temp = new HashSet<>();
+//				temp.addAll(IPAAbstractFixedPointSolver.changes);
+//				system.clearChanges();
 
 				//add
 				System.out.println("... Adding SSAInstruction:      "+ inst.toString());
@@ -1976,14 +2096,13 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					system.solveAdd(null);
 					addConstraintsFromNewNodes(null);
 				} while (!system.emptyWorkList());
-				system.clearChanges();
 
 				long add_time = System.currentTimeMillis() - start_add;
 
 				boolean nochange = true;
-				Iterator<IVariable> it = temp.iterator();
+				Iterator<IVariable> it = IPAAbstractFixedPointSolver.changes.iterator();
 				while(it.hasNext()){
-					PointsToSetVariable var = (PointsToSetVariable) it.next();
+					IPAPointsToSetVariable var = (IPAPointsToSetVariable) it.next();
 					if(var != null){
 						MutableIntSet update = var.getValue();
 						PointerKey key = var.getPointerKey();

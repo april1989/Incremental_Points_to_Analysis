@@ -34,7 +34,6 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.ClassHierarchyWarning;
 import com.ibm.wala.types.TypeReference;
@@ -59,6 +58,7 @@ import com.ibm.wala.util.ref.ReferenceCleanser;
 import com.ibm.wala.util.warnings.Warnings;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder.IPAFilterOperator;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder.PutFieldOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAAssignEquation;
@@ -79,7 +79,7 @@ import edu.tamu.wala.increpta.util.Worklist;
 /**
  * System of constraints that define propagation for call graph construction
  */
-public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSetVariable> {
+public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsToSetVariable> {
 
 	private final static boolean DEBUG = false;
 
@@ -128,9 +128,9 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	/**
 	 * When doing unification, we must also updated the fixed sets in unary side effects.
 	 *
-	 * This maintains a map from PointsToSetVariable -> Set<UnarySideEffect>
+	 * This maintains a map from IPAPointsToSetVariable -> Set<UnarySideEffect>
 	 */
-	final private Map<PointsToSetVariable, Set<IPAUnarySideEffect>> fixedSetMap = HashMapFactory.make();
+	final private Map<IPAPointsToSetVariable, Set<IPAUnarySideEffect>> fixedSetMap = HashMapFactory.make();
 
 	/**
 	 * Governing call graph;
@@ -160,6 +160,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 
 	////bz: scc
 	public SCCEngine sccEngine;
+
 	/**
 	 * run after the whole program analysis
 	 */
@@ -167,6 +168,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		sccEngine = new SCCEngine(this, flowGraph);
 		flowGraph.setSCCEngine(sccEngine);
 	}
+
     //////////
 
 	public IPAPropagationSystem(CallGraph cg, IPAPointerKeyFactory pointerKeyFactory, InstanceKeyFactory instanceKeyFactory) {
@@ -176,10 +178,10 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		this.cg = cg;
 		this.pointerKeyFactory = pointerKeyFactory;
 		this.instanceKeyFactory = instanceKeyFactory;
-		// when doing paranoid checking of points-to sets, code in PointsToSetVariable needs to know about the instance key
+		// when doing paranoid checking of points-to sets, code in IPAPointsToSetVariable needs to know about the instance key
 		// mapping
-		if (PointsToSetVariable.PARANOID) {
-			PointsToSetVariable.instanceKeys = instanceKeys;
+		if (IPAPointsToSetVariable.PARANOID) {
+			IPAPointsToSetVariable.instanceKeys = instanceKeys;
 		}
 	}
 
@@ -247,12 +249,12 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		return new IPAPointerAnalysisImpl(builder, cg, pointsToMap, instanceKeys, pointerKeyFactory, instanceKeyFactory);
 	}
 
-	protected void registerFixedSet(PointsToSetVariable p, IPAUnarySideEffect s) {
+	protected void registerFixedSet(IPAPointsToSetVariable p, IPAUnarySideEffect s) {
 		Set<IPAUnarySideEffect> set = MapUtil.findOrCreateSet(fixedSetMap, p);
 		set.add(s);
 	}
 
-	protected void updateSideEffects(PointsToSetVariable p, PointsToSetVariable rep) {
+	protected void updateSideEffects(IPAPointsToSetVariable p, IPAPointsToSetVariable rep) {
 		Set<IPAUnarySideEffect> set = fixedSetMap.get(p);
 		if (set != null) {
 			for (Iterator it = set.iterator(); it.hasNext();) {
@@ -363,7 +365,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param key
 	 * @return the dataflow variable that tracks the points-to set for key
 	 */
-	public PointsToSetVariable findOrCreatePointsToSet(PointerKey key) {
+	public IPAPointsToSetVariable findOrCreatePointsToSet(PointerKey key) {
 
 		if (key == null) {
 			throw new IllegalArgumentException("null key");
@@ -374,9 +376,9 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 			System.err.println(key);
 			Assertions.UNREACHABLE();
 		}
-		PointsToSetVariable result = pointsToMap.getPointsToSet(key);
+		IPAPointsToSetVariable result = pointsToMap.getPointsToSet(key);
 		if (result == null) {
-			result = new PointsToSetVariable(key);
+			result = new IPAPointsToSetVariable(key);
 			pointsToMap.put(key, result);
 		} else {
 			// check that the filter for this variable remains unique
@@ -424,7 +426,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param rhs
 	 * @return
 	 */
-	public boolean delConstraint(PointerKey lhs, IPAUnaryOperator<PointsToSetVariable> op, PointerKey rhs) {
+	public boolean delConstraint(PointerKey lhs, IPAUnaryOperator<IPAPointsToSetVariable> op, PointerKey rhs) {
 		if (lhs == null) {
 			throw new IllegalArgumentException("null lhs");
 		}
@@ -434,12 +436,11 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		if (DEBUG) {
 			System.err.println("Delete constraint A: " + lhs + " " + op + " " + rhs);
 		}
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
-		if(L==null)
+		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
+		if(L == null)
 			return false;
 
-		PointsToSetVariable R = findOrCreatePointsToSet(rhs);
-
+		IPAPointsToSetVariable R = findOrCreatePointsToSet(rhs);
 		if (op instanceof IPAFilterOperator) {
 			if (!(L.getPointerKey() instanceof IPAFilteredPointerKey)) {
 				Assertions.UNREACHABLE("expected filtered lhs " + L.getPointerKey() + " " + L.getPointerKey().getClass() + " " + lhs + " "
@@ -456,15 +457,19 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		}catch(Exception e){return false;}
 
 		if(op instanceof IPAAssignOperator){
-			IntSet delSet = R.getValue();
-			if(delSet==null)
+			IntSet delSet = null;
+			if(getFirstDel()){
+				delSet = R.getValue();
+			}else{
+				delSet = R.getValue();
+			}
+			if(delSet == null)
 				return false;
 			//remove the statement first
 			delStatementFromFlowGraph(L, op, R, true, true);
 			procedureToDelPointsToSet(L, (MutableIntSet) delSet, false);
 			return true;
-		}
-		else{
+		}else{
 			return delStatement(L, op, R, true, true);
 		}
 	}
@@ -479,21 +484,101 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public boolean delStatementFromFlowGraph(PointsToSetVariable lhs, IPAUnaryOperator operator, PointsToSetVariable rhs, boolean toWorkList, boolean eager) {
+	public boolean delStatementFromFlowGraph(IPAPointsToSetVariable lhs, IPAUnaryOperator operator, IPAPointsToSetVariable rhs, boolean toWorkList, boolean eager) {
 		if (operator == null) {
 			throw new IllegalArgumentException("operator is null");
 		}
 		IPAUnaryStatement s = operator.makeEquation(lhs, rhs);
 		if (!getFixedPointSystem().containsStatement(s)) {
 			return false;
-		}else{
+		}
+		if(getFirstDel()){
+			getFixedPointSystem().removeStatement(s);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * to replace delStatementFromFlowGraph => too slow for incremental scc detection
+	 * @param lhss
+	 * @param op
+	 * @param rhs
+	 * @param b
+	 * @param c
+	 */
+	private void delMultiStatementsFromFlowGraph(ArrayList<IPAPointsToSetVariable> lhss, IPAAssignOperator op,
+			IPAPointsToSetVariable rhs, boolean b, boolean c) {
+		if (op == null) {
+			throw new IllegalArgumentException("operator is null");
+		}
+		//tell scc engine to perform incremental detection after deleting all these relations...
+		sccEngine.setGroupWork(true);
+		//start delete
+		for (IPAPointsToSetVariable lhs : lhss) {
+			IPAUnaryStatement s = op.makeEquation(lhs, rhs);
+			if (!getFixedPointSystem().containsStatement(s)) {
+				continue;
+			}
 			if(getFirstDel()){
 				getFixedPointSystem().removeStatement(s);
-				return true;
 			}
-			return false;
 		}
+		sccEngine.setGroupWork(false);
+		//tell scc engine to work now
+		sccEngine.removeMultiEdges();
 	}
+
+
+	private void addMultiStatementsFromFlowGraph(ArrayList<IPAPointsToSetVariable> lhss, IPAAssignOperator op,
+			IPAPointsToSetVariable rhs, boolean b, boolean c) {
+		if (op == null) {
+			throw new IllegalArgumentException("operator is null");
+		}
+		//tell scc engine to perform incremental detection after adding all these relations...
+		sccEngine.setGroupWork(true);
+		//start add
+		for (IPAPointsToSetVariable lhs : lhss) {
+			IPAUnaryStatement s = op.makeEquation(lhs, rhs);
+			if (getFixedPointSystem().containsStatement(s)) {
+				continue;
+			}
+			if(lhs.getOrderNumber() <= 0){
+				lhs.setOrderNumber(nextOrderNumber++);
+			}
+			getFixedPointSystem().addStatement(s);
+		}
+		sccEngine.setGroupWork(false);
+		//tell scc engine to work now
+		sccEngine.addMultiEdges();
+	}
+
+
+	private void delMultiStatementsFromFlowGraph(IPAPointsToSetVariable lhs, IPAAssignOperator op,
+			ArrayList<IPAPointsToSetVariable> rhss, boolean b, boolean c) {
+		if (lhs == null){
+			throw new IllegalArgumentException("null lhs");
+		}
+		if (op == null) {
+			throw new IllegalArgumentException("operator is null");
+		}
+		//tell scc engine to perform incremental detection after deleting all these relations...
+		sccEngine.setGroupWork(true);
+		//start delete
+		for (IPAPointsToSetVariable rhs : rhss) {
+			IPAUnaryStatement s = op.makeEquation(lhs, rhs);
+			if (!getFixedPointSystem().containsStatement(s)) {
+				continue;
+			}
+			if(getFirstDel()){
+				getFixedPointSystem().removeStatement(s);
+			}
+		}
+		sccEngine.setGroupWork(false);
+		//tell scc engine to work now
+		sccEngine.removeMultiEdges();
+	}
+
 
 	/**
 	 * bz: only add statement from flow graph without propagation
@@ -502,45 +587,70 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param rhs
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public boolean addStatementToFlowGraph(PointsToSetVariable lhs, IPAUnaryOperator operator, PointsToSetVariable rhs) {
-		return addStatement(lhs, operator, rhs);
+	private void addMultiStatementsFromFlowGraph(IPAPointsToSetVariable lhs, IPAAssignOperator op,
+			ArrayList<IPAPointsToSetVariable> rhss, boolean b, boolean c) {
+		if(lhs == null){
+			throw new IllegalArgumentException("null lhs");
+		}
+		if (op == null) {
+			throw new IllegalArgumentException("operator is null");
+		}
+		//tell scc engine to perform incremental detection after adding all these relations...
+		sccEngine.setGroupWork(true);
+		//start add
+		for (IPAPointsToSetVariable rhs : rhss) {
+			IPAUnaryStatement s = op.makeEquation(lhs, rhs);
+			if (getFixedPointSystem().containsStatement(s)) {
+				continue;
+			}
+			if(lhs.getOrderNumber() <= 0){
+				lhs.setOrderNumber(nextOrderNumber++);
+			}
+			getFixedPointSystem().addStatement(s);
+		}
+		sccEngine.setGroupWork(false);
+		//tell scc engine to work now
+		sccEngine.addMultiEdges();
 	}
 
 
 	/**
 	 * bz: 1 lhs = multi rhs
 	 */
-	public boolean delConstraintHasMultiR(PointerKey lhs, IPAAssignOperator op,
-			ArrayList<PointsToSetVariable> rhss, MutableIntSet delset, PointsToSetVariable notouch) {
+	public boolean delConstraintHasMultiR(IPAPointsToSetVariable lhs, IPAAssignOperator op,
+			ArrayList<IPAPointsToSetVariable> rhss, MutableIntSet delset) {
 		if (lhs == null) {
 			throw new IllegalArgumentException("null lhs");
 		}
 		if (op == null) {
 			throw new IllegalArgumentException("op null");
 		}
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
-		if(L == null)
-			return false;
 
 		try{
-			if(lhs instanceof LocalPointerKey){
-				LocalPointerKey LocalPK = (LocalPointerKey)L.getPointerKey();
+			if(lhs.getPointerKey() instanceof LocalPointerKey){
+				LocalPointerKey LocalPK = (LocalPointerKey)lhs.getPointerKey();
 				if(LocalPK.getNode().getMethod().isInit() || LocalPK.getNode().getMethod().isClinit())
 					return false;
 			}}catch(Exception e){return false;}
 
-		//remove edges only
-		for (PointsToSetVariable rhs : rhss) {
-			delStatementFromFlowGraph(L, op, rhs, true, true);
-		}
+		/**
+		 * bz: too slow
+		 */
+//		for (IPAPointsToSetVariable rhs : rhss) {
+//			delStatementFromFlowGraph(L, op, rhs, true, true);
+//		}
+		delMultiStatementsFromFlowGraph(lhs, op, rhss, true, true);
 
+		int nrOfWorks = rhss.size();
+		if(nrOfWorks == 0){
+			return false;
+		}
 		if(delset == null)
 			return false;
-		procedureToDelPointsToSet(L, delset, false);
+
+		procedureToDelPointsToSet(lhs, delset, false);
 		return true;
 	}
-
 
 	/**bz: 1 lhs <= multi rhs
 	 * @param lhs
@@ -550,26 +660,36 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param rhs
 	 * @return
 	 */
-	public boolean addConstraintHasMultiR(PointerKey lhs, IPAAssignOperator op, ArrayList<PointsToSetVariable> rhss,
-			MutableIntSet addset, @SuppressWarnings("unused") PointsToSetVariable nottouch) {
+	public boolean addConstraintHasMultiR(IPAPointsToSetVariable lhs, IPAAssignOperator op, ArrayList<IPAPointsToSetVariable> rhss,
+			MutableIntSet addset) {
 		if (lhs == null) {
 			throw new IllegalArgumentException("null lhs");
 		}
 		if (op == null) {
-			throw new IllegalArgumentException("op null");
+			throw new IllegalArgumentException("null operator");
 		}
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
-		//add edges only
-		for (PointsToSetVariable rhs : rhss) {
-			addStatementToFlowGraph(L, op, rhs);
+		/**
+		 * too slow
+		 */
+//		for (IPAPointsToSetVariable rhs : rhss) {
+//			addStatementToFlowGraph(lhs, op, rhs);
+//		}
+		addMultiStatementsFromFlowGraph(lhs, op, rhss, true, true);
+
+		int nrOfWorks = rhss.size();
+		if(nrOfWorks == 0){
+			return false;
 		}
 		if(addset == null)
 			return false;
-		ArrayList<PointsToSetVariable> lhss = new ArrayList<>();
-		lhss.add(L);
-		addOrDelASetFromMultiLhs(lhss , addset, true);
+
+		ArrayList<IPAPointsToSetVariable> lhss = new ArrayList<>();
+		lhss.add(lhs);
+
+		addOrDelASetFromMultiLhs(lhss, addset, true);
 		return true;
 	}
+
 
 	/**bz: multi lhs <= 1 rhs
 	 * @param lhss
@@ -579,27 +699,36 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param pVal2
 	 * @return
 	 */
-	public boolean addConstraintHasMultiL(ArrayList<PointsToSetVariable> lhss, IPAAssignOperator op, PointerKey rhs,
-			MutableIntSet addset, @SuppressWarnings("unused") PointerKey notouch) {
+	public boolean addConstraintHasMultiL(ArrayList<IPAPointsToSetVariable> lhss, IPAAssignOperator op, IPAPointsToSetVariable rhs,
+			final MutableIntSet targets) {
 		if (rhs == null) {
 			throw new IllegalArgumentException("null rhs");
 		}
 		if (op == null) {
-			throw new IllegalArgumentException("op null");
+			throw new IllegalArgumentException("null operator");
 		}
-		PointsToSetVariable R = findOrCreatePointsToSet(rhs);
-		//add edges only
-		for (PointsToSetVariable lhs : lhss) {
-			if(lhs == null){
-				throw new IllegalArgumentException("null lhs");
-			}
-			addStatementToFlowGraph(lhs, op, R);
-		}
-		if(addset == null)
+		/**
+		 * too slow
+		 */
+//		for (IPAPointsToSetVariable lhs : lhss) {
+//			if(lhs == null){
+//				throw new IllegalArgumentException("null lhs");
+//			}
+//			addStatementToFlowGraph(lhs, op, rhs);
+//		}
+		addMultiStatementsFromFlowGraph(lhss, op, rhs, true, true);
+
+		int nrOfWorks = lhss.size();
+		if(nrOfWorks == 0){
 			return false;
-		addOrDelASetFromMultiLhs(lhss , addset, true);
+		}
+		if(targets.size() == 0)
+			return false;
+
+		addOrDelASetFromMultiLhs(lhss, targets, true);
 		return true;
 	}
+
 
 	/**
 	 * bz: multi lhs - 1 rhs
@@ -609,26 +738,33 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param targets
 	 * @return
 	 */
-	public boolean delConstraintHasMultiL(ArrayList<PointsToSetVariable> lhss, IPAAssignOperator op,
-			PointsToSetVariable rhs, final MutableIntSet targets) {
+	public boolean delConstraintHasMultiL(ArrayList<IPAPointsToSetVariable> lhss, IPAAssignOperator op,
+			IPAPointsToSetVariable rhs, final MutableIntSet targets) {
+		if(op == null)
+			throw new IllegalArgumentException("null operator");
 		if(rhs == null)
+			throw new IllegalArgumentException("null rhs");
+		/**
+		 * bz: too slow
+		 */
+		//			for (IPAPointsToSetVariable lhs : lhss) {
+		//				if(lhs != null)
+		//					delStatementFromFlowGraph(lhs, op, rhs, true, true);
+		//			}
+		delMultiStatementsFromFlowGraph(lhss, op, rhs, true, true);
+
+		int nrOfWorks = lhss.size();
+		if(nrOfWorks == 0){
 			return false;
-		else{
-			for (PointsToSetVariable lhs : lhss) {
-				if(lhs != null)
-					delStatementFromFlowGraph(lhs, op, rhs, true, true);
-			}
-
-			int nrOfWorks = lhss.size();
-			if(nrOfWorks == 0){
-				return false;
-			}
-
-			//      System.out.println("Start AkkaSys for delConstraintHasMultiL: ---- nrOfWorks = " + lhss.size());
-			addOrDelASetFromMultiLhs(lhss, targets, false);
-			return true;
 		}
+		if(targets.size() == 0)
+			return false;
+
+		//      System.out.println("Start AkkaSys for delConstraintHasMultiL: ---- nrOfWorks = " + lhss.size());
+		addOrDelASetFromMultiLhs(lhss, targets, false);
+		return true;
 	}
+
 
 	/**
 	 * bz: multi instances - 1 rhs
@@ -637,9 +773,10 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param notouch
 	 * @return
 	 */
-	public boolean delConstraintHasMultiInstanceL(ArrayList<PointsToSetVariable> lhss, MutableIntSet targets, PointsToSetVariable notouch) {
-		if(lhss.size() ==0)
+	public boolean delConstraintHasMultiInstanceL(ArrayList<IPAPointsToSetVariable> lhss, MutableIntSet targets, IPAPointsToSetVariable notouch) {
+		if(lhss.size() == 0)
 			return false;
+
 		if(targets == null)
 			return false;
 
@@ -654,7 +791,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param targets
 	 * @param isAddition
 	 */
-	private void addOrDelASetFromMultiLhs(ArrayList<PointsToSetVariable> lhss, MutableIntSet targets, boolean isAddition){
+	private void addOrDelASetFromMultiLhs(ArrayList<IPAPointsToSetVariable> lhss, MutableIntSet targets, boolean isAddition){
 		if(useAkka){
 			// System.out.println("Start AkkaSys for multi l: ---- nrOfWorks = " + lhss.size());
 			// hub.tell(new SchedulerForSpecialTasks(lhss, targets, isAddition, this), hub);
@@ -677,7 +814,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		}
 		//    pointsToMap.recordTransitiveRoot(lhs);
 
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
+		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
 		int index = findOrCreateIndexForInstanceKey(value);
 		MutableIntSet delSet = IntSetUtil.make();
 		delSet.add(index);
@@ -701,8 +838,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		if (DEBUG) {
 			System.err.println("Delete constraint B: " + lhs + " U= " + delset);
 		}
-		//    pointsToMap.recordTransitiveRoot(lhs);
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
+		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
 
 		procedureToDelPointsToSet(L, delset, true);
 		// deregister that we have an instanceKey for the klass?
@@ -719,14 +855,14 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param l
 	 * @param delSet
 	 */
-	private void procedureToDelPointsToSet(PointsToSetVariable L, final MutableIntSet delSet, boolean isRoot) {
+	private void procedureToDelPointsToSet(IPAPointsToSetVariable L, final MutableIntSet delSet, boolean isRoot) {
 		if(!isRoot){
 			if(isTransitiveRoot(L.getPointerKey()))
 				return;
 		}
 		//recompute L
 		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(delSet);
-		for (PointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
+		for (IPAPointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
 			if(remaining.isEmpty())
 				break;
 			if(pv instanceof SCCVariable){
@@ -752,12 +888,12 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 				if(!changes.contains(L)){
 					changes.add(L);
 				}
-				final ArrayList<PointsToSetVariable> firstUsers = findFirstUsers(L);
+				final ArrayList<IPAPointsToSetVariable> firstUsers = findFirstUsers(L);
 				final int nrOfWorks = firstUsers.size();
 				if(nrOfWorks == 0){//no need to propagate
 					return;
 				}else if(nrOfWorks == 1){//only one constraint to propagate
-					PointsToSetVariable first = firstUsers.get(0);
+					IPAPointsToSetVariable first = firstUsers.get(0);
 					singleProcedureToDelPointsToSet(first, delSet);
 				}else{//use parallelization to propagete
 					if(useAkka){
@@ -783,11 +919,11 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param L
 	 * @param targets
 	 */
-	private void singleProcedureToDelPointsToSet(final PointsToSetVariable L, final MutableIntSet targets){
+	private void singleProcedureToDelPointsToSet(final IPAPointsToSetVariable L, final MutableIntSet targets){
 		if(isTransitiveRoot(L.getPointerKey()))
 			return;
 		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(targets);
-		for (PointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
+		for (IPAPointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
 			if(remaining.isEmpty())
 				break;
 			if(pv instanceof SCCVariable){
@@ -825,17 +961,21 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param L
 	 * @param targets
 	 */
-	private void classifyPointsToConstraints(PointsToSetVariable L, final MutableIntSet targets){
+	private void classifyPointsToConstraints(IPAPointsToSetVariable L, final MutableIntSet targets){
 		for (Iterator it = flowGraph.getStatementsThatUse(L); it.hasNext();) {
 			IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 			IPAAbstractOperator op = s.getOperator();
 			if(op instanceof IPAAssignOperator){
-				PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+				if(checkSelfRecursive(s))
+					continue;
+				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(pv.getValue() != null)
 					singleProcedureToDelPointsToSet(pv, targets);
 			}else if(op instanceof IPAFilterOperator){
+				if(checkSelfRecursive(s))
+					continue;
 				IPAFilterOperator filter = (IPAFilterOperator) op;
-				PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				byte mark = filter.evaluateDel(pv, L);
 				if(mark == 1){
 					if(!changes.contains(pv)){
@@ -855,15 +995,15 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param L
 	 * @return get statements/variables that use L
 	 */
-	ArrayList<PointsToSetVariable> findFirstUsers(PointsToSetVariable L) {
-		ArrayList<PointsToSetVariable> results = new ArrayList<>();
+	ArrayList<IPAPointsToSetVariable> findFirstUsers(IPAPointsToSetVariable L) {
+		ArrayList<IPAPointsToSetVariable> results = new ArrayList<>();
 		Iterator it = getFixedPointSystem().getStatementsThatUse(L);
 		while(it.hasNext()){
 			IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 			IPAAbstractOperator op = s.getOperator();
 			if(op instanceof IPAAssignOperator){
 				IVariable iv = s.getLHS();
-				PointsToSetVariable pv = (PointsToSetVariable)iv;
+				IPAPointsToSetVariable pv = (IPAPointsToSetVariable)iv;
 				results.add(pv);
 			}else
 				addToWorkList(s);
@@ -894,7 +1034,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 *
 	 * @return true iff the system changes
 	 */
-	public boolean newConstraint(PointerKey lhs, IPAUnaryOperator<PointsToSetVariable> op, PointerKey rhs) {
+	public boolean newConstraint(PointerKey lhs, IPAUnaryOperator<IPAPointsToSetVariable> op, PointerKey rhs) {
 		if (lhs == null) {
 			throw new IllegalArgumentException("null lhs");
 		}
@@ -907,8 +1047,8 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		if (DEBUG) {
 			System.err.println("Add constraint A: " + lhs + " " + op + " " + rhs);
 		}
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
-		PointsToSetVariable R = findOrCreatePointsToSet(rhs);
+		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
+		IPAPointsToSetVariable R = findOrCreatePointsToSet(rhs);
 		if (op instanceof IPAFilterOperator) {
 			// we do not want to revert the lhs to pre-transitive form;
 			// we instead want to check in the outer loop of the pre-transitive
@@ -919,11 +1059,13 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 						+ lhs.getClass());
 			}
 		}
+		if(isChange)
+			return newStatementChange(L, op, R, true, true);
 
 		return newStatement(L, op, R, true, true);
 	}
 
-	public boolean newConstraint(PointerKey lhs, IPAAbstractOperator<PointsToSetVariable> op, PointerKey rhs) {
+	public boolean newConstraint(PointerKey lhs, IPAAbstractOperator<IPAPointsToSetVariable> op, PointerKey rhs) {
 		if (lhs == null) {
 			throw new IllegalArgumentException("lhs null");
 		}
@@ -938,12 +1080,15 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		}
 		assert !pointsToMap.isUnified(lhs);
 		assert !pointsToMap.isUnified(rhs);
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
-		PointsToSetVariable R = findOrCreatePointsToSet(rhs);
-		return newStatement(L, op, new PointsToSetVariable[] { R }, true, true);
+		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
+		IPAPointsToSetVariable R = findOrCreatePointsToSet(rhs);
+		if(isChange)
+			return newStatementChange(L, op, new IPAPointsToSetVariable[] { R }, true, true);
+
+		return newStatement(L, op, new IPAPointsToSetVariable[] { R }, true, true);
 	}
 
-	public boolean newConstraint(PointerKey lhs, IPAAbstractOperator<PointsToSetVariable> op, PointerKey rhs1, PointerKey rhs2) {
+	public boolean newConstraint(PointerKey lhs, IPAAbstractOperator<IPAPointsToSetVariable> op, PointerKey rhs1, PointerKey rhs2) {
 		if (lhs == null) {
 			throw new IllegalArgumentException("null lhs");
 		}
@@ -962,23 +1107,23 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		assert !pointsToMap.isUnified(lhs);
 		assert !pointsToMap.isUnified(rhs1);
 		assert !pointsToMap.isUnified(rhs2);
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
-		PointsToSetVariable R1 = findOrCreatePointsToSet(rhs1);
-		PointsToSetVariable R2 = findOrCreatePointsToSet(rhs2);
+		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
+		IPAPointsToSetVariable R1 = findOrCreatePointsToSet(rhs1);
+		IPAPointsToSetVariable R2 = findOrCreatePointsToSet(rhs2);
 		return newStatement(L, op, R1, R2, true, true);
 	}
 
 	/**
 	 * @return true iff the system changes
 	 */
-	public boolean newFieldWrite(PointerKey lhs, IPAUnaryOperator<PointsToSetVariable> op, PointerKey rhs) {
+	public boolean newFieldWrite(PointerKey lhs, IPAUnaryOperator<IPAPointsToSetVariable> op, PointerKey rhs) {
 		return newConstraint(lhs, op, rhs);
 	}
 
 	/**
 	 * @return true iff the system changes
 	 */
-	public boolean newFieldRead(PointerKey lhs, IPAUnaryOperator<PointsToSetVariable> op, PointerKey rhs) {
+	public boolean newFieldRead(PointerKey lhs, IPAUnaryOperator<IPAPointsToSetVariable> op, PointerKey rhs) {
 		return newConstraint(lhs, op, rhs);
 	}
 
@@ -994,7 +1139,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		// we don't actually add a constraint.
 		// instead, we immediately add the value to the points-to set.
 		// This works since the solver is monotonic with TOP = {}
-		PointsToSetVariable L = findOrCreatePointsToSet(lhs);
+		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
 		int index = findOrCreateIndexForInstanceKey(value);
 		if (L.contains(index)) {
 			// a no-op
@@ -1139,7 +1284,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	}
 
 	//bz
-	public void delSideEffect(IPAUnaryOperator<PointsToSetVariable> op, PointerKey arg0) {
+	public void delSideEffect(IPAUnaryOperator<IPAPointsToSetVariable> op, PointerKey arg0) {
 		if (arg0 == null) {
 			throw new IllegalArgumentException("null arg0");
 		}
@@ -1147,19 +1292,19 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 			System.err.println("delete constraint D: " + op + " --- to  " + arg0);
 		}
 		assert !pointsToMap.isUnified(arg0);
-		PointsToSetVariable v1 = findOrCreatePointsToSet(arg0);
+		IPAPointsToSetVariable v1 = findOrCreatePointsToSet(arg0);
 		delStatement(null, op, v1, true, true);
 	}
 
 	//bz
-	public void delSideEffect(IPAAbstractOperator<PointsToSetVariable> op, PointerKey[] arg0) {
+	public void delSideEffect(IPAAbstractOperator<IPAPointsToSetVariable> op, PointerKey[] arg0) {
 		if (arg0 == null) {
 			throw new IllegalArgumentException("null arg0");
 		}
 		if (DEBUG) {
 			System.err.println("delete constraint D: " + op + " " + arg0);
 		}
-		PointsToSetVariable[] vs = new PointsToSetVariable[ arg0.length ];
+		IPAPointsToSetVariable[] vs = new IPAPointsToSetVariable[ arg0.length ];
 		for(int i = 0; i < arg0.length; i++) {
 			assert !pointsToMap.isUnified(arg0[i]);
 			vs[i] = findOrCreatePointsToSet(arg0[i]);
@@ -1167,7 +1312,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		delStatement(null, op, vs, true, true);
 	}
 
-	public void newSideEffect(IPAUnaryOperator<PointsToSetVariable> op, PointerKey arg0) {
+	public void newSideEffect(IPAUnaryOperator<IPAPointsToSetVariable> op, PointerKey arg0) {
 		if (arg0 == null) {
 			throw new IllegalArgumentException("null arg0");
 		}
@@ -1175,34 +1320,44 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 			System.err.println("add constraint D: " + op + " " + arg0);
 		}
 		assert !pointsToMap.isUnified(arg0);
-		PointsToSetVariable v1 = findOrCreatePointsToSet(arg0);
+		IPAPointsToSetVariable v1 = findOrCreatePointsToSet(arg0);
+
+		if(isChange){
+			newStatementChange(null, op, v1, true, true);
+			return;
+		}
 
 		newStatement(null, op, v1, true, true);
 	}
 
-	public void newSideEffect(IPAAbstractOperator<PointsToSetVariable> op, PointerKey[] arg0) {
+	public void newSideEffect(IPAAbstractOperator<IPAPointsToSetVariable> op, PointerKey[] arg0) {
 		if (arg0 == null) {
 			throw new IllegalArgumentException("null arg0");
 		}
 		if (DEBUG) {
 			System.err.println("add constraint D: " + op + " " + Arrays.toString(arg0));
 		}
-		PointsToSetVariable[] vs = new PointsToSetVariable[ arg0.length ];
+		IPAPointsToSetVariable[] vs = new IPAPointsToSetVariable[ arg0.length ];
 		for(int i = 0; i < arg0.length; i++) {
 			assert !pointsToMap.isUnified(arg0[i]);
 			vs[i] = findOrCreatePointsToSet(arg0[i]);
 		}
+
+		if(isChange){
+			newStatementChange(null, op, vs, true, true);
+			return;
+		}
 		newStatement(null, op, vs, true, true);
 	}
 
-	public void newSideEffect(IPAAbstractOperator<PointsToSetVariable> op, PointerKey arg0, PointerKey arg1) {
+	public void newSideEffect(IPAAbstractOperator<IPAPointsToSetVariable> op, PointerKey arg0, PointerKey arg1) {
 		if (DEBUG) {
 			System.err.println("add constraint D: " + op + " " + arg0);
 		}
 		assert !pointsToMap.isUnified(arg0);
 		assert !pointsToMap.isUnified(arg1);
-		PointsToSetVariable v1 = findOrCreatePointsToSet(arg0);
-		PointsToSetVariable v2 = findOrCreatePointsToSet(arg1);
+		IPAPointsToSetVariable v1 = findOrCreatePointsToSet(arg0);
+		IPAPointsToSetVariable v2 = findOrCreatePointsToSet(arg1);
 		newStatement(null, op, v1, v2, true, true);
 	}
 
@@ -1252,7 +1407,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	private String printRHSInstances(IPAAbstractStatement s) {
 		if (s instanceof IPAUnaryStatement) {
 			IPAUnaryStatement u = (IPAUnaryStatement) s;
-			PointsToSetVariable rhs = (PointsToSetVariable) u.getRightHandSide();
+			IPAPointsToSetVariable rhs = (IPAPointsToSetVariable) u.getRightHandSide();
 			IntSet value = rhs.getValue();
 			final int[] topFive = new int[5];
 			value.foreach(new IntSetAction() {
@@ -1279,7 +1434,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	}
 
 	@Override
-	public IFixedPointSystem<PointsToSetVariable> getFixedPointSystem() {
+	public IFixedPointSystem<IPAPointsToSetVariable> getFixedPointSystem() {
 		return flowGraph;
 	}
 
@@ -1304,19 +1459,19 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 		return workList;
 	}
 
-	public Iterator<IPAAbstractStatement> getStatementsThatUse(PointsToSetVariable v) {
+	public Iterator<IPAAbstractStatement> getStatementsThatUse(IPAPointsToSetVariable v) {
 		return flowGraph.getStatementsThatUse(v);
 	}
 
-	public Iterator<IPAAbstractStatement> getStatementsThatDef(PointsToSetVariable v) {
+	public Iterator<IPAAbstractStatement> getStatementsThatDef(IPAPointsToSetVariable v) {
 		return flowGraph.getStatementsThatDef(v);
 	}
 
-	public NumberedGraph<PointsToSetVariable> getAssignmentGraph() {
+	public NumberedGraph<IPAPointsToSetVariable> getAssignmentGraph() {
 		return flowGraph.getAssignmentGraph();
 	}
 
-	public Graph<PointsToSetVariable> getFilterAsssignmentGraph() {
+	public Graph<IPAPointsToSetVariable> getFilterAsssignmentGraph() {
 		return flowGraph.getFilterAssignmentGraph();
 	}
 
@@ -1324,7 +1479,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * NOTE: do not use this method unless you really know what you are doing. Functionality is fragile and may not work in the
 	 * future.
 	 */
-	public Graph<PointsToSetVariable> getFlowGraphIncludingImplicitConstraints() {
+	public Graph<IPAPointsToSetVariable> getFlowGraphIncludingImplicitConstraints() {
 		return flowGraph.getFlowGraphIncludingImplicitConstraints();
 	}
 
@@ -1384,7 +1539,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 			throw new IllegalArgumentException("s is null");
 		}
 		// cache the variables represented
-		HashSet<PointsToSetVariable> cache = HashSetFactory.make(s.size());
+		HashSet<IPAPointsToSetVariable> cache = HashSetFactory.make(s.size());
 		for (IntIterator it = s.intIterator(); it.hasNext();) {
 			int i = it.next();
 			cache.add(pointsToMap.getPointsToSet(i));
@@ -1407,10 +1562,10 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param s set of PointsToSetVariables that have been unified
 	 * @param rep number of the representative variable for the unified set.
 	 */
-	private void updateSideEffectsForUnification(HashSet<PointsToSetVariable> s, int rep) {
-		PointsToSetVariable pRef = pointsToMap.getPointsToSet(rep);
-		for (Iterator<PointsToSetVariable> it = s.iterator(); it.hasNext();) {
-			PointsToSetVariable p = it.next();
+	private void updateSideEffectsForUnification(HashSet<IPAPointsToSetVariable> s, int rep) {
+		IPAPointsToSetVariable pRef = pointsToMap.getPointsToSet(rep);
+		for (Iterator<IPAPointsToSetVariable> it = s.iterator(); it.hasNext();) {
+			IPAPointsToSetVariable p = it.next();
 			updateSideEffects(p, pRef);
 		}
 	}
@@ -1422,10 +1577,10 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 * @param rep number of the representative variable for the unified set.
 	 */
 	@SuppressWarnings("unchecked")
-	private void updateEquationsForUnification(HashSet<PointsToSetVariable> s, int rep) {
-		PointsToSetVariable pRef = pointsToMap.getPointsToSet(rep);
-		for (Iterator<PointsToSetVariable> it = s.iterator(); it.hasNext();) {
-			PointsToSetVariable p = it.next();
+	private void updateEquationsForUnification(HashSet<IPAPointsToSetVariable> s, int rep) {
+		IPAPointsToSetVariable pRef = pointsToMap.getPointsToSet(rep);
+		for (Iterator<IPAPointsToSetVariable> it = s.iterator(); it.hasNext();) {
+			IPAPointsToSetVariable p = it.next();
 
 			if (p != pRef) {
 				// pRef is the representative for p.
@@ -1435,7 +1590,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 
 					if (as instanceof IPAAssignEquation) {
 						IPAAssignEquation assign = (IPAAssignEquation) as;
-						PointsToSetVariable rhs = assign.getRightHandSide();
+						IPAPointsToSetVariable rhs = assign.getRightHandSide();
 						int rhsRep = pointsToMap.getRepresentative(pointsToMap.getIndex(rhs.getPointerKey()));
 						if (rhsRep == rep) {
 							flowGraph.removeStatement(as);
@@ -1451,7 +1606,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 					IPAAbstractStatement as = (IPAAbstractStatement) u.next();
 					if (as instanceof IPAAssignEquation) {
 						IPAAssignEquation assign = (IPAAssignEquation) as;
-						PointsToSetVariable lhs = assign.getLHS();
+						IPAPointsToSetVariable lhs = assign.getLHS();
 						int lhsRep = pointsToMap.getRepresentative(pointsToMap.getIndex(lhs.getPointerKey()));
 						if (lhsRep == rep) {
 							flowGraph.removeStatement(as);
@@ -1474,19 +1629,19 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 *
 	 * @param as a statement that uses p in it's right-hand side
 	 */
-	private void replaceRHS(PointsToSetVariable pRef, PointsToSetVariable p,
-			IPAAbstractStatement<PointsToSetVariable, IPAAbstractOperator<PointsToSetVariable>> as) {
+	private void replaceRHS(IPAPointsToSetVariable pRef, IPAPointsToSetVariable p,
+			IPAAbstractStatement<IPAPointsToSetVariable, IPAAbstractOperator<IPAPointsToSetVariable>> as) {
 		if (as instanceof IPAUnaryStatement) {
 			assert ((IPAUnaryStatement) as).getRightHandSide() == p;
-			newStatement(as.getLHS(), (IPAUnaryOperator<PointsToSetVariable>) as.getOperator(), pRef, false, false);
+			newStatement(as.getLHS(), (IPAUnaryOperator<IPAPointsToSetVariable>) as.getOperator(), pRef, false, false);
 		} else {
 			IVariable[] rhs = as.getRHS();
-			PointsToSetVariable[] newRHS = new PointsToSetVariable[rhs.length];
+			IPAPointsToSetVariable[] newRHS = new IPAPointsToSetVariable[rhs.length];
 			for (int i = 0; i < rhs.length; i++) {
 				if (rhs[i].equals(p)) {
 					newRHS[i] = pRef;
 				} else {
-					newRHS[i] = (PointsToSetVariable) rhs[i];
+					newRHS[i] = (IPAPointsToSetVariable) rhs[i];
 				}
 			}
 			newStatement(as.getLHS(), as.getOperator(), newRHS, false, false);
@@ -1499,11 +1654,11 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	 *
 	 * @param as a statement that defs p
 	 */
-	private void replaceLHS(PointsToSetVariable pRef, PointsToSetVariable p,
-			IPAAbstractStatement<PointsToSetVariable, IPAAbstractOperator<PointsToSetVariable>> as) {
+	private void replaceLHS(IPAPointsToSetVariable pRef, IPAPointsToSetVariable p,
+			IPAAbstractStatement<IPAPointsToSetVariable, IPAAbstractOperator<IPAPointsToSetVariable>> as) {
 		assert as.getLHS() == p;
 		if (as instanceof IPAUnaryStatement) {
-			newStatement(pRef, (IPAUnaryOperator<PointsToSetVariable>) as.getOperator(), (PointsToSetVariable) ((IPAUnaryStatement) as)
+			newStatement(pRef, (IPAUnaryOperator<IPAPointsToSetVariable>) as.getOperator(), (IPAPointsToSetVariable) ((IPAUnaryStatement) as)
 					.getRightHandSide(), false, false);
 		} else {
 			newStatement(pRef, as.getOperator(), as.getRHS(), false, false);
@@ -1520,7 +1675,8 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<PointsToSet
 	}
 
 	@Override
-	protected PointsToSetVariable[] makeStmtRHS(int size) {
-		return new PointsToSetVariable[size];
+	protected IPAPointsToSetVariable[] makeStmtRHS(int size) {
+		return new IPAPointsToSetVariable[size];
 	}
+
 }

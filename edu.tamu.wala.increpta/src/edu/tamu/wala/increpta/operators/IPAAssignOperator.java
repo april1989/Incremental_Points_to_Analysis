@@ -11,8 +11,8 @@
 package edu.tamu.wala.increpta.operators;
 
 import com.ibm.wala.ipa.callgraph.propagation.IPointerOperator;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
 
 /**
@@ -23,15 +23,15 @@ import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphB
  * (Technically, it's a binary op, since it includes lhs as an implicit input; this allows it to compose with other ops that define
  * the same lhs, so long as they're all Assign ops)
  */
-public class IPAAssignOperator extends IPAUnaryOperator<PointsToSetVariable> implements IPointerOperator {
+public class IPAAssignOperator extends IPAUnaryOperator<IPAPointsToSetVariable> implements IPointerOperator {
 
   @Override
-  public IPAUnaryStatement<PointsToSetVariable> makeEquation(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+  public IPAUnaryStatement<IPAPointsToSetVariable> makeEquation(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
     return new IPAAssignEquation(lhs, rhs);
   }
 
   @Override
-  public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+  public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 
     if (IPAPropagationCallGraphBuilder.DEBUG_ASSIGN) {
       String S = "EVAL Assign " + lhs.getPointerKey() + " " + rhs.getPointerKey();
@@ -50,7 +50,7 @@ public class IPAAssignOperator extends IPAUnaryOperator<PointsToSetVariable> imp
    * bz: leave for procedureToDelPointsToSet()
    */
   @Override
-  public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+  public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 	  return 0;
   }
 

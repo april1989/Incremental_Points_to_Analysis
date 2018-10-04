@@ -39,7 +39,6 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
-import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.propagation.ConcreteTypeKey;
 import com.ibm.wala.ipa.callgraph.propagation.FilteredPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.IPointerOperator;
@@ -47,7 +46,6 @@ import com.ibm.wala.ipa.callgraph.propagation.IPointsToSolver;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.ZeroLengthArrayInNode;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -310,8 +308,6 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			MonitorUtil.throwExceptionIfCanceled(monitor);
 			SSAInstruction s = it.next();
 			if (s != null) {
-				if(s.toString().contains("16 = arrayload 4[6]"))
-					System.out.println();
 				s.visit(v);
 				if (wasChanged(node)) {
 					return;
@@ -319,7 +315,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			}
 		}
 
-		addPhiConstraints(node, ir.getControlFlowGraph(), b, v);
+		addPhiConstraints(node, ir.getControlFlowGraph(), b, v);//lhs == rhs
 	}
 
 	private void addPhiConstraints(CGNode node, ControlFlowGraph<SSAInstruction, ISSABasicBlock> controlFlowGraph, BasicBlock b,
@@ -1393,7 +1389,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 						}
 					});
 
-					DispatchOperator dispatchOperator = getBuilder().new DispatchOperator(instruction, node,
+					IPADispatchOperator dispatchOperator = getBuilder().new IPADispatchOperator(instruction, node,
 							invariantParameters, uniqueCatch, params);
 					system.delSideEffect(dispatchOperator, pks.toArray(new PointerKey[pks.size()]));
 				}
@@ -1470,7 +1466,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 						}
 					});
 
-					DispatchOperator dispatchOperator = getBuilder().new DispatchOperator(instruction, node,
+					IPADispatchOperator dispatchOperator = getBuilder().new IPADispatchOperator(instruction, node,
 							invariantParameters, uniqueCatch, params);
 					system.newSideEffect(dispatchOperator, pks.toArray(new PointerKey[pks.size()]));
 				}
@@ -2066,7 +2062,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	 *
 	 * This operator will create a new callee context and constraints if necessary.
 	 */
-	final class DispatchOperator extends IPAAbstractOperator<PointsToSetVariable> implements IPointerOperator {
+	final class IPADispatchOperator extends IPAAbstractOperator<IPAPointsToSetVariable> implements IPointerOperator {
 		private final SSAAbstractInvokeInstruction call;
 
 		private final CGNode node;
@@ -2095,7 +2091,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		 * @param constParams if non-null, then constParams[i] holds the String constant that is passed as param i, or null if param i
 		 *          is not a String constant
 		 */
-		DispatchOperator(SSAAbstractInvokeInstruction call, CGNode node, InstanceKey[][] constParams,
+		IPADispatchOperator(SSAAbstractInvokeInstruction call, CGNode node, InstanceKey[][] constParams,
 				PointerKey uniqueCatch, IntSet dispatchIndices) {
 			this.call = call;
 			this.node = node;
@@ -2110,14 +2106,14 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			}
 		}
 
-		private byte cpa(final PointsToSetVariable[] rhs) {
+		private byte cpa(final IPAPointsToSetVariable[] rhs) {
 			final MutableBoolean changed = new MutableBoolean();
 			for(int rhsIndex = 0; rhsIndex < rhs.length; rhsIndex++) {
 				final int y = rhsIndex;
 				IntSet currentObjs = rhs[rhsIndex].getValue();
 				if (currentObjs != null) {
 					final IntSet oldObjs = previousPtrs[rhsIndex];
-					currentObjs.foreachExcluding(oldObjs, new IntSetAction() {
+					currentObjs.foreachExcluding(oldObjs, new IntSetAction() {//TODO: process multiple edges together for scc
 						@Override
 						public void act(final int x) {
 							new CrossProductRec(constParams, call, node,
@@ -2167,106 +2163,9 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		 * com.ibm.wala.dataflow.fixpoint.IVariable)
 		 */
 		@Override
-		public byte evaluate(PointsToSetVariable lhs, final PointsToSetVariable[] rhs) {
+		public byte evaluate(IPAPointsToSetVariable lhs, final IPAPointsToSetVariable[] rhs) {
 			assert dispatchIndices.length >= rhs.length : "bad operator at " + call;
-
 			return cpa(rhs);
-
-			/*
-	      // did evaluating the dispatch operation add a new possible target
-	      // to the call site?
-	      final MutableBoolean addedNewTarget = new MutableBoolean();
-
-	      final MutableIntSet receiverVals;
-	      if (constParams != null && constParams[0] != null) {
-	        receiverVals = IntSetUtil.make();
-	        for(InstanceKey ik : constParams[0]) {
-	          receiverVals.add(system.getInstanceIndex(ik));
-	        }
-	      } else {
-	        receiverVals = rhs[0].getValue();
-	      }
-
-	      if (receiverVals == null) {
-	        // this constraint was put on the work list, probably by
-	        // initialization,
-	        // even though the right-hand-side is empty.
-	        // TODO: be more careful about what goes on the worklist to
-	        // avoid this.
-	        if (DEBUG) {
-	          System.err.println("EVAL dispatch with value null");
-	        }
-	        return NOT_CHANGED;
-
-	      }
-	      // we handle the parameter positions one by one, rather than enumerating
-	      // the cartesian product of possibilities. this disallows
-	      // context-sensitivity policies like true CPA, but is necessary for
-	      // performance.
-	      InstanceKey keys[] = new InstanceKey[constParams == null? dispatchIndices[dispatchIndices.length-1]+1: constParams.length];
-	      // determine whether we're handling a new receiver; used later
-	      // to check for redundancy
-	      boolean newReceiver = !receiverVals.isSubset(previousPtrs[0]);
-	      // keep separate rhsIndex, since it doesn't advance for constant
-	      // parameters
-	      int rhsIndex = (constParams != null && constParams[0] != null)? 0: 1;
-	      // this flag is set to true if we ever call handleAllReceivers() in the
-	      // loop below. we need to catch the case where we have a new receiver, but
-	      // there are no other dispatch indices with new values
-	      boolean propagatedReceivers = false;
-	      // we start at index 1 since we need to handle the receiver specially; see
-	      // below
-	      for (int index = 1; index < dispatchIndices.length; index++) {
-	        try {
-	          MonitorUtil.throwExceptionIfCanceled(monitor);
-	        } catch (CancelException e) {
-	          throw new CancelRuntimeException(e);
-	        }
-	        int paramIndex = dispatchIndices[index];
-	        assert keys[paramIndex] == null;
-	        final MutableIntSet prevAtIndex = previousPtrs[index];
-	        if (constParams != null && constParams[paramIndex] != null) {
-	          // we have a constant parameter.  only need to propagate again if we've never done it before or if we have a new receiver
-	          if (newReceiver || prevAtIndex.isEmpty()) {
-	            for(int i = 0; i < constParams[paramIndex].length; i++) {
-	              keys[paramIndex] = constParams[paramIndex][i];
-	              handleAllReceivers(receiverVals,keys, addedNewTarget);
-	              propagatedReceivers = true;
-	              int ii = system.instanceKeys.getMappedIndex(constParams[paramIndex][i]);
-	              prevAtIndex.add(ii);
-	            }
-	          }
-	        } else { // non-constant parameter
-	          PointsToSetVariable v = rhs[rhsIndex];
-	          if (v.getValue() != null) {
-	            IntIterator ptrs = v.getValue().intIterator();
-	            while (ptrs.hasNext()) {
-	              int ptr = ptrs.next();
-	              if (newReceiver || !prevAtIndex.contains(ptr)) {
-	                keys[paramIndex] = system.getInstanceKey(ptr);
-	                handleAllReceivers(receiverVals,keys, addedNewTarget);
-	                propagatedReceivers = true;
-	                prevAtIndex.add(ptr);
-	              }
-	            }
-	          }
-	          rhsIndex++;
-	        }
-	        keys[paramIndex] = null;
-	      }
-	      if (newReceiver) {
-	        if (!propagatedReceivers) {
-	          // we have a new receiver value, and it wasn't propagated at all,
-	          // so propagate it now
-	          handleAllReceivers(receiverVals, keys, addedNewTarget);
-	        }
-	        // update receiver cache
-	        previousPtrs[0].addAll(receiverVals);
-	      }
-
-	      byte sideEffectMask = addedNewTarget.b ? (byte) SIDE_EFFECT_MASK : 0;
-	      return (byte) (NOT_CHANGED | sideEffectMask);
-			 */
 		}
 
 		/**bz*/
@@ -2312,12 +2211,6 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 						// process the newly discovered target for this call
 						sideEffect.b = true;
 						processDelCall(node, call, target, constParams, uniqueCatch);
-
-						//	            if (!haveAlreadyVisited(target)) {
-						//	              if(DEBUG)
-						//	                System.out.println("--- discover new node from handleAllReceivers: "+ target.toString());
-						//	              markDiscovered(target);
-						//	            }
 					}
 				}
 			}
@@ -2329,14 +2222,19 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		 * @param rhs
 		 * @return
 		 */
-		private byte cpaDel(final PointsToSetVariable[] rhs) {
+		private byte cpaDel(final IPAPointsToSetVariable[] rhs) {
 			final MutableBoolean changed = new MutableBoolean();
 			for(int rhsIndex = 0; rhsIndex < rhs.length; rhsIndex++) {
 				final int y = rhsIndex;
-				IntSet removeObjs = rhs[rhsIndex].getValue();
+				IntSet removeObjs = null;
+				if(system.getFirstDel()){
+					removeObjs = rhs[rhsIndex].getValue();
+				}else{
+					removeObjs = rhs[rhsIndex].getChange();
+				}
 				if (removeObjs != null) {
 					final IntSet oldObjs = previousPtrs[rhsIndex];
-					removeObjs.foreach(new IntSetAction() {
+					removeObjs.foreachExcluding(oldObjs, new IntSetAction() {//TODO: process multiple edges together for scc
 						@Override
 						public void act(final int x) {
 							new CrossProductRec(constParams, call, node,
@@ -2387,9 +2285,8 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		/**bz:
 		 */
 		@Override
-		public byte evaluateDel(PointsToSetVariable lhs, final PointsToSetVariable[] rhs){
+		public byte evaluateDel(IPAPointsToSetVariable lhs, final IPAPointsToSetVariable[] rhs){
 			assert dispatchIndices.length >= rhs.length : "bad operator at " + call;
-
 			return cpaDel(rhs);
 		}
 
@@ -2493,8 +2390,8 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			// with reference equality
 
 			// instanceof is OK because this class is final
-			if (o instanceof DispatchOperator) {
-				DispatchOperator other = (DispatchOperator) o;
+			if (o instanceof IPADispatchOperator) {
+				IPADispatchOperator other = (IPADispatchOperator) o;
 				return node.equals(other.node) && call.equals(other.call) && Arrays.deepEquals(constParams, other.constParams);
 			} else {
 				return false;

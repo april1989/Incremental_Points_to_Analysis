@@ -13,7 +13,6 @@ package edu.tamu.wala.increpta.parallel;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
@@ -29,6 +28,7 @@ import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
 import edu.tamu.wala.increpta.scc.SCCVariable;
 import edu.tamu.wala.increpta.util.DeletionUtil;
 import edu.tamu.wala.increpta.util.IPAAbstractFixedPointSolver;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 //import akka.actor.UntypedActor;
 
@@ -58,10 +58,10 @@ public class Worker {
 	//  }
 
 	private static ResultFromSpecial processSpecialWorkAddition(TaskForSpecial work) {
-		final PointsToSetVariable user = work.getUser();
+		final IPAPointsToSetVariable user = work.getUser();
 		final MutableIntSet targets = work.getTargets();
 		final IPAPropagationSystem system = work.getPropagationSystem();
-		ArrayList<PointsToSetVariable> next = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 		if(user.getValue() == null)
 			return new ResultFromSpecial(user, next, (MutableSharedBitVectorIntSet) targets, work.getIsAdd());
 
@@ -86,13 +86,13 @@ public class Worker {
 				IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 				IPAAbstractOperator op = s.getOperator();
 				if(op instanceof IPAAssignOperator){
-					PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+					IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 					if(pv.getValue() != null)
 						next.add(pv);
 				}else if(op instanceof IPAFilterOperator){
 					IPAFilterOperator filter = (IPAFilterOperator) op;
-					PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
-					byte mark = filter.evaluate(pv, (PointsToSetVariable)((IPAUnaryStatement)s).getRightHandSide());
+					IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
+					byte mark = filter.evaluate(pv, (IPAPointsToSetVariable)((IPAUnaryStatement)s).getRightHandSide());
 					if(mark == 1){
 						IPAAbstractFixedPointSolver.addToChanges(pv);
 						next.add(pv);
@@ -108,15 +108,15 @@ public class Worker {
 	}
 
 	private ResultFromSpecial processSpecialWorkDeletion(TaskForSpecial work) {
-		final PointsToSetVariable user = work.getUser();
+		final IPAPointsToSetVariable user = work.getUser();
 		final MutableIntSet targets = work.getTargets();
 		final IPAPropagationSystem system = work.getPropagationSystem();
-		ArrayList<PointsToSetVariable> next = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 		//check
 		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(targets);
 		if(system.isTransitiveRoot(user.getPointerKey()))
 			return new ResultFromSpecial(user, next, remaining, work.getIsAdd());
-		for (PointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
+		for (IPAPointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
 			if(remaining.isEmpty())
 				break;
 			if(pv instanceof SCCVariable){
@@ -161,12 +161,12 @@ public class Worker {
 					IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 					IPAAbstractOperator op = s.getOperator();
 					if(op instanceof IPAAssignOperator){
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(pv.getValue() != null)
 							next.add(pv);
 					}else if(op instanceof IPAFilterOperator){
 						IPAFilterOperator filter = (IPAFilterOperator) op;
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(system.isTransitiveRoot(pv.getPointerKey()))
 							continue;
 						synchronized (pv) {
@@ -191,15 +191,15 @@ public class Worker {
 
 
 	private ResultFromRR processRRTask(TaskForRR work) {
-		final PointsToSetVariable user = work.getUser();
+		final IPAPointsToSetVariable user = work.getUser();
 		final MutableIntSet targets = work.getTargets();
 		final IPAPropagationSystem system = work.getPropagationSystem();
-		ArrayList<PointsToSetVariable> next = new ArrayList<>();
+		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 		//check
 		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(targets);
 		if(system.isTransitiveRoot(user.getPointerKey()))
 			return new ResultFromRR(user, next, remaining);
-		for (PointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
+		for (IPAPointsToSetVariable pv : system.getPropagationGraph().getPointsToSetVariablesThatDefImplicitly(user)) {
 			if(remaining.isEmpty())
 				break;
 			if(pv instanceof SCCVariable){
@@ -244,12 +244,12 @@ public class Worker {
 					IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 					IPAAbstractOperator op = s.getOperator();
 					if(op instanceof IPAAssignOperator){
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(pv.getValue() != null)
 							next.add(pv);
 					}else if(op instanceof IPAFilterOperator){
 						IPAFilterOperator filter = (IPAFilterOperator) op;
-						PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(system.isTransitiveRoot(pv.getPointerKey()))
 							continue;
 						synchronized (pv) {
@@ -273,19 +273,19 @@ public class Worker {
 		return new ResultFromRR(user, next, remaining);
 	}
 
-	private void classifyPointsToConstraints(PointsToSetVariable L, final MutableIntSet targets,
-			ArrayList<PointsToSetVariable> next, IPAPropagationSystem system){
+	private void classifyPointsToConstraints(IPAPointsToSetVariable L, final MutableIntSet targets,
+			ArrayList<IPAPointsToSetVariable> next, IPAPropagationSystem system){
 		for (Iterator it = system.getPropagationGraph().getStatementsThatUse(L); it.hasNext();) {
 			IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 			IPAAbstractOperator op = s.getOperator();
 			if(op instanceof IPAAssignOperator){
-				PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(pv.getValue() != null){
 					next.add(pv);
 				}
 			}else if(op instanceof IPAFilterOperator){
 				IPAFilterOperator filter = (IPAFilterOperator) op;
-				PointsToSetVariable pv = (PointsToSetVariable) s.getLHS();
+				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(system.isTransitiveRoot(pv.getPointerKey()))
 					continue;
 				synchronized (pv) {

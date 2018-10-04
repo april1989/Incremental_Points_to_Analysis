@@ -45,7 +45,6 @@ import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointsToMap;
-import com.ibm.wala.ipa.callgraph.propagation.PointsToSetVariable;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.DefaultSSAInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.DelegatingSSAContextInterpreter;
@@ -71,6 +70,7 @@ import edu.tamu.wala.increpta.cast.java.AstIPACallGraph.AstIPACGNode;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAHeapModel;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointerAnalysisImpl;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToMap;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationSystem;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder;
@@ -508,9 +508,9 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 
 			} else {
 				final String hack = fieldName;
-				system.newSideEffect(new IPAUnaryOperator<PointsToSetVariable>() {
+				system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 					@Override
-					public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+					public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 						final IntSetVariable<?> objects = rhs;
 						if (objects.getValue() != null) {
 							objects.getValue().foreach(optr -> {
@@ -527,7 +527,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 					}
 
 					@Override
-					public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+					public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 						return NOT_CHANGED;
 					}
 
@@ -576,9 +576,9 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 			}
 
 			else {
-				system.newSideEffect(new IPAUnaryOperator<PointsToSetVariable>() {
+				system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 					@Override
-					public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+					public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 						final IntSetVariable<?> objects = rhs;
 						if (objects.getValue() != null) {
 							objects.getValue().foreach(optr -> {
@@ -593,7 +593,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 					}
 
 					@Override
-					public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+					public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 						return NOT_CHANGED;
 					}
 
@@ -631,7 +631,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 		//
 		// /////////////////////////////////////////////////////////////////////////
 
-		private abstract class LexicalOperator extends IPAUnaryOperator<PointsToSetVariable> {
+		private abstract class LexicalOperator extends IPAUnaryOperator<IPAPointsToSetVariable> {
 			/**
 			 * node in which lexical accesses are performed
 			 */
@@ -683,13 +683,13 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 			}
 
 			@Override
-			public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+			public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 				doLexicalPointerKeys();
 				return NOT_CHANGED;
 			}
 
 			@Override
-			public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+			public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 				return NOT_CHANGED;
 			}
 
@@ -765,7 +765,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 						}
 					}
 				} else {
-					PointsToSetVariable FV = system.findOrCreatePointsToSet(F);
+					IPAPointsToSetVariable FV = system.findOrCreatePointsToSet(F);
 					if (FV.getValue() != null) {
 						FV.getValue().foreach(ptr -> {
 							InstanceKey iKey = system.getInstanceKey(ptr);
@@ -994,12 +994,12 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 
 		protected void newFieldFullOperation(final boolean isLoadOperation, final ReflectedFieldAction action, PointerKey objKey,
 				final PointerKey fieldKey) {
-			system.newSideEffect(new IPAAbstractOperator<PointsToSetVariable>() {
+			system.newSideEffect(new IPAAbstractOperator<IPAPointsToSetVariable>() {
 				private final MutableIntSet doneReceiver = IntSetUtil.make();
 				private final MutableIntSet doneField = IntSetUtil.make();
 
 				@Override
-				public byte evaluate(PointsToSetVariable lhs, final PointsToSetVariable[] rhs) {
+				public byte evaluate(IPAPointsToSetVariable lhs, final IPAPointsToSetVariable[] rhs) {
 					final IntSetVariable<?> receivers = rhs[0];
 					final IntSetVariable<?> fields = rhs[1];
 					if (receivers.getValue() != null && fields.getValue() != null) {
@@ -1052,9 +1052,9 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 
 		protected void newFieldOperationOnlyFieldConstant(final boolean isLoadOperation, final ReflectedFieldAction action,
 				final PointerKey objKey, final InstanceKey[] fieldsKeys) {
-			system.newSideEffect(new IPAUnaryOperator<PointsToSetVariable>() {
+			system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 				@Override
-				public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+				public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 					final IntSetVariable<?> objects = rhs;
 					if (objects.getValue() != null) {
 						objects.getValue().foreach(optr -> {
@@ -1086,7 +1086,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 				}
 
 				@Override
-				public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+				public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 					return NOT_CHANGED;
 				}
 
@@ -1118,9 +1118,9 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 				}
 			}
 
-			system.newSideEffect(new IPAUnaryOperator<PointsToSetVariable>() {
+			system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 				@Override
-				public byte evaluate(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+				public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 					final IntSetVariable<?> fields = rhs;
 					if (fields.getValue() != null) {
 						fields.getValue().foreach(fptr -> {
@@ -1140,7 +1140,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 				}
 
 				@Override
-				public byte evaluateDel(PointsToSetVariable lhs, PointsToSetVariable rhs) {
+				public byte evaluateDel(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
 					return NOT_CHANGED;
 				}
 
