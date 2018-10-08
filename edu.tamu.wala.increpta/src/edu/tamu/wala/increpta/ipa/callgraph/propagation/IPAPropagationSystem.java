@@ -461,7 +461,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 			if(getFirstDel()){
 				delSet = R.getValue();
 			}else{
-				delSet = R.getValue();
+				delSet = R.getChange();
 			}
 			if(delSet == null)
 				return false;

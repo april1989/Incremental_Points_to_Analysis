@@ -326,10 +326,12 @@ public class ThreadHub {
 				}else if(op instanceof IPAFilterOperator){
 					IPAFilterOperator filter = (IPAFilterOperator) op;
 					IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
-					byte mark = filter.evaluate(pv, (IPAPointsToSetVariable)((IPAUnaryStatement)s).getRightHandSide());
-					if(mark == 1){
-						IPAAbstractFixedPointSolver.addToChanges(pv);
-						next.add(pv);
+					synchronized (pv) {
+						byte mark = filter.evaluate(pv, (IPAPointsToSetVariable)((IPAUnaryStatement)s).getRightHandSide());
+						if(mark == 1){
+							IPAAbstractFixedPointSolver.addToChanges(pv);
+							next.add(pv);
+						}
 					}
 				}else{
 					system.addToWorkListSync(s);
