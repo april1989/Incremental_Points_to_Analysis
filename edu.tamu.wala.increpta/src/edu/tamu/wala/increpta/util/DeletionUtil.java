@@ -40,6 +40,10 @@ public class DeletionUtil {
 				}
 			}
 		}
+		//bz: update changes needed to propagate; only update for assign and filter
+		if(removed.size() > 0){
+			v.setChange(removed);
+		}
 		return removed;
 	}
 

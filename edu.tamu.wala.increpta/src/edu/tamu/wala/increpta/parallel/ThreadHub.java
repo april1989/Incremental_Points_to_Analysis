@@ -231,23 +231,25 @@ public class ThreadHub {
 				for (Iterator it = system.getPropagationGraph().getStatementsThatUse(user); it.hasNext();) {
 					IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 					IPAAbstractOperator op = s.getOperator();
-					if(op instanceof IPAAssignOperator){
+					if(op instanceof IPAAssignOperator || op instanceof IPAFilterOperator){
 						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(pv.getValue() != null)
 							next.add(pv);
-					}else if(op instanceof IPAFilterOperator){
-						IPAFilterOperator filter = (IPAFilterOperator) op;
-						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
-						if(system.isTransitiveRoot(pv.getPointerKey()))
-							continue;
-						synchronized (pv) {
-							byte mark = filter.evaluateDel(pv, (MutableSharedBitVectorIntSet)copy);
-							if(mark == 1){
-								IPAAbstractFixedPointSolver.addToChanges(pv);
-								classifyPointsToConstraints(pv, copy, next, system);
-							}
-						}
-					}else{
+					}
+//					else if(op instanceof IPAFilterOperator){
+//						IPAFilterOperator filter = (IPAFilterOperator) op;
+//						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
+//						if(system.isTransitiveRoot(pv.getPointerKey()))
+//							continue;
+//						synchronized (pv) {
+//							byte mark = filter.evaluateDel(pv, (MutableSharedBitVectorIntSet)copy);
+//							if(mark == 1){
+//								IPAAbstractFixedPointSolver.addToChanges(pv);
+//								classifyPointsToConstraints(pv, copy, next, system);
+//							}
+//						}
+//					}
+					else{
 						system.addToWorkListSync(s);
 					}
 				}
@@ -266,26 +268,28 @@ public class ThreadHub {
 		for (Iterator it = system.getPropagationGraph().getStatementsThatUse(L); it.hasNext();) {
 			IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 			IPAAbstractOperator op = s.getOperator();
-			if(op instanceof IPAAssignOperator){
+			if(op instanceof IPAAssignOperator || op instanceof IPAFilterOperator){
 				if(system.checkSelfRecursive(s))
 					continue;
 				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(pv.getValue() != null){
 					next.add(pv);
 				}
-			}else if(op instanceof IPAFilterOperator){
-				if(system.checkSelfRecursive(s))
-					continue;
-				IPAFilterOperator filter = (IPAFilterOperator) op;
-				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
-				if(system.isTransitiveRoot(pv.getPointerKey()))
-					continue;
-				byte mark = filter.evaluateDel(pv, (MutableSharedBitVectorIntSet)targets);
-				if(mark == 1){
-					IPAAbstractFixedPointSolver.addToChanges(pv);
-					classifyPointsToConstraints(pv, targets, next, system);
-				}
-			}else{
+			}
+//			else if(op instanceof IPAFilterOperator){
+//				if(system.checkSelfRecursive(s))
+//					continue;
+//				IPAFilterOperator filter = (IPAFilterOperator) op;
+//				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
+//				if(system.isTransitiveRoot(pv.getPointerKey()))
+//					continue;
+//				byte mark = filter.evaluateDel(pv, (MutableSharedBitVectorIntSet)targets);
+//				if(mark == 1){
+//					IPAAbstractFixedPointSolver.addToChanges(pv);
+//					classifyPointsToConstraints(pv, targets, next, system);
+//				}
+//			}
+			else{
 				system.addToWorkListSync(s);
 			}
 		}
@@ -396,23 +400,25 @@ public class ThreadHub {
 				for (Iterator it = system.getPropagationGraph().getStatementsThatUse(user); it.hasNext();) {
 					IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 					IPAAbstractOperator op = s.getOperator();
-					if(op instanceof IPAAssignOperator){
+					if(op instanceof IPAAssignOperator || op instanceof IPAFilterOperator){
 						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 						if(pv.getValue() != null)
 							next.add(pv);
-					}else if(op instanceof IPAFilterOperator){
-						IPAFilterOperator filter = (IPAFilterOperator) op;
-						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
-						if(system.isTransitiveRoot(pv.getPointerKey()))
-							continue;
-						synchronized (pv) {
-							byte mark = filter.evaluateDel(pv, (MutableSharedBitVectorIntSet)copy);
-							if(mark == 1){
-								IPAAbstractFixedPointSolver.addToChanges(pv);
-								classifyPointsToConstraints(pv, copy, next, system);
-							}
-						}
-					}else{
+					}
+//					else if(op instanceof IPAFilterOperator){
+//						IPAFilterOperator filter = (IPAFilterOperator) op;
+//						IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
+//						if(system.isTransitiveRoot(pv.getPointerKey()))
+//							continue;
+//						synchronized (pv) {
+//							byte mark = filter.evaluateDel(pv, (MutableSharedBitVectorIntSet)copy);
+//							if(mark == 1){
+//								IPAAbstractFixedPointSolver.addToChanges(pv);
+//								classifyPointsToConstraints(pv, copy, next, system);
+//							}
+//						}
+//					}
+					else{
 						system.addToWorkListSync(s);
 					}
 				}

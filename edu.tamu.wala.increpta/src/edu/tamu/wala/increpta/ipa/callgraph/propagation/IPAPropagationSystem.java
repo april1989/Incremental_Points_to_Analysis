@@ -965,25 +965,27 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 		for (Iterator it = flowGraph.getStatementsThatUse(L); it.hasNext();) {
 			IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 			IPAAbstractOperator op = s.getOperator();
-			if(op instanceof IPAAssignOperator){
+			if(op instanceof IPAAssignOperator || op instanceof IPAFilterOperator){
 				if(checkSelfRecursive(s))
 					continue;
 				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(pv.getValue() != null)
 					singleProcedureToDelPointsToSet(pv, targets);
-			}else if(op instanceof IPAFilterOperator){
-				if(checkSelfRecursive(s))
-					continue;
-				IPAFilterOperator filter = (IPAFilterOperator) op;
-				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
-				byte mark = filter.evaluateDel(pv, L);
-				if(mark == 1){
-					if(!changes.contains(pv)){
-						changes.add(pv);
-					}
-					classifyPointsToConstraints(pv, targets);
-				}
-			}else{// all other complex constraints
+			}
+//			else if(op instanceof IPAFilterOperator){
+//				if(checkSelfRecursive(s))
+//					continue;
+//				IPAFilterOperator filter = (IPAFilterOperator) op;
+//				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
+//				byte mark = filter.evaluateDel(pv, L);
+//				if(mark == 1){
+//					if(!changes.contains(pv)){
+//						changes.add(pv);
+//					}
+//					classifyPointsToConstraints(pv, targets);
+//				}
+//			}
+			else{// all other complex constraints
 				addToWorkList(s);
 			}
 		}

@@ -55,14 +55,14 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 	 * for single instance
 	 * @param i
 	 */
-	public void updateChange(int i){
+	public void setChange(int i){
 		change.add(i);
 	}
 
 	/**
 	 * for a set of instances
 	 */
-	public void updateChange(MutableIntSet set){
+	public void setChange(MutableIntSet set){
 		change.addAll(set);
 	}
 
