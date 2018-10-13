@@ -22,7 +22,7 @@
             <phase>test</phase>
             <configuration>
               <testClassesDirectory>${project.build.outputDirectory}</testClassesDirectory>
-              <argLine>-Xmx800M -ea</argLine>
+              <argLine>-Xmx2000M -ea</argLine>
               <redirectTestOutputToFile>true</redirectTestOutputToFile>
               <additionalClasspathElements>
                 <additionalClasspathElement>${basedir}/../edu.tamu.wala.increpta.tests/data</additionalClasspathElement>
