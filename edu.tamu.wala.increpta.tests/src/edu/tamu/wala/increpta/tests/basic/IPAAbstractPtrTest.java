@@ -66,6 +66,9 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 		// perform incremental pta test on the testcase in com.ibm.wala.core.testdata
 		System.err.println("Start the test of incremental pointer analysis for test case: " + mainClassName);
 		long start_time = System.currentTimeMillis();
+		if(mainClassName.contains("jython")){
+			MY_EXCLUSIONS = "EclipseDefaultExclusions_short.txt";
+		}
 		AnalysisScope scope = CallGraphTestUtil.makeJ2SEAnalysisScope(scopeFile, MY_EXCLUSIONS);//CallGraphTestUtil.REGRESSION_EXCLUSIONS
 		ClassHierarchy cha = ClassHierarchyFactory.make(scope);
 		Iterable<Entrypoint> entrypoints = com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints(scope, cha, mainClassName);
