@@ -1,11 +1,11 @@
-## WALA Subproject: Incremental Points-to Analysis [![Build Status](https://travis-ci.org/april1989/Incremental_Points_to_Analysis.svg?branch=master)](https://travis-ci.org/april1989/Incremental_Points_to_Analysis)
+## Incremental Points-to Analysis: Adopted by WALA [![Build Status](https://travis-ci.org/april1989/Incremental_Points_to_Analysis.svg?branch=master)](https://travis-ci.org/april1989/Incremental_Points_to_Analysis)
 
 This is the main source repository for the incremental points-to analysis, developed by Automated Software Engineering Research (ASER) Group at Texas A&M University. Currently, we support context/flow-insensitive and object/field-sensitive points-to analysis. The source code is in ```edu.tamu.wala.increpta```, and the tests are in ```edu.tamu.wala.increpta.tests```. 
 
 ### Get Started
 #### Prerequisites:
 - Java >= 1.8
-- Eclipse = Mars 4.5.2
+- Eclipse >= Mars 4.5.2
 - Apache Maven >= 3.3.9
 #### Set Up
 1. ```git clone https://github.com/april1989/Incremental_Points_to_Analysis.git```
