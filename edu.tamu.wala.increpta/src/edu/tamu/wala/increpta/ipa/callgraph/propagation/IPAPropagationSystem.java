@@ -58,7 +58,6 @@ import com.ibm.wala.util.ref.ReferenceCleanser;
 import com.ibm.wala.util.warnings.Warnings;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder.IPAFilterOperator;
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder.PutFieldOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAAssignEquation;
@@ -839,27 +838,11 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 			System.err.println("Delete constraint B: " + lhs + " U= " + delset);
 		}
 		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
-
 		procedureToDelPointsToSet(L, delset, true);
-		// deregister that we have an instanceKey for the klass?
-		//    assert value.getConcreteType() != null;
-		//    if (!value.getConcreteType().getReference().equals(TypeReference.JavaLangObject)) {
-		//      registerInstanceOfClass(value.getConcreteType(), index);
-		//    }
 		return true;
 	}
 
-
-	/**
-	 * bz: the main procedure to delete points-to constraints
-	 * @param l
-	 * @param delSet
-	 */
-	private void procedureToDelPointsToSet(IPAPointsToSetVariable L, final MutableIntSet delSet, boolean isRoot) {
-		if(!isRoot){
-			if(isTransitiveRoot(L.getPointerKey()))
-				return;
-		}
+	protected MutableSharedBitVectorIntSet computeRemaining(MutableIntSet delSet, IPAPointsToSetVariable L){
 		//recompute L
 		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(delSet);
 		for (IPAPointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
@@ -868,23 +851,29 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 			if(pv instanceof SCCVariable){
 				((SCCVariable) pv).ifOthersCanProvide(L, remaining, delSet, flowGraph);
 			}else if(pv.getValue() != null){
-				IntSetAction action = new IntSetAction() {
-					@Override
-					public void act(int i) {
-						if(remaining.isEmpty())
-							return;
-						if(delSet.contains(i)){
-							remaining.remove(i);
-						}
-					}
-				};
-				pv.getValue().foreach(action);
+				if(remaining.size() == 0)
+					break;
+				DeletionUtil.removeSome(remaining, pv.getValue());
 			}
 		}
+		return remaining;
+	}
+
+	/**
+	 * bz: the main procedure to delete points-to constraints
+	 * @param l
+	 * @param delSet
+	 */
+	public void procedureToDelPointsToSet(IPAPointsToSetVariable L, final MutableIntSet delSet, boolean isRoot) {
+		if(!isRoot){
+			if(isTransitiveRoot(L.getPointerKey()))
+				return;
+		}
+		final MutableSharedBitVectorIntSet remaining = computeRemaining(delSet, L);
 		//schedule task if changes
 		if(!remaining.isEmpty()){
-			MutableSharedBitVectorIntSet removed = DeletionUtil.removeSome(L, remaining);
-			if(removed.size() > 0){
+			DeletionUtil.removeSome(L, remaining);
+			if(L.getChange().size() > 0){
 				if(!changes.contains(L)){
 					changes.add(L);
 				}
@@ -902,7 +891,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 						// awaitHubComplete();
 					}else{
 						try {
-							threadHub.initialRRTasks(removed, firstUsers, this);
+							threadHub.initialRRTasks(L.getChange(), firstUsers, this);
 						} catch (InterruptedException | ExecutionException e) {
 							e.printStackTrace();
 						}
@@ -919,37 +908,18 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 	 * @param L
 	 * @param targets
 	 */
-	private void singleProcedureToDelPointsToSet(final IPAPointsToSetVariable L, final MutableIntSet targets){
+	protected void singleProcedureToDelPointsToSet(final IPAPointsToSetVariable L, final MutableIntSet targets){
 		if(isTransitiveRoot(L.getPointerKey()))
 			return;
-		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(targets);
-		for (IPAPointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
-			if(remaining.isEmpty())
-				break;
-			if(pv instanceof SCCVariable){
-				((SCCVariable) pv).ifOthersCanProvide(L, remaining, targets, flowGraph);
-			}else if(pv.getValue() != null){
-				IntSetAction action = new IntSetAction() {
-					@Override
-					public void act(int i) {
-						if(remaining.isEmpty())
-							return;
-						if(targets.contains(i)){
-							remaining.remove(i);
-						}
-					}
-				};
-				pv.getValue().foreach(action);
-			}
-		}
+		final MutableSharedBitVectorIntSet remaining = computeRemaining(targets, L);
 		//if not reachable, deleting, and continue for other nodes
 		if(!remaining.isEmpty()){
-			MutableSharedBitVectorIntSet removed = DeletionUtil.removeSome(L, remaining);
-			if(removed.size() > 0){
+			DeletionUtil.removeSome(L, remaining);
+			if(L.getChange().size() > 0){
 				if(!changes.contains(L)){
 					changes.add(L);
 				}
-				classifyPointsToConstraints(L, removed);
+				classifyPointsToConstraints(L, L.getChange());
 			}
 		}else{//all included, early return
 			return;
@@ -965,26 +935,13 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 		for (Iterator it = flowGraph.getStatementsThatUse(L); it.hasNext();) {
 			IPAAbstractStatement s = (IPAAbstractStatement) it.next();
 			IPAAbstractOperator op = s.getOperator();
-			if(op instanceof IPAAssignOperator || op instanceof IPAFilterOperator){
+			if(op instanceof IPAAssignOperator){//|| op instanceof IPAFilterOperator
 				if(checkSelfRecursive(s))
 					continue;
 				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
 				if(pv.getValue() != null)
 					singleProcedureToDelPointsToSet(pv, targets);
 			}
-//			else if(op instanceof IPAFilterOperator){
-//				if(checkSelfRecursive(s))
-//					continue;
-//				IPAFilterOperator filter = (IPAFilterOperator) op;
-//				IPAPointsToSetVariable pv = (IPAPointsToSetVariable) s.getLHS();
-//				byte mark = filter.evaluateDel(pv, L);
-//				if(mark == 1){
-//					if(!changes.contains(pv)){
-//						changes.add(pv);
-//					}
-//					classifyPointsToConstraints(pv, targets);
-//				}
-//			}
 			else{// all other complex constraints
 				addToWorkList(s);
 			}

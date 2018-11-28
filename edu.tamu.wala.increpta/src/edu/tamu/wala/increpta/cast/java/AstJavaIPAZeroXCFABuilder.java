@@ -1,6 +1,5 @@
 package edu.tamu.wala.increpta.cast.java;
 
-import com.ibm.wala.cast.java.ipa.callgraph.JavaScopeMappingInstanceKeys;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.ContextSelector;

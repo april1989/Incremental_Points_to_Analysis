@@ -46,7 +46,7 @@ public class IPAAssignOperator extends IPAUnaryOperator<IPAPointsToSetVariable> 
     return changed ? CHANGED : NOT_CHANGED;
   }
 
-    /**
+   /**
    * bz: leave for procedureToDelPointsToSet()
    */
   @Override

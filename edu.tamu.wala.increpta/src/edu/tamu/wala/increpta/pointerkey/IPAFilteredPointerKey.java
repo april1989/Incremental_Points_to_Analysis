@@ -105,8 +105,8 @@ public interface IPAFilteredPointerKey extends PointerKey{
 			if(f == null)
 				return false;
 			IntSet intersection = R.getValue().intersection(f);
-			IntSet removed = DeletionUtil.removeSome(L,intersection);
-			if(removed.size() > 0)
+			DeletionUtil.removeSome(L, intersection);
+			if(L.getChange().size() > 0)
 				return true;
 			else
 				return false;
@@ -121,8 +121,8 @@ public interface IPAFilteredPointerKey extends PointerKey{
 			if(f == null)
 				return false;
 			IntSet intersection = set.intersection(f);
-			IntSet removed = DeletionUtil.removeSome(L, intersection);
-			if(removed.size() > 0)
+			DeletionUtil.removeSome(L, intersection);
+			if(L.getChange().size() > 0)
 				return true;
 			else
 				return false;
@@ -230,8 +230,8 @@ public interface IPAFilteredPointerKey extends PointerKey{
 			if(f == null)
 				return false;
 			IntSet intersection = R.getValue().intersection(f);
-			IntSet removed = DeletionUtil.removeSome(L, intersection);
-			if(removed.size() > 0)
+			DeletionUtil.removeSome(L, intersection);
+			if(L.getChange().size() > 0)
 				return true;
 			else
 				return false;
@@ -246,8 +246,8 @@ public interface IPAFilteredPointerKey extends PointerKey{
 			if(f == null)
 				return false;
 			IntSet intersection = set.intersection(f);
-			IntSet removed = DeletionUtil.removeSome(L, intersection);
-			if(removed.size() > 0)
+			DeletionUtil.removeSome(L, intersection);
+			if(L.getChange().size() > 0)
 				return true;
 			else
 				return false;

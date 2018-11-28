@@ -36,7 +36,7 @@ package edu.tamu.wala.increpta.parallel;
 
 //created for akka, same functionality with ThreadHub extends UntypedActor
 //
-//public class AkkaHub extends UntypedActor{
+public class AkkaHub{ // extends UntypedActor{
 //
 //  private final int nrOfWorkers;
 //  private MutableIntSet targets;
@@ -174,4 +174,4 @@ package edu.tamu.wala.increpta.parallel;
 //    }
 //  }
 //
-//}
+}

@@ -10,12 +10,12 @@ import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationGraph;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAAssignOperator;
 import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 
 public class SCCVariable extends IPAPointsToSetVariable{

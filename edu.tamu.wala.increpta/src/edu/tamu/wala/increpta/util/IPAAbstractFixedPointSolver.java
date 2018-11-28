@@ -22,6 +22,7 @@ import com.ibm.wala.util.MonitorUtil;
 import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
 import com.ibm.wala.util.debug.VerboseAction;
 
+import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph.IPAExplicitNode;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAGeneralStatement;
@@ -122,6 +123,7 @@ VerboseAction{
 		}
 	}
 
+
 	/**
 	 * worklist for the iterative solver
 	 */
@@ -196,9 +198,6 @@ VerboseAction{
 				globalChange = true;
 				updateWorkList(s);
 			}
-			if (isFixed(code)) {
-				removeStatement(s);
-			}
 		}
 		return globalChange;
 	}
@@ -242,7 +241,6 @@ VerboseAction{
 				if (nEvaluated % getPeriodicMaintainInterval() == 0) {
 					periodicMaintenance();
 				}
-
 			}
 			if (isChanged(code)) {
 				if(isChange){
@@ -282,11 +280,11 @@ VerboseAction{
 			}
 			if (isChanged(code)) {
 				if(isChange){
-//					IVariable lhs = s.getLHS();
-//					if(lhs != null){
-//						if(!changes.contains(lhs))
-//							changes.add(s.getLHS());
-//					}
+					IVariable lhs = s.getLHS();
+					if(lhs != null){
+						if(!changes.contains(lhs))
+							changes.add(s.getLHS());
+					}
 					updateWorkList(s);
 				}
 				globalChange = true;
@@ -415,6 +413,11 @@ VerboseAction{
 //		return true;
 //	}
 
+
+	public void incorporateNewStatement(IPAAbstractStatement s){
+		incorporateNewStatement(true, true, s);
+	}
+
 	@SuppressWarnings("unchecked")
 	private void incorporateNewStatement(boolean toWorkList, boolean eager, IPAAbstractStatement s) {
 		if (eager) {
@@ -431,12 +434,14 @@ VerboseAction{
 			if (isChanged(code)) {
 				updateWorkList(s);
 			}
-			if (isFixed(code)) {
-				removeStatement(s);
-			}
 		} else if (toWorkList) {
 			addToWorkList(s);
 		}
+	}
+
+
+	public void incorporateDelStatement(IPAAbstractStatement s){
+		incorporateDelStatement(true, true, s);
 	}
 
 	/**
@@ -510,6 +515,46 @@ VerboseAction{
 	}
 
 	/**
+	 * only remove stmt from flow graph, do not propagate
+	 * @param lhs
+	 * @param operator
+	 * @param rhs
+	 */
+	public boolean delStatementOnly(T lhs, IPAUnaryOperator<T> operator, T rhs) {
+		if (operator == null) {
+			throw new IllegalArgumentException("operator is null");
+		}
+		IPAUnaryStatement<T> s = operator.makeEquation(lhs, rhs);
+		if (!getFixedPointSystem().containsStatement(s)) {
+			return false;
+		}
+		if(isFirstDelete){
+			getFixedPointSystem().removeStatement(s);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * only remove stmt from flow graph, do not propagate
+	 * @param lhs
+	 * @param operator
+	 * @param rhs
+	 */
+	public boolean delStatementOnly(T lhs, IPAAbstractOperator<T> operator, T[] rhs) {
+		IPAGeneralStatement<T> s = new Statement(lhs, operator, rhs);
+		if (!getFixedPointSystem().containsStatement(s)) {
+			return false;
+		}
+		if(isFirstDelete){
+			getFixedPointSystem().removeStatement(s);
+			return true;
+		}
+		return false;
+	}
+
+
+	/**
 	 * bz: reverse
 	 * @param lhs
 	 * @param operator
@@ -554,8 +599,9 @@ VerboseAction{
 			return false;
 		}
 
-		if(isFirstDelete)
+		if(isFirstDelete){
 			getFixedPointSystem().removeStatement(s);
+		}
 		incorporateDelStatement(toWorkList, eager, s);
 		return true;
 	}
@@ -595,7 +641,6 @@ VerboseAction{
 	 */
 	public boolean newStatement(T lhs, IPAAbstractOperator<T> operator, T op1, T op2, boolean toWorkList, boolean eager) {
 		// add to the list of graph
-
 		IPAGeneralStatement<T> s = new Statement(lhs, operator, op1, op2);
 		if (getFixedPointSystem().containsStatement(s)) {
 			return false;
@@ -700,8 +745,6 @@ VerboseAction{
 		if (v == null) {
 			return;
 		}
-		if(isChange && s.toString().contains("[Node: < Application, Lorg/eclipse/osgi/internal/baseadaptor/BaseStorage, createBundleFile(Ljava/lang/Object;Lorg/eclipse/osgi/baseadaptor/BaseData;)Lorg/eclipse/osgi/baseadaptor/bundlefile/BundleFile; > Context: Everywhere, v3]"))
-			System.out.println();
 		changedVariable(v);
 	}
 
@@ -772,9 +815,9 @@ VerboseAction{
 		return (code & SIDE_EFFECT_MASK) != 0;
 	}
 
-	public static boolean isFixed(byte code) {
-		return (code & FIXED_MASK) != 0;
-	}
+//	public static boolean isFixed(byte code) {
+//		return (code & FIXED_MASK) != 0;
+//	}
 
 	public int getMinSizeForTopSort() {
 		return minSizeForTopSort;

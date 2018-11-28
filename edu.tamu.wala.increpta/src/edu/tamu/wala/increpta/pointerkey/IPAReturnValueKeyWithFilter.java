@@ -4,7 +4,7 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Bozhen Liu, Jeff Huang - initial API and implementation
  ******************************************************************************/
@@ -29,5 +29,10 @@ public class IPAReturnValueKeyWithFilter extends ReturnValueKey implements IPAFi
 	  public IPATypeFilter getTypeFilter() {
 	    return typeFilter;
 	  }
+
+	  @Override
+	public int hashCode() {
+		return super.hashCode() + typeFilter.hashCode();
+	}
 
 	}

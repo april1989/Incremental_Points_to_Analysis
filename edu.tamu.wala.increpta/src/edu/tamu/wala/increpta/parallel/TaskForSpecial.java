@@ -11,9 +11,9 @@
 package edu.tamu.wala.increpta.parallel;
 
 
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import com.ibm.wala.util.intset.MutableIntSet;
 
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationSystem;
 
 public class TaskForSpecial {

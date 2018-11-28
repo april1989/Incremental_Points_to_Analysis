@@ -32,35 +32,36 @@ public class DeletionUtil {
 			IntIterator iterator = set.intIterator();
 			while(iterator.hasNext()){
 				Integer del = iterator.next();
-				if(V.contains(del)){
-					V.remove(del);
+				if(V.remove(del)){
 					removed.add(del);
 					if(removed.size() == set.size())
 						break;
 				}
 			}
 		}
-		//bz: update changes needed to propagate; only update for assign and filter
+		//bz: update propagated changes;
 		if(removed.size() > 0){
 			v.setChange(removed);
+		}else{
+			v.clearChange();
 		}
 		return removed;
 	}
 
-	public static MutableSharedBitVectorIntSet removeSome(MutableSharedBitVectorIntSet V, IntSet set) {
-		MutableSharedBitVectorIntSet removed = new MutableSharedBitVectorIntSetFactory().make();
+	/**
+	 * remove set from V
+	 * @param V
+	 * @param set
+	 */
+	public static void removeSome(MutableSharedBitVectorIntSet V, IntSet set) {
 		if(V != null && set != null){
 			IntIterator iterator = set.intIterator();
 			while(iterator.hasNext()){
 				Integer del = iterator.next();
-				if(V.contains(del)){
-					V.remove(del);
-					removed.add(del);
-					if(removed.size() == set.size())
-						break;
-				}
+				V.remove(del);
+				if(V.size() == 0)
+					break;
 			}
 		}
-		return removed;
 	}
 }

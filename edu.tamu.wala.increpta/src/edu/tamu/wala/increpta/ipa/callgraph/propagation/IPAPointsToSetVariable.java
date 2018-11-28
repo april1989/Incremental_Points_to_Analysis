@@ -55,25 +55,27 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 	 * for single instance
 	 * @param i
 	 */
-	public void setChange(int i){
+	public synchronized void setChange(int i){
+		change.clear();//clear before each change set
 		change.add(i);
 	}
 
 	/**
 	 * for a set of instances
 	 */
-	public void setChange(MutableIntSet set){
+	public synchronized void setChange(MutableIntSet set){
+		change.clear();//clear before each change set
 		change.addAll(set);
 	}
 
 	/**
 	 * clear after one stmt propagation
 	 */
-	public void clearChange(){
+	public synchronized void clearChange(){
 		change.clear();
 	}
 
-	public MutableSharedBitVectorIntSet getChange(){
+	public synchronized MutableSharedBitVectorIntSet getChange(){
 		return change;
 	}
 

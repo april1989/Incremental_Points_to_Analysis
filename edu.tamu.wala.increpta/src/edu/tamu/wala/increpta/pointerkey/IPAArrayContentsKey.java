@@ -12,7 +12,6 @@ package edu.tamu.wala.increpta.pointerkey;
 
 import com.ibm.wala.classLoader.ArrayClass;
 import com.ibm.wala.ipa.callgraph.propagation.AbstractFieldPointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.ArrayContentsKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 
 public final class IPAArrayContentsKey extends AbstractFieldPointerKey implements IPAFilteredPointerKey {

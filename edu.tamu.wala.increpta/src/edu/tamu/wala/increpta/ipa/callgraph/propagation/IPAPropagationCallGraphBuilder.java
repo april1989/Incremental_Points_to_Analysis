@@ -37,7 +37,6 @@ import com.ibm.wala.ipa.callgraph.ContextSelector;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.AbstractRootMethod;
-import com.ibm.wala.ipa.callgraph.impl.ExplicitCallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.FilteredPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.IPointerOperator;
 import com.ibm.wala.ipa.callgraph.propagation.IPointsToSolver;
@@ -71,6 +70,7 @@ import com.ibm.wala.util.warnings.Warning;
 import com.ibm.wala.util.warnings.Warnings;
 
 import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph;
+import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph.IPAExplicitNode;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder.ConstraintVisitor;
 import edu.tamu.wala.increpta.operators.IPAAssignOperator;
 import edu.tamu.wala.increpta.operators.IPAUnaryOperator;
@@ -674,19 +674,36 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				System.err.println(S);
 
 			}
-			if(rhs.getValue() == null){
-				return NOT_CHANGED;
-			}
-			if (rhs.size() == 0) {
-				return NOT_CHANGED;
+			if(system.getFirstDel()){
+				if(rhs.getValue() == null){
+					return NOT_CHANGED;
+				}
+			}else{
+				if(rhs.getChange().size() == 0){
+					return NOT_CHANGED;
+				}
 			}
 
 			boolean changed = false;
 			IPAFilteredPointerKey.IPATypeFilter filter = pk.getTypeFilter();
+			MutableSharedBitVectorIntSet remaining = null;
 			if(system.getFirstDel()){
-				changed = filter.delFiltered(system, lhs, rhs);
+				remaining = system.computeRemaining(rhs.getValue(), lhs);
 			}else{//gonna change to other place
-				changed = filter.delFiltered(system, lhs, rhs.getChange());
+				remaining = system.computeRemaining(rhs.getChange(), lhs);
+			}
+
+			//!! lhs can be both a transitive root and assigned by rhs.
+			//but we cannot remove value of lhs because of propagation from rhs.
+			//the value will lost
+			if(!system.getFirstDel() && lhs.getValue() != null){
+				if(system.isTransitiveRoot(lhs.getPointerKey())
+						&& lhs.getValue().sameValue(remaining))
+					return NOT_CHANGED;
+			}
+
+			if(!remaining.isEmpty()){
+				changed = filter.delFiltered(system, lhs, remaining);
 			}
 			return changed ? CHANGED : NOT_CHANGED;
 		}
@@ -700,16 +717,16 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		public byte evaluateDel(IPAPointsToSetVariable lhs, MutableSharedBitVectorIntSet set) {
 			IPAFilteredPointerKey pk = (IPAFilteredPointerKey) lhs.getPointerKey();
 
-			if(set == null){
-				return NOT_CHANGED;
-			}
-			if (set.size() == 0) {
+			if(set == null || set.size() == 0){
 				return NOT_CHANGED;
 			}
 
 			boolean changed = false;
 			IPAFilteredPointerKey.IPATypeFilter filter = pk.getTypeFilter();
-			changed = filter.delFiltered(system, lhs, set);
+			MutableSharedBitVectorIntSet remaining = system.computeRemaining(set, lhs);
+			if(!remaining.isEmpty()){
+				changed = filter.delFiltered(system, lhs, remaining);
+			}
 			return changed ? CHANGED : NOT_CHANGED;
 		}
 
@@ -965,8 +982,14 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				}
 			}
 
-			if (rhs.size() == 0) {
-				return NOT_CHANGED;
+			if(system.getFirstDel()){
+				if (rhs.size() == 0) {
+					return NOT_CHANGED;
+				}
+			}else{
+				if (rhs.getChange().size() == 0) {
+					return NOT_CHANGED;
+				}
 			}
 
 			IPAPointsToSetVariable def = getFixedSet();
@@ -1006,9 +1029,9 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			}else{
 				rhs.getChange().foreach(action);
 			}
+			priorInstances.foreach(action);
 			if(rhss.size() != 0)
 				sideEffect_del.b |= system.delConstraintHasMultiR(def, assignOperator, rhss, delset);
-			priorInstances.foreach(action);
 			priorInstances.clear();
 			delset.clear();
 
@@ -1114,9 +1137,16 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				System.err.println("DEL EVAL ArrayStore " + rhs + " " + getFixedSet());
 			}
 
-			if (rhs.size() == 0) {
-				return NOT_CHANGED;
+			if(system.getFirstDel()){
+				if (rhs.size() == 0) {
+					return NOT_CHANGED;
+				}
+			}else{
+				if (rhs.getChange().size() == 0) {
+					return NOT_CHANGED;
+				}
 			}
+
 			IPAPointsToSetVariable val = getFixedSet();
 			PointerKey pVal = val.getPointerKey();
 
@@ -1203,9 +1233,15 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			}
 
 			IPAPointsToSetVariable ref = rhs;
-			if (ref.size() == 0) {
-				return NOT_CHANGED;
-			}
+//			if(system.isChange){
+//				if (ref.getChange().size() == 0) {
+//					return NOT_CHANGED;
+//				}
+//			}else{
+				if (ref.size() == 0) {
+					return NOT_CHANGED;
+				}
+//			}
 			IPAPointsToSetVariable def = getFixedSet();
 			final PointerKey dVal = def.getPointerKey();
 
@@ -1299,9 +1335,16 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			}
 
 			IPAPointsToSetVariable ref = rhs;
-			if (ref.size() == 0) {
-				return NOT_CHANGED;
+			if(system.getFirstDel()){
+				if (ref.size() == 0) {
+					return NOT_CHANGED;
+				}
+			}else{
+				if (ref.getChange().size() == 0 ) {
+					return NOT_CHANGED;
+				}
 			}
+
 			IPAPointsToSetVariable def = getFixedSet();
 			final PointerKey dVal = def.getPointerKey();
 			//~~~ did not implement filter part
@@ -1341,10 +1384,11 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			//*** always do it for all instance
 			if(system.getFirstDel()){
 				value.foreach(action);
-				priorInstances.foreach(action);
 			}else{
 				rhs.getChange().foreach(action);
 			}
+			priorInstances.foreach(action);
+
 			if(rhss.size() != 0)
 				sideEffect_del.b |= system.delConstraintHasMultiR(def, assignOperator, rhss, delset);
 			//--- remove all priorInstance
@@ -1524,8 +1568,14 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				System.err.println(S);
 			}
 
-			if (rhs.size() == 0) {
-				return NOT_CHANGED;
+			if(system.getFirstDel()){
+				if (rhs.size() == 0) {
+					return NOT_CHANGED;
+				}
+			}else{
+				if (rhs.getChange().size() == 0) {
+					return NOT_CHANGED;
+				}
 			}
 
 			final IPAPointsToSetVariable val = getFixedSet();
@@ -1580,18 +1630,20 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				value = rhs.getChange();
 			}
 			value = filterInstances(value);
-			if(value.size() < 10)
+			if(value.size() < 10){
 				value.foreach(action);
-			else{
+				//always do this for all instances
+				priorInstances.foreach(action);
+			}else{
 				value.foreach(action2);
 				MutableIntSet targets = IntSetUtil.getDefaultIntSetFactory().make();
 				if(val.getValue() != null){
 					targets.addAll(val.getValue());
 				}
+				//always do this for all instances
+				priorInstances.foreach(action2);
 				system.delConstraintHasMultiL(lhss, assignOperator, val, targets);
 			}
-			//always do this for all instances
-			priorInstances.foreach(action);
 			priorInstances.clear();
 
 			byte sideEffectMask = sideEffect_del.b ? (byte) SIDE_EFFECT_MASK : 0;
@@ -1698,8 +1750,15 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		@Override
 		public byte evaluateDel(IPAPointsToSetVariable dummyLHS, IPAPointsToSetVariable var) {
 			IPAPointsToSetVariable ref = var;
-			if (ref.size() == 0) {
-				return NOT_CHANGED;
+
+			if(system.getFirstDel()){
+				if (ref.size() == 0) {
+					return NOT_CHANGED;
+				}
+			}else{
+				if (ref.getChange().size() == 0) {
+					return NOT_CHANGED;
+				}
 			}
 			IntSet value = null;
 			if(system.getFirstDel()){
@@ -1726,10 +1785,11 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			};
 
 			value.foreach(action);
+			priorInstances.foreach(action);
+
 			MutableIntSet delset = IntSetUtil.make();
 			delset.add(system.findOrCreateIndexForInstanceKey(instance));
 			system.delConstraintHasMultiInstanceL(lhss, delset, ref);
-			priorInstances.foreach(action);
 			priorInstances.clear();
 			byte sideEffectMask = sideEffect_del.b ? (byte) SIDE_EFFECT_MASK : 0;
 			return (byte) (NOT_CHANGED | sideEffectMask);
@@ -1831,9 +1891,17 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		@Override
 		public byte evaluateDel(IPAPointsToSetVariable dummyLHS, IPAPointsToSetVariable var) {
 			IPAPointsToSetVariable arrayref = var;
-			if (arrayref.size() == 0) {
-				return NOT_CHANGED;
+
+			if(system.getFirstDel()){
+				if (arrayref.size() == 0) {
+					return NOT_CHANGED;
+				}
+			}else{
+				if (arrayref.getChange().size() == 0) {
+					return NOT_CHANGED;
+				}
 			}
+
 			IntSet value = null;
 			if(system.getFirstDel()){
 				value = arrayref.getValue();
@@ -2063,7 +2131,9 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			if(inst==null)
 				continue;//skip null
 
-//			if(!inst.toString().contains("59 = invokevirtual < Application, Lorg/eclipse/osgi/baseadaptor/BaseData, getBundleFile()Lorg/eclipse/osgi/baseadaptor/bundlefile/BundleFile; > 54 @231 exception:58"))
+//			if(!inst.toString().contains(
+//					"9 = invokespecial < Application, Lorg/sunflow/core/LightServer, getPhotonShader(Lorg/sunflow/core/ShadingState;)Lorg/sunflow/core/Shader; > 1,2 @10 exception:8"
+//					))
 //				continue;
 
 			total_inst++;
@@ -2076,7 +2146,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				v.setBasicBlock(bb);
 
 				long start_delete = System.currentTimeMillis();
-				inst.visit(v);
+ 				inst.visit(v);
 				system.setFirstDel(false);
 				do{
 					system.solveDel(null);
@@ -2084,9 +2154,9 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 				setDelete(false);
 				long delete_time = System.currentTimeMillis() - start_delete;
-//				HashSet<IVariable> temp = new HashSet<>();
-//				temp.addAll(IPAAbstractFixedPointSolver.changes);
-//				system.clearChanges();
+				HashSet<IVariable> temp = new HashSet<>();
+				temp.addAll(IPAAbstractFixedPointSolver.changes);
+				system.clearChanges();
 
 				//add
 				System.out.println("... Adding SSAInstruction:      "+ inst.toString());
@@ -2096,11 +2166,12 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					system.solveAdd(null);
 					addConstraintsFromNewNodes(null);
 				} while (!system.emptyWorkList());
+				system.clearChanges();
 
 				long add_time = System.currentTimeMillis() - start_add;
 
 				boolean nochange = true;
-				Iterator<IVariable> it = IPAAbstractFixedPointSolver.changes.iterator();
+				Iterator<IVariable> it = temp.iterator();
 				while(it.hasNext()){
 					IPAPointsToSetVariable var = (IPAPointsToSetVariable) it.next();
 					if(var != null){
@@ -2115,7 +2186,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 								}
 							}else{
 								if(!update.sameValue(origin)){
-									nochange = false;
+ 									nochange = false;
 									correct = false;
 								}
 							}
@@ -2138,8 +2209,6 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					total_del = total_del + delete_time;
 					total_add = total_add + add_time;
 				}
-
-				system.clearChanges();
 
 				System.out.println();
 

@@ -8,12 +8,11 @@ import java.util.Stack;
 
 import com.ibm.wala.util.graph.INodeWithNumber;
 
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder.IPAFilterOperator;
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationGraph;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 public class AdjacencyLists {
 
@@ -34,19 +33,15 @@ public class AdjacencyLists {
 	private ArrayList<HashSet<Integer>> removed_sccs;
 	private ArrayList<HashSet<Integer>> inner_sccs;
 
-
-	//op = filteroperator should process separately, currently use IPAFilteredPointerKey in sccengine to simple it.
-//	private HashMap<Integer, ArrayList<Integer>> filter_AdjListsMap;
+  
 
 	public AdjacencyLists() {
 		adjListsMap = new HashMap<>();
-//		filter_AdjListsMap = new HashMap<>();
 	}
 
 	public AdjacencyLists(IPAPropagationGraph flowGraph) {
 		this.flowGraph = flowGraph;
 		adjListsMap = new HashMap<>();
-//		filter_AdjListsMap = new HashMap<>();
 	}
 
 	public void setChange(boolean change) {
@@ -90,7 +85,7 @@ public class AdjacencyLists {
 		Iterator<IPAPointsToSetVariable> iterator = flowGraph.getVariables();
 		while (iterator.hasNext()) {
 			IPAPointsToSetVariable v = (IPAPointsToSetVariable) iterator.next();//should be rhs
-			int v_id = v.getGraphNodeId();
+			Integer v_id = v.getGraphNodeId();
 			ArrayList<IPAAbstractStatement> stmts = flowGraph.getImplicitStatementsThatUse(v);
 			for (IPAAbstractStatement stmt : stmts) {
 				if(stmt instanceof IPAUnaryStatement){
@@ -104,9 +99,6 @@ public class AdjacencyLists {
 						continue;
 					}
 					addEdge(v_id, w_id, false);
-//					if(op instanceof IPAFilterOperator){
-//						addFilterEdge(v_id, w_id);
-//					}
 				}
 			}
 		}
@@ -151,11 +143,6 @@ public class AdjacencyLists {
 	    adjListsMap.put(v, neighbors);
 	}
 
-//	public void addFilterVertex(Integer v) {
-//	    ArrayList<Integer> neighbors = new ArrayList<Integer>();
-//	    filter_AdjListsMap.put(v, neighbors);
-//	}
-
 	/**
 	 * To deleting a vertex, we remove the last ArrayList in our Map.
 	 * @param v : removed node id
@@ -163,13 +150,7 @@ public class AdjacencyLists {
 	public void removeVertex(Integer v) {
 	    // Remove the vertex at the end
 	    adjListsMap.remove(((Integer) v));
-//	    removeFilterVertex(v);
 	}
-
-//	public void removeFilterVertex(Integer v) {
-//	    // Remove the vertex at the end
-//	    filter_AdjListsMap.remove(((Integer) v));
-//	}
 
 	/**
 	 * To add an edge, simply retrieve the ArrayList corresponding to the beginning vertex in our Map,
@@ -198,7 +179,7 @@ public class AdjacencyLists {
 	}
 
 
-	public void addEdgeOnly(int v, int w, boolean isFilter) {
+	public void addEdgeOnly(Integer v, Integer w, boolean isFilter) {
 		ArrayList<Integer> neighbours = adjListsMap.get(v);
 		if(neighbours == null){
 			addVertex(v);
@@ -208,37 +189,8 @@ public class AdjacencyLists {
 		if(!adjListsMap.containsKey(w)){
 			addVertex(w);
 		}
-//		if(isFilter)
-//			addFilterEdge(v, w);
 	}
 
-
-//	private void addFilterEdge(Integer v, Integer w) {
-//		ArrayList<Integer> neighbours = filter_AdjListsMap.get(v);
-//		if(neighbours == null){
-//			addFilterVertex(v);
-//			neighbours = filter_AdjListsMap.get(v);
-//		}
-//		neighbours.add(w);
-//		if(!filter_AdjListsMap.containsKey(w)){
-//			addFilterVertex(w);
-//		}
-//	}
-
-
-//	public boolean hasFilterEdges(HashSet<Integer> scc){
-//		for (Integer v : scc) {
-//			ArrayList<Integer> neighbours = filter_AdjListsMap.get(v);
-//			if(neighbours == null)
-//				continue;
-//			for (Integer w : neighbours) {
-//				if(v != w && scc.contains(w)){
-//					return true;
-//				}
-//			}
-//		}
-//		return false;
-//	}
 
 	/**
 	 * To remove an edge that starts from v and goes to w, remove it from the vertex's list.
@@ -255,8 +207,6 @@ public class AdjacencyLists {
 			throw new ArrayIndexOutOfBoundsException(v);
 		}
 		neighbours.remove(w);
-//		if(isFilter)
-//			removeFilterEdge(v, w);
 		if(change){
 			//check if remove existing sccs
 			incrementalSCCForRemoveEdge(v, w);
@@ -270,19 +220,8 @@ public class AdjacencyLists {
 			throw new ArrayIndexOutOfBoundsException(v);
 		}
 		neighbours.remove(w);
-//		if(isFilter)
-//			removeFilterEdge(v, w);
 	}
-
-//	public void removeFilterEdge(Integer v, Integer w){
-//		// Remove edge that starts from v to w
-//		ArrayList<Integer> neighbours = filter_AdjListsMap.get(v);
-//		if(neighbours == null){
-//			throw new ArrayIndexOutOfBoundsException(v);
-//		}
-//		neighbours.remove(w);
-//	}
-
+ 
 	protected void incrementalSCCForRemoveEdge(Integer v, Integer w) {
 		//reset
 	    removed_sccs.clear();
@@ -388,7 +327,7 @@ public class AdjacencyLists {
 	 * perform a whole program scc detection
 	 */
 	public ArrayList<HashSet<Integer>> initialSCC() {
-		for (int v_id : adjListsMap.keySet()) {
+		for (Integer v_id : adjListsMap.keySet()) {
 			if(!visited[v_id]){
 				dfs(v_id);
 			}
@@ -436,7 +375,7 @@ public class AdjacencyLists {
 		stack.add(v_id);
 		boolean isComponentRoot = true;
 
-		for (int w_id : adjListsMap.get(v_id)) {
+		for (Integer w_id : adjListsMap.get(v_id)) {
 			if (!visited[w_id]){
 				dfs(w_id);
 			}
@@ -449,7 +388,7 @@ public class AdjacencyLists {
 		if (isComponentRoot && (stack.size() != 1)) {
 			HashSet<Integer> scc = new HashSet<>();
 			while (true) {
-				int x = stack.pop();
+				Integer x = stack.pop();
 				scc.add(x);
 				lowlink[x] = Integer.MAX_VALUE;
 				if (x == v_id)
@@ -474,7 +413,7 @@ public class AdjacencyLists {
 		stack.add(v_id);
 		boolean isComponentRoot = true;
 
-		for (int w_id : adjListsMap.get(v_id)) {
+		for (Integer w_id : adjListsMap.get(v_id)) {
 			if (!visited[w_id]){
 				incre_dfs(w_id, e_id);
 			}
@@ -487,7 +426,7 @@ public class AdjacencyLists {
 		if (isComponentRoot && (stack.size() != 1)) {
 			HashSet<Integer> scc = new HashSet<>();
 			while (true) {
-				int x = stack.pop();
+				Integer x = stack.pop();
 				scc.add(x);
 				lowlink[x] = Integer.MAX_VALUE;
 				if (x == v_id)
@@ -517,7 +456,7 @@ public class AdjacencyLists {
 		stack.add(v_id);
 		boolean isComponentRoot = true;
 
-		for (int w_id : adjListsMap.get(v_id)) {
+		for (Integer w_id : adjListsMap.get(v_id)) {
 			if (!visited[w_id]){
 				incre_dfs_set(w_id, set);
 			}
@@ -530,7 +469,7 @@ public class AdjacencyLists {
 		if (isComponentRoot && (stack.size() != 1)) {
 			HashSet<Integer> scc = new HashSet<>();
 			while (true) {
-				int x = stack.pop();
+				Integer x = stack.pop();
 				scc.add(x);
 				lowlink[x] = Integer.MAX_VALUE;
 				if (x == v_id)
@@ -567,7 +506,7 @@ public class AdjacencyLists {
 		stack.add(v_id);
 		boolean isComponentRoot = true;
 
-		for (int w_id : adjListsMap.get(v_id)) {
+		for (Integer w_id : adjListsMap.get(v_id)) {
 			if (!visited[w_id]){
 				incre_inner_dfs(w_id, exist);
 			}
@@ -580,7 +519,7 @@ public class AdjacencyLists {
 		if (isComponentRoot && (stack.size() != 1)) {
 			HashSet<Integer> scc = new HashSet<>();
 			while (true) {
-				int x = stack.pop();
+				Integer x = stack.pop();
 				scc.add(x);
 				lowlink[x] = Integer.MAX_VALUE;
 				if (x == v_id)

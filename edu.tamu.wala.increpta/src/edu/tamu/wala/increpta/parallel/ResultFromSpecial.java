@@ -12,8 +12,9 @@ package edu.tamu.wala.increpta.parallel;
 
 import java.util.ArrayList;
 
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+
+import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 
 public class ResultFromSpecial {

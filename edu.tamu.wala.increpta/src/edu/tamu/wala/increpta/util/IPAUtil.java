@@ -57,7 +57,7 @@ public abstract class IPAUtil extends Util{
 		addDefaultSelectors(options, cha);
 		addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
 
-		return IPAZeroXCFABuilder.make(l, cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.NONE);
+		return IPAZeroXCFABuilder.make(l, cha, options, cache, customSelector, customInterpreter, ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.SMUSH_MANY);
 	}
 
 	/**
@@ -76,7 +76,8 @@ public abstract class IPAUtil extends Util{
 		}
 		addDefaultSelectors(options, cha);
 		addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
-	    return new AstJavaIPAZeroXCFABuilder(cha, options, cache, null, null, ZeroXInstanceKeys.ALLOCATIONS  | ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_THROWABLES);//JEFF ZeroXInstanceKeys.ALLOCATIONS ZeroXInstanceKeys.NONE
+	    return new AstJavaIPAZeroXCFABuilder(cha, options, cache, null, null, ZeroXInstanceKeys.ALLOCATIONS  | ZeroXInstanceKeys.SMUSH_MANY );//JEFF ZeroXInstanceKeys.ALLOCATIONS ZeroXInstanceKeys.NONE
+	    //| ZeroXInstanceKeys.SMUSH_THROWABLES
 	}
 
 }

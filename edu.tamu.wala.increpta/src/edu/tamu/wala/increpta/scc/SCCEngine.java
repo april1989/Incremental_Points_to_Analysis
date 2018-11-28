@@ -159,7 +159,7 @@ public class SCCEngine {
 	 * @param isFilter
 	 * @return boolean
 	 */
-	public boolean addEdge(int lhs, int rhs, boolean isFilter){
+	public boolean addEdge(Integer lhs, Integer rhs, boolean isFilter){
 		if(lhs == rhs)//**phi instruction => lhs == rhs
 			return false;
 		if(groupwork){
@@ -179,8 +179,8 @@ public class SCCEngine {
 		ArrayList<Integer> lhss = new ArrayList<>();
 		ArrayList<Integer> rhss = new ArrayList<>();
 		for (Pair pair : groups) {
-			int lhs = pair.getLhs();
-			int rhs = pair.getRhs();
+			Integer lhs = pair.getLhs();
+			Integer rhs = pair.getRhs();
 			boolean isFilter = pair.getIsFilter();
 			adjGraph.addEdgeOnly(rhs, lhs, isFilter);
 			lhss.add(lhs);
@@ -202,7 +202,7 @@ public class SCCEngine {
 	 * @param isFilter
 	 * @return boolean
 	 */
-	public boolean removeEdge(int lhs, int rhs, boolean isFilter){
+	public boolean removeEdge(Integer lhs, Integer rhs, boolean isFilter){
 		if(groupwork){
 			Pair pair = new Pair(lhs, rhs, isFilter);
 			groups.add(pair);
@@ -221,8 +221,8 @@ public class SCCEngine {
 		ArrayList<Integer> lhss = new ArrayList<>();
 		ArrayList<Integer> rhss = new ArrayList<>();
 		for (Pair pair : groups) {
-			int lhs = pair.getLhs();
-			int rhs = pair.getRhs();
+			Integer lhs = pair.getLhs();
+			Integer rhs = pair.getRhs();
 			boolean isFilter = pair.getIsFilter();
 			adjGraph.removeEdgeOnly(rhs, lhs, isFilter);
 			lhss.add(lhs);
@@ -361,11 +361,11 @@ public class SCCEngine {
 
 
 	private class Pair{
-		private int lhs;
-		private int rhs;
+		private Integer lhs;
+		private Integer rhs;
 		private boolean isFilter;
 
-		public Pair(int lhs, int rhs, boolean isFilter) {
+		public Pair(Integer lhs, Integer rhs, boolean isFilter) {
 			this.lhs = lhs;
 			this.rhs = rhs;
 			this.isFilter = isFilter;
@@ -375,11 +375,11 @@ public class SCCEngine {
 			return isFilter;
 		}
 
-		public int getLhs() {
+		public Integer getLhs() {
 			return lhs;
 		}
 
-		public int getRhs() {
+		public Integer getRhs() {
 			return rhs;
 		}
 	}

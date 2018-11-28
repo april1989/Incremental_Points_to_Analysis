@@ -27,7 +27,6 @@ import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.Iterator2Iterable;
 
 import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph;
-import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph.IPAExplicitNode;
 
 public class AstIPACallGraph extends IPAExplicitCallGraph{
 

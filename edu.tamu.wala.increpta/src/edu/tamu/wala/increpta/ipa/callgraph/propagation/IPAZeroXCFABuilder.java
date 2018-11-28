@@ -20,7 +20,6 @@ import com.ibm.wala.ipa.callgraph.impl.DefaultContextSelector;
 import com.ibm.wala.ipa.callgraph.impl.DelegatingContextSelector;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
-import com.ibm.wala.ipa.callgraph.propagation.cfa.DefaultPointerKeyFactory;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.DefaultSSAInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.DelegatingSSAContextInterpreter;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys;
@@ -30,6 +29,16 @@ import edu.tamu.wala.increpta.pointerkey.IPADefaultPointerKeyFactory;
 
 public class IPAZeroXCFABuilder extends IPASSAPropagationCallGraphBuilder{
 
+	/**
+	 * context-insensitive
+	 * @param l
+	 * @param cha
+	 * @param options
+	 * @param cache
+	 * @param appContextSelector
+	 * @param appContextInterpreter
+	 * @param instancePolicy
+	 */
 	public IPAZeroXCFABuilder(Language l, IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache, ContextSelector appContextSelector,
 		      SSAContextInterpreter appContextInterpreter, int instancePolicy) {
 
@@ -86,6 +95,18 @@ public class IPAZeroXCFABuilder extends IPASSAPropagationCallGraphBuilder{
 		 return new IPAZeroXCFABuilder(Language.JAVA, cha, options, cache, null, null, instancePolicy);
 	 }
 
+	 /**
+	  * context-insensitive
+	  * @param l
+	  * @param cha
+	  * @param options
+	  * @param cache
+	  * @param appContextSelector
+	  * @param appContextInterpreter
+	  * @param instancePolicy
+	  * @return
+	  * @throws IllegalArgumentException
+	  */
 	 public static IPAZeroXCFABuilder make(Language l, IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache,
 			 ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter, int instancePolicy) throws IllegalArgumentException {
 		 if (options == null) {

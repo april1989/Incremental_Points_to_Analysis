@@ -98,7 +98,6 @@ import com.ibm.wala.util.warnings.Warnings;
 
 import edu.tamu.wala.increpta.callgraph.impl.IPACGNode;
 import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph;
-import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder.ConstraintVisitor;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
 import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
@@ -1857,6 +1856,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		}
 	}
 
+
 	/**
 	 * Add constraints for a call site after we have computed a reachable target for the dispatch
 	 *
@@ -1893,6 +1893,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		processCallingConstraints(caller, instruction, target, constParams, uniqueCatchKey);
 	}
 
+
 	/**bz
 	 * delete call
 	 */
@@ -1915,8 +1916,8 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 		}
 
 		processDelCallingConstraints(caller, instruction, target, constParams, uniqueCatchKey);
-
 	}
+
 
 	@SuppressWarnings("unused")
 	protected void processCallingConstraints(CGNode caller, SSAAbstractInvokeInstruction instruction, CGNode target,
