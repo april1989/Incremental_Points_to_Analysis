@@ -46,16 +46,6 @@ public class ThreadHub {
 
 	public static HashSet<IPAPointsToSetVariable> processed = new HashSet<>();
 
-	/**
-	 * sideeffect = true: parallel side effect edge immediately
-	 * = false: add to worklist, sequential
-	 */
-	private static boolean sideeffect = false;
-	private static boolean DEBUG = false;
-	public static void setSideEffect(boolean b) {
-		sideeffect = b;
-	}
-
 	public ThreadHub(int nrOfWorkers) {
 		threadrouter = Executors.newWorkStealingPool(nrOfWorkers);
 	}
@@ -235,11 +225,7 @@ public class ThreadHub {
 					next.add(pv);
 			}
 			else{
-				if(sideeffect){
-					generateSideEffectTask(system, s, false);
-				}else{
 					system.addToWorkListSync(s);
-				}
 			}
 		}
 	}
@@ -310,11 +296,7 @@ public class ThreadHub {
 					}
 				}
 				else{
-					if(sideeffect){
-						generateSideEffectTask(system, s, false);
-					}else{
 						system.addToWorkListSync(s);
-					}
 				}
 			}
 		}else{
@@ -347,57 +329,5 @@ public class ThreadHub {
 		return new ResultFromSpecial(user, next, remaining, work.getIsAdd());
 	}
 
-
-	/**
-	 * solve side effect edge changes in parallel
-	 * @param system
-	 * @param s
-	 * @param isAdd
-	 * @throws InterruptedException
-	 */
-	private static void generateSideEffectTask(IPAPropagationSystem system, IPAAbstractStatement s, boolean isAdd) throws InterruptedException {
-		ArrayList<Callable<ResultFromSideEffect>> sideeffect_tasks = new ArrayList<>();
-		sideeffect_tasks.add(new Callable<ResultFromSideEffect>() {
-			@Override
-			public ResultFromSideEffect call() throws Exception {
-				return processSideEffectTask(system, s, isAdd);
-			}
-		});
-		ArrayList<Future<ResultFromSideEffect>> results = (ArrayList<Future<ResultFromSideEffect>>) threadrouter.invokeAll(sideeffect_tasks);
-	}
-
-	/**
- 	 * solve side effect edge changes in parallel
-	 * @param system
-	 * @param s
-	 * @param isAdd
-	 * @return
-	 */
-	protected static ResultFromSideEffect processSideEffectTask(IPAPropagationSystem system, IPAAbstractStatement s, boolean isAdd) {
-		if(DEBUG ){
-			System.err.println("processing SideEffect task ... " + s.toString());
-		}
-		//new unary constraints have been processed in parallel
-		if(isAdd){
-			system.incorporateNewStatement(s);
-//			do{
-//				try {
-//					system.solveAdd(null);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}while(!system.emptyWorkList());
-		}else{
-			system.incorporateDelStatement(s);
-//			do{
-//				try {
-//					system.solveDel(null);
-//				} catch (CancelException e) {
-//					e.printStackTrace();
-//				}
-//			}while(!system.emptyWorkList());
-		}
-		return new ResultFromSideEffect();
-	}
 
 }
