@@ -289,6 +289,7 @@ public class ThreadHub {
 			boolean change = false;
 			synchronized (user) {
 				change = user.addAll(remaining);
+				user.setChange(remaining);
 			}
 			if(!change)//not changed
 				return new ResultFromSpecial(user, next, remaining, work.getIsAdd());
