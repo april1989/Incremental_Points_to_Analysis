@@ -82,17 +82,16 @@ public class ThreadHub {
 				while(iterator.hasNext()){
 					IPAPointsToSetVariable next = iterator.next();
 					if(next.getValue() != null){
-						nrOfWorks++;
 						tasks.addAll(distributeRRTasks(change, nexts, system));
 					}
 				}
 			}
 		}
-		if(tasks.size() > 0){
-			ArrayList<Future<ResultFromRR>> next_results = (ArrayList<Future<ResultFromRR>>) threadrouter.invokeAll(tasks);
-			continueRRTasks(next_results, system);
-		}else
-			doWeTerminate();
+		if(doWeTerminate()){
+			return;
+		}
+		ArrayList<Future<ResultFromRR>> next_results = (ArrayList<Future<ResultFromRR>>) threadrouter.invokeAll(tasks);
+		continueRRTasks(next_results, system);
 	}
 
 	private static ArrayList<Callable<ResultFromRR>> distributeRRTasks(final MutableIntSet targets, ArrayList<IPAPointsToSetVariable> firstusers,
@@ -138,18 +137,17 @@ public class ThreadHub {
 				while(iterator.hasNext()){
 					IPAPointsToSetVariable next = iterator.next();
 					if(next.getValue() != null){
-						nrOfWorks++;
 						tasks.addAll(distributeSpecialTasks(change, nexts, isAddition, system));
 					}
 				}
 			}
 		}
 
-		if(tasks.size() > 0){
-			ArrayList<Future<ResultFromSpecial>> next_results = (ArrayList<Future<ResultFromSpecial>>) threadrouter.invokeAll(tasks);
-			continueSpecialTasks(next_results, isAddition, system);
-		}else
-			doWeTerminate();
+		if(doWeTerminate()){
+			return;
+		}
+		ArrayList<Future<ResultFromSpecial>> next_results = (ArrayList<Future<ResultFromSpecial>>) threadrouter.invokeAll(tasks);
+		continueSpecialTasks(next_results, isAddition, system);
 	}
 
 	private static ArrayList<Callable<ResultFromSpecial>> distributeSpecialTasks(final MutableIntSet targets, ArrayList<IPAPointsToSetVariable> lhss,
@@ -176,7 +174,7 @@ public class ThreadHub {
 		return tasks;
 	}
 
-	private static void doWeTerminate() {
+	private static boolean doWeTerminate() {
 		// if all jobs complete
 		if(nrOfResults == nrOfWorks){
 			//clear this round
@@ -184,8 +182,9 @@ public class ThreadHub {
 			nrOfResults = 0;
 			finished  = true;
 			processed.clear();
-			return;
+			return true;
 		}
+		return false;
 	}
 
 	protected static MutableSharedBitVectorIntSet computeRemaining(MutableIntSet delSet, IPAPointsToSetVariable L, IPAPropagationGraph flowGraph){
