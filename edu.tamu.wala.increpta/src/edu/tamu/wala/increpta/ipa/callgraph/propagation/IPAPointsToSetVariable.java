@@ -67,6 +67,15 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 		change.clear();//clear before each change set
 		change.addAll(set);
 	}
+	
+	/**
+	 * -> wcc
+	 * only add, no clear before
+	 * @param set
+	 */
+	public synchronized void addChange(MutableIntSet set){
+		change.addAll(set);
+	}
 
 	/**
 	 * clear after one stmt propagation
@@ -102,14 +111,15 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 	}
 
 	@Override
-	public void add(int b) {
+	public boolean add(int b) {
 		if (PARANOID) {
 			MutableSparseIntSet m = MutableSparseIntSet.createMutableSparseIntSet(1);
 			m.add(b);
 			checkTypes(m);
 		}
-		super.add(b);
+		final boolean result = super.add(b);
 		cryIfTooBig();
+		return result;
 	}
 
 	@Override
