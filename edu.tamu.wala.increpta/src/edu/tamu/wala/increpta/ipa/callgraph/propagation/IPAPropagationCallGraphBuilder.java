@@ -2109,7 +2109,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	 * @param n
 	 * @return
 	 */
-	public boolean testChange(CGNode node, HashMap<PointerKey, MutableIntSet> var_pts_map, boolean measurePerformance) {
+	public boolean testChange(CGNode node, HashMap<String, MutableIntSet> var_pts_map, boolean measurePerformance) {
 		boolean correct = true;
 		system.setChange(true);
 		IR ir = node.getIR();
@@ -2132,7 +2132,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				continue;//skip null
 
 //			if(!inst.toString().contains(
-//					"9 = invokespecial < Application, Lorg/sunflow/core/LightServer, getPhotonShader(Lorg/sunflow/core/ShadingState;)Lorg/sunflow/core/Shader; > 1,2 @10 exception:8"
+//					"21 = invokevirtual < Application, Ljava/lang/StringBuilder, append(I)Ljava/lang/StringBuilder; > 18,19 @44 exception:20"
 //					))
 //				continue;
 
@@ -2177,7 +2177,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					if(var != null){
 						MutableIntSet update = var.getValue();
 						PointerKey key = var.getPointerKey();
-						MutableIntSet origin = var_pts_map.get(key);
+						MutableIntSet origin = var_pts_map.get(key.toString());
 						if(update != null && origin != null){
 							if(inst instanceof SSAInvokeInstruction){//new instance created, different id, only test the size of pts
 								if(update.size() != origin.size()){
