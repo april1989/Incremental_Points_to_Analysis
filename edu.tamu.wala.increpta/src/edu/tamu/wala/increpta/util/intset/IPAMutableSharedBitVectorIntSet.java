@@ -40,10 +40,16 @@ public class IPAMutableSharedBitVectorIntSet implements MutableIntSet {
 		if (set == null) {
 			throw new IllegalArgumentException("set is null");
 		}
-		if (set.privatePart != null) {
-			this.privatePart = IPAMutableSparseIntSet.make(set.privatePart);
-		}
-		this.sharedPart = set.sharedPart;
+		set.foreach(new IntSetAction() {
+			@Override
+			public void act(int x) {
+				add(x);
+			}
+		});
+//		if (set.privatePart != null) {
+//			this.privatePart = IPAMutableSparseIntSet.make(set.privatePart);
+//		}
+//		this.sharedPart = set.sharedPart;
 	}
 
 	/**
