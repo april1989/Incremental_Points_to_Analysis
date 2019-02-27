@@ -20,10 +20,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import com.ibm.wala.util.intset.IntSetAction;
-import com.ibm.wala.util.intset.IntSetUtil;
+//import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder.IPAFilterOperator;
@@ -36,6 +36,9 @@ import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
 import edu.tamu.wala.increpta.scc.SCCVariable;
 import edu.tamu.wala.increpta.util.DeletionUtil;
 import edu.tamu.wala.increpta.util.IPAAbstractFixedPointSolver;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetUtil;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSetFactory;
 
 public class ThreadHub {
 
@@ -75,7 +78,7 @@ public class ThreadHub {
 		for (Future<ResultFromRR> future : results) {
 			nrOfResults ++;
 			ResultFromRR result = future.get();
-			MutableSharedBitVectorIntSet change = result.getUser().getChange();
+			IPAMutableSharedBitVectorIntSet change = result.getUser().getChange();
 			ArrayList<IPAPointsToSetVariable> nexts = result.getCheckNext();
 			if(!nexts.isEmpty() && change.size() > 0){
 				Iterator<IPAPointsToSetVariable> iterator = nexts.iterator();
@@ -130,7 +133,7 @@ public class ThreadHub {
 		for (Future<ResultFromSpecial> future : results) {
 			nrOfResults++;
 			ResultFromSpecial result = future.get();
-			MutableSharedBitVectorIntSet change = result.getUser().getChange();
+			IPAMutableSharedBitVectorIntSet change = result.getUser().getChange();
 			ArrayList<IPAPointsToSetVariable> nexts = result.getCheckNext();
 			if(!nexts.isEmpty() && change.size() > 0){
 				Iterator<IPAPointsToSetVariable> iterator = nexts.iterator();
@@ -187,9 +190,9 @@ public class ThreadHub {
 		return false;
 	}
 
-	protected static MutableSharedBitVectorIntSet computeRemaining(MutableIntSet delSet, IPAPointsToSetVariable L, IPAPropagationGraph flowGraph){
+	protected static IPAMutableSharedBitVectorIntSet computeRemaining(MutableIntSet delSet, IPAPointsToSetVariable L, IPAPropagationGraph flowGraph){
 		//recompute L
-		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(delSet);
+		final IPAMutableSharedBitVectorIntSet remaining = new IPAMutableSharedBitVectorIntSetFactory().makeCopy(delSet);
 		for (IPAPointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
 			if(remaining.isEmpty())
 				break;
@@ -202,7 +205,7 @@ public class ThreadHub {
 				if(set != null){
 					MutableIntSet set1;
 					synchronized (pv) {
-						set1 = IntSetUtil.makeMutableCopy(set);
+						set1 = IPAIntSetUtil.makeMutableCopy(set);
 					}
 					DeletionUtil.removeSome(remaining, set1);
 				}else
@@ -249,7 +252,7 @@ public class ThreadHub {
 		final IPAPropagationSystem system = work.getPropagationSystem();
 		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 		//check
-		MutableSharedBitVectorIntSet remaining = computeRemaining(targets, user, system.getPropagationGraph());
+		IPAMutableSharedBitVectorIntSet remaining = computeRemaining(targets, user, system.getPropagationGraph());
 		if(system.isTransitiveRoot(user.getPointerKey()))
 			return new ResultFromRR(user, next, remaining);
 
@@ -276,14 +279,14 @@ public class ThreadHub {
 		final IPAPropagationSystem system = work.getPropagationSystem();
 		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 		if(user.getValue() == null)
-			return new ResultFromSpecial(user, next, (MutableSharedBitVectorIntSet) target, work.getIsAdd());
-
-		MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(target);
+			return new ResultFromSpecial(user, next, (IPAMutableSharedBitVectorIntSet) target, work.getIsAdd());
+		
+		IPAMutableSharedBitVectorIntSet remaining = new IPAMutableSharedBitVectorIntSetFactory().makeCopy(target);
 		MutableIntSet copy = null;
 		synchronized (user) {
-			copy = IntSetUtil.makeMutableCopy(user.getValue());
+			copy = IPAIntSetUtil.makeMutableCopy(user.getValue());
 		}
-		DeletionUtil.removeSome((MutableSharedBitVectorIntSet) remaining, copy);
+		DeletionUtil.removeSome((IPAMutableSharedBitVectorIntSet) remaining, copy);
 
 		if(!remaining.isEmpty()){
 			boolean change = false;
@@ -321,7 +324,7 @@ public class ThreadHub {
 		final IPAPropagationSystem system = work.getPropagationSystem();
 		ArrayList<IPAPointsToSetVariable> next = new ArrayList<>();
 
-		MutableSharedBitVectorIntSet remaining = computeRemaining(targets, user, system.getPropagationGraph());
+		IPAMutableSharedBitVectorIntSet remaining = computeRemaining(targets, user, system.getPropagationGraph());
 		if(system.isTransitiveRoot(user.getPointerKey()))
 			return new ResultFromSpecial(user, next, remaining, work.getIsAdd());
 

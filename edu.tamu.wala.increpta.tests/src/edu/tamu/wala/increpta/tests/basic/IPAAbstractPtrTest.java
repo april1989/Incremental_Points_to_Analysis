@@ -35,8 +35,8 @@ import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.util.intset.MutableIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.intset.OrdinalSetMapping;
 
@@ -44,6 +44,7 @@ import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointerAnalysisImpl;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder;
 import edu.tamu.wala.increpta.util.IPAUtil;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSetFactory;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
@@ -114,7 +115,7 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 			if(pta.getPointsToMap().isImplicit(key)){
 				OrdinalSet<InstanceKey> set = pta.getPointsToSet(key);
 				OrdinalSetMapping<InstanceKey> instancekeyMapping = pta.getInstanceKeyMapping();
-				MutableIntSet pts = new MutableSharedBitVectorIntSetFactory().make();
+				MutableIntSet pts = new IPAMutableSharedBitVectorIntSetFactory().make();
 				for (InstanceKey instanceKey : set) {
 					int value = instancekeyMapping.getMappedIndex(instanceKey);
 					pts.add(value);
@@ -125,9 +126,9 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 				if(ptsv != null){
 					MutableIntSet pts = ptsv.getValue();
 					if(pts != null){
-						var_pts_map.put(key.toString(), new MutableSharedBitVectorIntSetFactory().makeCopy(pts)); 
+						var_pts_map.put(key.toString(), new IPAMutableSharedBitVectorIntSetFactory().makeCopy(pts)); 
 						//
-						//((MutableSharedBitVectorIntSet) pts).makeHardCopy()
+						//((IPAMutableSharedBitVectorIntSet) pts).makeHardCopy()
 					}
 				}
 			}

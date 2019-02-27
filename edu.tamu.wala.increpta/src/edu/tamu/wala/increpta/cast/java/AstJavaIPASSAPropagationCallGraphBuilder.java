@@ -28,6 +28,7 @@ import com.ibm.wala.util.strings.Atom;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.operators.IPAUnaryOperator;
 import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetVariable;
 
 public class AstJavaIPASSAPropagationCallGraphBuilder extends AstIPASSAPropagationCallGraphBuilder{
 
@@ -163,7 +164,7 @@ public class AstJavaIPASSAPropagationCallGraphBuilder extends AstIPASSAPropagati
 				system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 					@Override
 					public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
-						IntSetVariable<?> tv = rhs;
+						IPAIntSetVariable<?> tv = rhs;
 						if (tv.getValue() != null) {
 							tv.getValue().foreach(ptr -> {
 								InstanceKey iKey = system.getInstanceKey(ptr);

@@ -8,7 +8,7 @@ import com.ibm.wala.util.graph.NumberedNodeManager;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.MutableIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationGraph;
@@ -16,6 +16,7 @@ import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAAssignOperator;
 import edu.tamu.wala.increpta.operators.IPAUnaryStatement;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
 
 
 public class SCCVariable extends IPAPointsToSetVariable{
@@ -84,7 +85,7 @@ public class SCCVariable extends IPAPointsToSetVariable{
 	 * @param flowGraph
 	 * @return
 	 */
-	public boolean ifOthersCanProvide(IPAPointsToSetVariable exclude, MutableSharedBitVectorIntSet remaining,
+	public boolean ifOthersCanProvide(IPAPointsToSetVariable exclude, IPAMutableSharedBitVectorIntSet remaining,
 	    MutableIntSet set, IPAPropagationGraph flowGraph){
 		for (IPAPointsToSetVariable v : variables) {
 			if(!v.equals(exclude)){
@@ -211,7 +212,7 @@ public class SCCVariable extends IPAPointsToSetVariable{
 	 * @param rhs
 	 * @return
 	 */
-  public boolean addAll(MutableSharedBitVectorIntSet that, int rhs){
+  public boolean addAll(IPAMutableSharedBitVectorIntSet that, int rhs){
     NumberedNodeManager<INodeWithNumber> manager = flowGraph.getNodeManager();
     IPAPointsToSetVariable rhs_v = (IPAPointsToSetVariable) manager.getNode(rhs);//start point
     //update this value
@@ -247,7 +248,7 @@ public class SCCVariable extends IPAPointsToSetVariable{
    * @return
    */
   @SuppressWarnings("unused")
-  public boolean removeAll(MutableSharedBitVectorIntSet that, int rhs){
+  public boolean removeAll(IPAMutableSharedBitVectorIntSet that, int rhs){
     NumberedNodeManager<INodeWithNumber> manager = flowGraph.getNodeManager();
     IPAPointsToSetVariable rhs_v = (IPAPointsToSetVariable) manager.getNode(rhs);//start point
     //update this value

@@ -49,11 +49,11 @@ import com.ibm.wala.util.heapTrace.HeapTracer;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
-import com.ibm.wala.util.intset.IntSetUtil;
+//import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableMapping;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
 import com.ibm.wala.util.ref.ReferenceCleanser;
 import com.ibm.wala.util.warnings.Warnings;
 
@@ -73,6 +73,9 @@ import edu.tamu.wala.increpta.scc.SCCVariable;
 import edu.tamu.wala.increpta.util.DeletionUtil;
 import edu.tamu.wala.increpta.util.IPADefaultFixedPointSolver;
 import edu.tamu.wala.increpta.util.Worklist;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetUtil;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSetFactory;
 
 
 /**
@@ -273,7 +276,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 		assert klass.getReference() != TypeReference.JavaLangObject;
 		MutableIntSet result = class2InstanceKey.get(klass);
 		if (result == null) {
-			result = IntSetUtil.getDefaultIntSetFactory().make();
+			result = IPAIntSetUtil.getDefaultIntSetFactory().make();
 			class2InstanceKey.put(klass, result);
 		}
 		return result;
@@ -287,10 +290,10 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 		assert klass.getReference() != TypeReference.JavaLangObject;
 		MutableIntSet set = class2InstanceKey.get(klass);
 		if (set == null) {
-			return IntSetUtil.getDefaultIntSetFactory().make();
+			return IPAIntSetUtil.getDefaultIntSetFactory().make();
 		} else {
 			// return a copy.
-			return IntSetUtil.getDefaultIntSetFactory().makeCopy(set);
+			return IPAIntSetUtil.getDefaultIntSetFactory().makeCopy(set);
 		}
 	}
 
@@ -815,7 +818,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 
 		IPAPointsToSetVariable L = findOrCreatePointsToSet(lhs);
 		int index = findOrCreateIndexForInstanceKey(value);
-		MutableIntSet delSet = IntSetUtil.make();
+		MutableIntSet delSet = IPAIntSetUtil.make();
 		delSet.add(index);
 
 		procedureToDelPointsToSet(L, delSet, true);
@@ -842,9 +845,9 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 		return true;
 	}
 
-	protected MutableSharedBitVectorIntSet computeRemaining(MutableIntSet delSet, IPAPointsToSetVariable L){
+	protected IPAMutableSharedBitVectorIntSet computeRemaining(MutableIntSet delSet, IPAPointsToSetVariable L){
 		//recompute L
-		final MutableSharedBitVectorIntSet remaining = new MutableSharedBitVectorIntSetFactory().makeCopy(delSet);
+		final IPAMutableSharedBitVectorIntSet remaining = new IPAMutableSharedBitVectorIntSetFactory().makeCopy(delSet);
 		for (IPAPointsToSetVariable pv : flowGraph.getPointsToSetVariablesThatDefImplicitly(L)) {
 			if(remaining.isEmpty())
 				break;
@@ -869,7 +872,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 			if(isTransitiveRoot(L.getPointerKey()))
 				return;
 		}
-		final MutableSharedBitVectorIntSet remaining = computeRemaining(delSet, L);
+		final IPAMutableSharedBitVectorIntSet remaining = computeRemaining(delSet, L);
 		//schedule task if changes
 		if(!remaining.isEmpty()){
 			DeletionUtil.removeSome(L, remaining);
@@ -911,7 +914,7 @@ public class IPAPropagationSystem extends IPADefaultFixedPointSolver<IPAPointsTo
 	protected void singleProcedureToDelPointsToSet(final IPAPointsToSetVariable L, final MutableIntSet targets){
 		if(isTransitiveRoot(L.getPointerKey()))
 			return;
-		final MutableSharedBitVectorIntSet remaining = computeRemaining(targets, L);
+		final IPAMutableSharedBitVectorIntSet remaining = computeRemaining(targets, L);
 		//if not reachable, deleting, and continue for other nodes
 		if(!remaining.isEmpty()){
 			DeletionUtil.removeSome(L, remaining);

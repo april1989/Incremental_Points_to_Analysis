@@ -15,4 +15,5 @@ Export-Package: edu.tamu.wala.increpta.callgraph.impl,
  edu.tamu.wala.increpta.ipa.callgraph.propagation,
  edu.tamu.wala.increpta.operators,
  edu.tamu.wala.increpta.parallel,
- edu.tamu.wala.increpta.util
+ edu.tamu.wala.increpta.util,
+ edu.tamu.wala.increpta.util.intset

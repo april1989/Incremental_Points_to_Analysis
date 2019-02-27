@@ -58,7 +58,7 @@ import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.IntSet;
-import com.ibm.wala.util.intset.IntSetUtil;
+//import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableMapping;
 import com.ibm.wala.util.strings.Atom;
@@ -75,6 +75,8 @@ import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGra
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAUnaryOperator;
 import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetUtil;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetVariable;
 
 public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropagationCallGraphBuilder{
 
@@ -509,7 +511,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 				system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 					@Override
 					public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
-						final IntSetVariable<?> objects = rhs;
+						final IPAIntSetVariable<?> objects = rhs;
 						if (objects.getValue() != null) {
 							objects.getValue().foreach(optr -> {
 								InstanceKey object = system.getInstanceKey(optr);
@@ -577,7 +579,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 				system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 					@Override
 					public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
-						final IntSetVariable<?> objects = rhs;
+						final IPAIntSetVariable<?> objects = rhs;
 						if (objects.getValue() != null) {
 							objects.getValue().foreach(optr -> {
 								InstanceKey object = system.getInstanceKey(optr);
@@ -993,13 +995,13 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 		protected void newFieldFullOperation(final boolean isLoadOperation, final ReflectedFieldAction action, PointerKey objKey,
 				final PointerKey fieldKey) {
 			system.newSideEffect(new IPAAbstractOperator<IPAPointsToSetVariable>() {
-				private final MutableIntSet doneReceiver = IntSetUtil.make();
-				private final MutableIntSet doneField = IntSetUtil.make();
+				private final MutableIntSet doneReceiver = IPAIntSetUtil.make();
+				private final MutableIntSet doneField = IPAIntSetUtil.make();
 
 				@Override
 				public byte evaluate(IPAPointsToSetVariable lhs, final IPAPointsToSetVariable[] rhs) {
-					final IntSetVariable<?> receivers = rhs[0];
-					final IntSetVariable<?> fields = rhs[1];
+					final IPAIntSetVariable<?> receivers = rhs[0];
+					final IPAIntSetVariable<?> fields = rhs[1];
 					if (receivers.getValue() != null && fields.getValue() != null) {
 						receivers.getValue().foreach(rptr -> {
 							final InstanceKey receiver = system.getInstanceKey(rptr);
@@ -1053,7 +1055,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 			system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 				@Override
 				public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
-					final IntSetVariable<?> objects = rhs;
+					final IPAIntSetVariable<?> objects = rhs;
 					if (objects.getValue() != null) {
 						objects.getValue().foreach(optr -> {
 							InstanceKey object = system.getInstanceKey(optr);
@@ -1119,7 +1121,7 @@ public abstract class AstIPASSAPropagationCallGraphBuilder extends IPASSAPropaga
 			system.newSideEffect(new IPAUnaryOperator<IPAPointsToSetVariable>() {
 				@Override
 				public byte evaluate(IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs) {
-					final IntSetVariable<?> fields = rhs;
+					final IPAIntSetVariable<?> fields = rhs;
 					if (fields.getValue() != null) {
 						fields.getValue().foreach(fptr -> {
 							InstanceKey field = system.getInstanceKey(fptr);

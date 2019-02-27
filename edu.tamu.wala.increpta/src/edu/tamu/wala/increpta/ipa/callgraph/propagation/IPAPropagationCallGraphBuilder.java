@@ -63,9 +63,9 @@ import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
-import com.ibm.wala.util.intset.IntSetUtil;
+//import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 import com.ibm.wala.util.warnings.Warning;
 import com.ibm.wala.util.warnings.Warnings;
 
@@ -78,6 +78,8 @@ import edu.tamu.wala.increpta.operators.IPAUnarySideEffect;
 import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
 import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
 import edu.tamu.wala.increpta.util.IPAAbstractFixedPointSolver;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetUtil;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
 
 public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder<InstanceKey> {
 
@@ -686,7 +688,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 			boolean changed = false;
 			IPAFilteredPointerKey.IPATypeFilter filter = pk.getTypeFilter();
-			MutableSharedBitVectorIntSet remaining = null;
+			IPAMutableSharedBitVectorIntSet remaining = null;
 			if(system.getFirstDel()){
 				remaining = system.computeRemaining(rhs.getValue(), lhs);
 			}else{//gonna change to other place
@@ -714,7 +716,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 		 * @param set
 		 * @return
 		 */
-		public byte evaluateDel(IPAPointsToSetVariable lhs, MutableSharedBitVectorIntSet set) {
+		public byte evaluateDel(IPAPointsToSetVariable lhs, IPAMutableSharedBitVectorIntSet set) {
 			IPAFilteredPointerKey pk = (IPAFilteredPointerKey) lhs.getPointerKey();
 
 			if(set == null || set.size() == 0){
@@ -723,7 +725,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 			boolean changed = false;
 			IPAFilteredPointerKey.IPATypeFilter filter = pk.getTypeFilter();
-			MutableSharedBitVectorIntSet remaining = system.computeRemaining(set, lhs);
+			IPAMutableSharedBitVectorIntSet remaining = system.computeRemaining(set, lhs);
 			if(!remaining.isEmpty()){
 				changed = filter.delFiltered(system, lhs, remaining);
 			}
@@ -903,7 +905,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	 * Binary op: <dummy>:= ArrayLoad( &lt;arrayref>) Side effect: Creates new equations.
 	 */
 	public final class ArrayLoadOperator extends IPAUnarySideEffect implements IPointerOperator {
-		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IntSetUtil.make() : null;
+		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IPAIntSetUtil.make() : null;
 
 		@Override
 		public String toString() {
@@ -996,7 +998,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			final PointerKey dVal = def.getPointerKey();
 
 			final MutableBoolean sideEffect_del = new MutableBoolean();
-			final MutableIntSet delset = IntSetUtil.getDefaultIntSetFactory().make();
+			final MutableIntSet delset = IPAIntSetUtil.getDefaultIntSetFactory().make();
 			final ArrayList<IPAPointsToSetVariable> rhss = new ArrayList<>();
 			IntSetAction action = new IntSetAction() {
 				@Override
@@ -1211,7 +1213,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	public class GetFieldOperator extends IPAUnarySideEffect implements IPointerOperator {
 		private final IField field;
 
-		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IntSetUtil.make() : null;
+		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IPAIntSetUtil.make() : null;
 
 		public GetFieldOperator(IField field, IPAPointsToSetVariable def) {
 			super(def);
@@ -1270,7 +1272,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				}
 			};
 
-			final MutableIntSet targets = IntSetUtil.getDefaultIntSetFactory().make();
+			final MutableIntSet targets = IPAIntSetUtil.getDefaultIntSetFactory().make();
 			final ArrayList<IPAPointsToSetVariable> rhss = new ArrayList<>();
 			IntSetAction action2 = new IntSetAction() {
 				@Override
@@ -1356,7 +1358,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				}
 			}
 			final MutableBoolean sideEffect_del = new MutableBoolean();
-			final MutableIntSet delset = IntSetUtil.getDefaultIntSetFactory().make();
+			final MutableIntSet delset = IPAIntSetUtil.getDefaultIntSetFactory().make();
 			final ArrayList<IPAPointsToSetVariable> rhss = new ArrayList<>();
 			IntSetAction action = new IntSetAction() {
 				@Override
@@ -1444,7 +1446,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	public class PutFieldOperator extends IPAUnarySideEffect implements IPointerOperator {
 		private final IField field;
 
-		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IntSetUtil.make() : null;
+		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IPAIntSetUtil.make() : null;
 
 		@Override
 		public String toString() {
@@ -1539,7 +1541,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 					} else {
 						value.foreach(action2);
 					}
-					MutableIntSet targets = IntSetUtil.getDefaultIntSetFactory().make();
+					MutableIntSet targets = IPAIntSetUtil.getDefaultIntSetFactory().make();
 					if(val.getValue() != null){
 						targets.addAll(val.getValue());
 					}
@@ -1636,7 +1638,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 				priorInstances.foreach(action);
 			}else{
 				value.foreach(action2);
-				MutableIntSet targets = IntSetUtil.getDefaultIntSetFactory().make();
+				MutableIntSet targets = IPAIntSetUtil.getDefaultIntSetFactory().make();
 				if(val.getValue() != null){
 					targets.addAll(val.getValue());
 				}
@@ -1700,7 +1702,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 		final private InstanceKey instance;
 
-		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IntSetUtil.make() : null;
+		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IPAIntSetUtil.make() : null;
 
 		@Override
 		public String toString() {
@@ -1787,7 +1789,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			value.foreach(action);
 			priorInstances.foreach(action);
 
-			MutableIntSet delset = IntSetUtil.make();
+			MutableIntSet delset = IPAIntSetUtil.make();
 			delset.add(system.findOrCreateIndexForInstanceKey(instance));
 			system.delConstraintHasMultiInstanceL(lhss, delset, ref);
 			priorInstances.clear();
@@ -1825,7 +1827,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 	public final class InstanceArrayStoreOperator extends IPAUnaryOperator<IPAPointsToSetVariable> implements IPointerOperator {
 		final private InstanceKey instance;
 
-		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IntSetUtil.make() : null;
+		protected final MutableIntSet priorInstances = rememberGetPutHistory ? IPAIntSetUtil.make() : null;
 
 		@Override
 		public String toString() {
@@ -1945,7 +1947,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 			//*** in case of prior instances is not a subset of value
 			priorInstances.foreach(action);
 			value.foreach(action);
-			MutableIntSet delset = IntSetUtil.make();
+			MutableIntSet delset = IPAIntSetUtil.make();
 			delset.add(system.findOrCreateIndexForInstanceKey(instance));
 			system.delConstraintHasMultiInstanceL(lhss, delset, arrayref);
 			priorInstances.clear();
@@ -2130,11 +2132,6 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 
 			if(inst==null)
 				continue;//skip null
-
-//			if(!inst.toString().contains(
-//					"21 = invokevirtual < Application, Ljava/lang/StringBuilder, append(I)Ljava/lang/StringBuilder; > 18,19 @44 exception:20"
-//					))
-//				continue;
 
 			total_inst++;
 			ISSABasicBlock bb = cfg.getBlockForInstruction(inst.iindex);

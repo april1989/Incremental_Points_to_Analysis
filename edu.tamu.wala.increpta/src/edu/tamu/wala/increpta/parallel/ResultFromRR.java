@@ -12,18 +12,19 @@ package edu.tamu.wala.increpta.parallel;
 
 import java.util.ArrayList;
 
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
 
 
 public class ResultFromRR {
 
   private IPAPointsToSetVariable user;
   private ArrayList<IPAPointsToSetVariable> next;
-  private MutableSharedBitVectorIntSet newtargets;
+  private IPAMutableSharedBitVectorIntSet newtargets;
 
-  public ResultFromRR(IPAPointsToSetVariable user, ArrayList<IPAPointsToSetVariable> next, MutableSharedBitVectorIntSet remaining) {
+  public ResultFromRR(IPAPointsToSetVariable user, ArrayList<IPAPointsToSetVariable> next, IPAMutableSharedBitVectorIntSet remaining) {
     this.user = user;
     this.newtargets = remaining;
     this.next = next;
@@ -37,7 +38,7 @@ public class ResultFromRR {
     return next;
   }
 
-  public MutableSharedBitVectorIntSet getNewTargets(){
+  public IPAMutableSharedBitVectorIntSet getNewTargets(){
     return newtargets;
   }
 
