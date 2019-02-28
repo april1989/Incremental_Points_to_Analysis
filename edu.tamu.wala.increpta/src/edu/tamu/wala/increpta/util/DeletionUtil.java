@@ -18,6 +18,7 @@ import com.ibm.wala.util.intset.MutableIntSet;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSetFactory;
 
 public class DeletionUtil {
 
@@ -28,6 +29,10 @@ public class DeletionUtil {
 	 */
 	public static IPAMutableSharedBitVectorIntSet removeSome(IPAPointsToSetVariable v, IntSet set){
 		IPAMutableSharedBitVectorIntSet V = (IPAMutableSharedBitVectorIntSet) v.getValue();
+		if(V == null) {
+			v.clearChange();
+			return new IPAMutableSharedBitVectorIntSet();
+		}
 		IPAMutableSharedBitVectorIntSet intersection = (IPAMutableSharedBitVectorIntSet) V.intersection(set);
 		if(intersection.size() > 0) {
 			V.removeAll(intersection);

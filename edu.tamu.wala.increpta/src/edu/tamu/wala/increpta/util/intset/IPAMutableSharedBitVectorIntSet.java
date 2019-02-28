@@ -53,7 +53,7 @@ public class IPAMutableSharedBitVectorIntSet implements MutableIntSet {
 	}
 
 	/**
-	 * @throws IllegalArgumentException if set is null
+	 * @thrh2ows IllegalArgumentException if set is null
 	 */
 	public IPAMutableSharedBitVectorIntSet(IPAMutableSharedBitVectorIntSet set) {
 		if (set == null) {
