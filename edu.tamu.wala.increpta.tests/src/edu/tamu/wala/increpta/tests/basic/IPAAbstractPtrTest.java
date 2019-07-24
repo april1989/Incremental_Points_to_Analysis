@@ -35,7 +35,8 @@ import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.util.intset.MutableIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.intset.OrdinalSetMapping;
 
@@ -43,6 +44,7 @@ import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointerAnalysisImpl;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationCallGraphBuilder;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPASSAPropagationCallGraphBuilder;
 import edu.tamu.wala.increpta.util.IPAUtil;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSetFactory;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 
 public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
@@ -50,12 +52,13 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 	/**
 	 * var_pts_map: a map to record pointer keys and their original points-to sets
 	 */
-	private static HashMap<PointerKey, MutableIntSet> var_pts_map = new HashMap<>();
-	public static String MY_EXCLUSIONS = "EclipseDefaultExclusions.txt";
+	private static HashMap<String, MutableIntSet> var_pts_map = new HashMap<>();
+	public static String MY_EXCLUSIONS = "EclipseDefaultExclusions.txt";//default
 
 
-	public IPAAbstractPtrTest(String scopeFile) {
+	public IPAAbstractPtrTest(String scopeFile, String exclusions) {
 		super(scopeFile);
+		MY_EXCLUSIONS = exclusions;
 	}
 
 	protected void doIncrementalPTATest(String mainClass) throws ClassHierarchyException, IllegalArgumentException, CallGraphBuilderCancelException, IOException{
@@ -112,18 +115,20 @@ public abstract class IPAAbstractPtrTest extends AbstractPtrTest{
 			if(pta.getPointsToMap().isImplicit(key)){
 				OrdinalSet<InstanceKey> set = pta.getPointsToSet(key);
 				OrdinalSetMapping<InstanceKey> instancekeyMapping = pta.getInstanceKeyMapping();
-				MutableIntSet pts = new MutableSharedBitVectorIntSetFactory().make();
+				MutableIntSet pts = new IPAMutableSharedBitVectorIntSetFactory().make();
 				for (InstanceKey instanceKey : set) {
 					int value = instancekeyMapping.getMappedIndex(instanceKey);
 					pts.add(value);
 				}
-				var_pts_map.put(key, pts);
+				var_pts_map.put(key.toString(), pts);
 			}else{
 				IPAPointsToSetVariable ptsv = builder.getSystem().findOrCreatePointsToSet(key);
 				if(ptsv != null){
 					MutableIntSet pts = ptsv.getValue();
 					if(pts != null){
-						var_pts_map.put(key, new MutableSharedBitVectorIntSetFactory().makeCopy(pts));
+						var_pts_map.put(key.toString(), new IPAMutableSharedBitVectorIntSetFactory().makeCopy(pts)); 
+						//
+						//((IPAMutableSharedBitVectorIntSet) pts).makeHardCopy()
 					}
 				}
 			}

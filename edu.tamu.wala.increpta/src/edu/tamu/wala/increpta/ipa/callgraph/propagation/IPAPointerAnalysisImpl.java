@@ -54,11 +54,12 @@ import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableMapping;
-import com.ibm.wala.util.intset.MutableSparseIntSet;
+//import com.ibm.wala.util.intset.MutableSparseIntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
 import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
 import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSparseIntSet;
 
 public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 
@@ -267,7 +268,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 	}
 
 	private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtPi(CGNode node, SSAPiInstruction instruction) {
-		MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
+		IPAMutableSparseIntSet S = IPAMutableSparseIntSet.makeEmpty();
 		for (int i = 0; i < instruction.getNumberOfUses(); i++) {
 			int vn = instruction.getUse(i);
 			if (vn != -1) {
@@ -283,7 +284,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 	}
 
 	private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtPhi(CGNode node, SSAPhiInstruction instruction) {
-		MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
+		IPAMutableSparseIntSet S = IPAMutableSparseIntSet.makeEmpty();
 		for (int i = 0; i < instruction.getNumberOfUses(); i++) {
 			int vn = instruction.getUse(i);
 			if (vn != -1) {
@@ -300,7 +301,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 
 	private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtALoad(CGNode node, SSAArrayLoadInstruction instruction) {
 		PointerKey arrayRef = pointerKeys.getPointerKeyForLocal(node, instruction.getArrayRef());
-		MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
+		IPAMutableSparseIntSet S = IPAMutableSparseIntSet.makeEmpty();
 		OrdinalSet refs = getPointsToSet(arrayRef);
 		for (Iterator it = refs.iterator(); it.hasNext();) {
 			InstanceKey ik = (InstanceKey) it.next();
@@ -328,7 +329,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 			return getPointsToSet(fKey);
 		} else {
 			PointerKey ref = pointerKeys.getPointerKeyForLocal(node, refVn);
-			MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
+			IPAMutableSparseIntSet S = IPAMutableSparseIntSet.makeEmpty();
 			OrdinalSet refs = getPointsToSet(ref);
 			for (Iterator it = refs.iterator(); it.hasNext();) {
 				InstanceKey ik = (InstanceKey) it.next();
@@ -349,7 +350,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 		IR ir = node.getIR();
 		List<ProgramCounter> peis = IPASSAPropagationCallGraphBuilder.getIncomingPEIs(ir, ir.getBasicBlockForCatch(instruction));
 		Set<IClass> caughtTypes = IPASSAPropagationCallGraphBuilder.getCaughtExceptionTypes(instruction, ir);
-		MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
+		IPAMutableSparseIntSet S = IPAMutableSparseIntSet.makeEmpty();
 		// add the instances from each incoming pei ...
 		for (Iterator<ProgramCounter> it = peis.iterator(); it.hasNext();) {
 			ProgramCounter peiLoc = it.next();
@@ -398,7 +399,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 	private OrdinalSet<InstanceKey> computeImplicitPointsToSetAtCheckCast(CGNode node, SSACheckCastInstruction instruction) {
 		PointerKey rhs = pointerKeys.getPointerKeyForLocal(node, instruction.getVal());
 		OrdinalSet<InstanceKey> rhsSet = getPointsToSet(rhs);
-		MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
+		IPAMutableSparseIntSet S = IPAMutableSparseIntSet.makeEmpty();
 		for (TypeReference t : instruction.getDeclaredResultTypes()) {
 			IClass klass = getCallGraph().getClassHierarchy().lookupClass(t);
 			if (klass == null) {
@@ -436,7 +437,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 	}
 
 	private OrdinalSet<InstanceKey> toOrdinalSet(InstanceKey[] ik) {
-		MutableSparseIntSet s = MutableSparseIntSet.makeEmpty();
+		IPAMutableSparseIntSet s = IPAMutableSparseIntSet.makeEmpty();
 		for (int i = 0; i < ik.length; i++) {
 			int index = instanceKeys.getMappedIndex(ik[i]);
 			if (index != -1) {
@@ -452,7 +453,7 @@ public class IPAPointerAnalysisImpl extends AbstractPointerAnalysis{
 	 * @return the points-to set for the exceptional return values from a particular call site
 	 */
 	private OrdinalSet<InstanceKey> computeImplicitExceptionsForCall(CGNode node, SSAInvokeInstruction call) {
-		MutableSparseIntSet S = MutableSparseIntSet.makeEmpty();
+		IPAMutableSparseIntSet S = IPAMutableSparseIntSet.makeEmpty();
 		for (Iterator it = getCallGraph().getPossibleTargets(node, call.getCallSite()).iterator(); it.hasNext();) {
 			CGNode target = (CGNode) it.next();
 			PointerKey retVal = pointerKeys.getPointerKeyForExceptionalReturnValue(target);

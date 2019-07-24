@@ -13,10 +13,12 @@ package edu.tamu.wala.increpta.util;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSetFactory;
 
 public class DeletionUtil {
 
@@ -25,43 +27,32 @@ public class DeletionUtil {
 	 * @param set
 	 * @return
 	 */
-	public static MutableSharedBitVectorIntSet removeSome(IPAPointsToSetVariable v, IntSet set){
-		MutableSharedBitVectorIntSet removed = new MutableSharedBitVectorIntSetFactory().make();
-		MutableIntSet V = v.getValue();
-		if(V != null && set != null){
-			IntIterator iterator = set.intIterator();
-			while(iterator.hasNext()){
-				Integer del = iterator.next();
-				if(V.remove(del)){
-					removed.add(del);
-					if(removed.size() == set.size())
-						break;
-				}
-			}
+	public static IPAMutableSharedBitVectorIntSet removeSome(IPAPointsToSetVariable v, IntSet set){
+		IPAMutableSharedBitVectorIntSet V = (IPAMutableSharedBitVectorIntSet) v.getValue();
+		if(V == null) {
+			v.clearChange();
+			return new IPAMutableSharedBitVectorIntSet();
 		}
-		//bz: update propagated changes;
-		if(removed.size() > 0){
-			v.setChange(removed);
-		}else{
+		IPAMutableSharedBitVectorIntSet intersection = (IPAMutableSharedBitVectorIntSet) V.intersection(set);
+		if(intersection.size() > 0) {
+			V.removeAll(intersection);
+			v.setChange(intersection);
+		}else {
 			v.clearChange();
 		}
-		return removed;
+		return intersection;
 	}
 
 	/**
-	 * remove set from V
+	 * remove set from V: updated -> faster
 	 * @param V
 	 * @param set
 	 */
-	public static void removeSome(MutableSharedBitVectorIntSet V, IntSet set) {
+	public static boolean removeSome(IPAMutableSharedBitVectorIntSet V, IntSet s) {
+		IPAMutableSharedBitVectorIntSet set = (IPAMutableSharedBitVectorIntSet) s;
 		if(V != null && set != null){
-			IntIterator iterator = set.intIterator();
-			while(iterator.hasNext()){
-				Integer del = iterator.next();
-				V.remove(del);
-				if(V.size() == 0)
-					break;
-			}
+			return V.removeAllInIntersectionInternal(set);
 		}
+		return false;
 	}
 }

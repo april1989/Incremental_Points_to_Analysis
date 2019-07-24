@@ -20,7 +20,7 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 public class IncrementalPtrTestForSunflow extends IPAAbstractPtrTest{
 
 	public IncrementalPtrTestForSunflow() {
-		super(IPATestInfo.SCOPE_FILE3);
+		super(IPATestInfo.SCOPE_FILE3, "EclipseDefaultExclusions.txt");
 	}
 
 	@Test

@@ -19,13 +19,15 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
-import com.ibm.wala.util.intset.IntSetUtil;
+//import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPointsToSetVariable;
 import edu.tamu.wala.increpta.ipa.callgraph.propagation.IPAPropagationSystem;
 import edu.tamu.wala.increpta.util.DeletionUtil;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetUtil;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
 
 public interface IPAFilteredPointerKey extends PointerKey{
 
@@ -46,7 +48,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		 */
 		boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable lhs, IPAPointsToSetVariable rhs);
 		//used for propagation
-		boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable lhs, MutableSharedBitVectorIntSet set);
+		boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable lhs, IPAMutableSharedBitVectorIntSet set);
 
 	}
 
@@ -88,7 +90,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 			// SJF: this is horribly inefficient. we really don't want to do
 			// diffs in here. TODO: fix it. probably keep not(f) cached and
 			// use addAllInIntersection
-			return (f == null) ? L.addAll(R) : L.addAll(IntSetUtil.diff(R.getValue(), f));
+			return (f == null) ? L.addAll(R) : L.addAll(IPAIntSetUtil.diff(R.getValue(), f));
 		}
 
 		@Override
@@ -116,7 +118,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		 * bz
 		 */
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAMutableSharedBitVectorIntSet set) {
 			IntSet f = system.getInstanceKeysForClass(concreteType);
 			if(f == null)
 				return false;
@@ -196,7 +198,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 			// SJF: this is horribly inefficient. we really don't want to do
 			// diffs in here. TODO: fix it. probably keep not(f) cached and
 			// use addAllInIntersection
-			return (f == null) ? L.addAll(R) : L.addAll(IntSetUtil.diff(R.getValue(), f));
+			return (f == null) ? L.addAll(R) : L.addAll(IPAIntSetUtil.diff(R.getValue(), f));
 		}
 
 		@Override
@@ -238,7 +240,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAMutableSharedBitVectorIntSet set) {
 			if(L.getValue() == null){
 				return false;
 			}
@@ -299,7 +301,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 			if (!R.contains(idx) || L.contains(idx)) {
 				return L.addAll(R);
 			} else {
-				MutableIntSet copy = IntSetUtil.makeMutableCopy(R.getValue());
+				MutableIntSet copy = IPAIntSetUtil.makeMutableCopy(R.getValue());
 				copy.remove(idx);
 				return L.addAll(copy);
 			}
@@ -322,7 +324,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		};
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAMutableSharedBitVectorIntSet set) {
 			int idx = system.findOrCreateIndexForInstanceKey(concreteType);
 			if(set.contains(idx) && L.contains(idx)){
 				L.remove(idx);
@@ -458,7 +460,7 @@ public interface IPAFilteredPointerKey extends PointerKey{
 		}
 
 		@Override
-		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, MutableSharedBitVectorIntSet set) {
+		public boolean delFiltered(IPAPropagationSystem system, IPAPointsToSetVariable L, IPAMutableSharedBitVectorIntSet set) {
 			if (set == null) {
 				return false;
 			} else {

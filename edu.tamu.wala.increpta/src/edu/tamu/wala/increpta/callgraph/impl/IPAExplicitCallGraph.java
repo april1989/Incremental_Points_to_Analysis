@@ -27,7 +27,6 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Context;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
-import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.SSAContextInterpreter;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -52,7 +51,7 @@ import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 import com.ibm.wala.util.intset.SparseIntSet;
 
-import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph.IPAExplicitNode;
+import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 
 public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterpreter> implements BytecodeConstants{
 	protected final IClassHierarchy cha;
@@ -135,7 +134,35 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	    return result;
 	  }
 
+		/**
+		 * k-cfa: return a zomby cgnode, but dont put it in the cg
+		 * @param method
+		 * @param everywhere
+		 * @return
+		 */
+		public CGNode createZombyNode(IMethod method, Everywhere everywhere) {
+			if (method == null) {
+				throw new IllegalArgumentException("null method");
+			}
+			if (everywhere == null) {
+				throw new IllegalArgumentException("null context");
+			}
+			CGNode result = makeNode(method, everywhere);
+			return result;
+		}
+
 	  public class IPAExplicitNode extends IPANodeImpl {
+		  /**
+		   * maybe i should only record unary stmt......
+		   * a mapping from cgnode to its generated ir statements
+		   * for k-cfa, not used in context-insensitive
+		   * otherwise, hard to locate the invalid pointer nodes in pag.
+		   * param and return value -> find in caller cgnode
+		   * others -> find in ir belonging cg node, e.g., exception, phi, etc
+		   */
+		  @SuppressWarnings("rawtypes")
+		  protected HashSet<IPAAbstractStatement> statements = new HashSetFactory().make();
+
 
 	    /**
 	     * A Mapping from call site program counter (int) -> Object, where Object is a CGNode if we've discovered exactly one target for
@@ -154,6 +181,30 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	    protected IPAExplicitNode(IMethod method, Context C) {
 	      super(method, C);
 	    }
+
+		/**
+		 * for k-cfa, otherwise, donot use, performance slows down
+		 * @param stmt
+		 */
+		public void addStmts(HashSet<IPAAbstractStatement> stmts){
+			statements.addAll(stmts);
+		}
+
+		public void addStmt(IPAAbstractStatement stmt){
+			statements.add(stmt);
+		}
+
+		public HashSet<IPAAbstractStatement> getStmts() {
+			return statements;
+		}
+
+		public boolean removeStmt(IPAAbstractStatement stmt){
+			return statements.remove(stmt);
+		}
+
+		public void clearStmt(){
+			statements.clear();
+		}
 
 	    protected Set<CGNode> getPossibleTargets(CallSiteReference site) {
 	      Object result = targets.get(site.getProgramCounter());
@@ -287,9 +338,8 @@ public class IPAExplicitCallGraph extends IPABasicCallGraph<SSAContextInterprete
 	    }
 
 	    @Override
-	    public int hashCode() {
-	      // TODO: cache?
-	      return getMethod().hashCode() * 8681 + getContext().hashCode();
+	    public int hashCode() {//k-cfa: change 8681 to 8581, otherwise same hashcode for pointerkey
+	      return getMethod().hashCode() * 8581 + getContext().hashCode();
 	    }
 
 	    protected MutableSharedBitVectorIntSet getAllTargetNumbers() {

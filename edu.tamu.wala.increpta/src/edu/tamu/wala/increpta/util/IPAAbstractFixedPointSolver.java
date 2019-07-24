@@ -22,7 +22,6 @@ import com.ibm.wala.util.MonitorUtil;
 import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
 import com.ibm.wala.util.debug.VerboseAction;
 
-import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph.IPAExplicitNode;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.operators.IPAAbstractStatement;
 import edu.tamu.wala.increpta.operators.IPAGeneralStatement;
@@ -176,7 +175,6 @@ VerboseAction{
 
 			// duplicate insertion detection
 			IPAAbstractStatement s = workList.takeStatement();
-
 			if (DEBUG) {
 				System.err.println(("Before evaluation " + s));
 			}
@@ -223,7 +221,6 @@ VerboseAction{
 	@SuppressWarnings("unchecked")
 	public boolean solveDel(IProgressMonitor monitor) throws CancelException {
 		boolean globalChange = false;
-
 		while (!workList.isEmpty()) {
 			MonitorUtil.throwExceptionIfCanceled(monitor);
 			orderStatements();

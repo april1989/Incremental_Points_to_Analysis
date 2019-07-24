@@ -90,8 +90,9 @@ import com.ibm.wala.util.debug.UnimplementedError;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
-import com.ibm.wala.util.intset.IntSetUtil;
+//import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
+import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
 import com.ibm.wala.util.ref.ReferenceCleanser;
 import com.ibm.wala.util.warnings.Warning;
 import com.ibm.wala.util.warnings.Warnings;
@@ -101,6 +102,7 @@ import edu.tamu.wala.increpta.callgraph.impl.IPAExplicitCallGraph;
 import edu.tamu.wala.increpta.operators.IPAAbstractOperator;
 import edu.tamu.wala.increpta.pointerkey.IPAFilteredPointerKey;
 import edu.tamu.wala.increpta.pointerkey.IPAPointerKeyFactory;
+import edu.tamu.wala.increpta.util.intset.IPAIntSetUtil;
 
 public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCallGraphBuilder implements IPAHeapModel {
 
@@ -543,7 +545,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			this.call = call;
 			this.caller = caller;
 			this.site = call.getCallSite();
-			this.params = IntSetUtil.toArray(getRelevantParameters(caller, site));
+			this.params = IPAIntSetUtil.toArray(getRelevantParameters(caller, site));
 			this.keys  = new InstanceKey[ params.length ];
 		}
 
@@ -1206,7 +1208,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 						system.recordImplicitPointsToSet(refKey);
 					InstanceKey[] refk = getInvariantContents(ref);
 					if(isDelete){
-						MutableIntSet delset = IntSetUtil.getDefaultIntSetFactory().make();
+						MutableIntSet delset = IPAIntSetUtil.getDefaultIntSetFactory().make();
 						for (int i = 0; i < ik.length; i++) {
 							int index = system.findOrCreateIndexForInstanceKey(ik[i]);
 							delset.add(index);
@@ -1332,14 +1334,14 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 
 			IntSet params = getBuilder().getContextSelector().getRelevantParameters(node, instruction.getCallSite());
 			if (!instruction.getCallSite().isStatic() && !params.contains(0) && (invariantParameters == null || invariantParameters[0] == null)) {
-				params = IntSetUtil.makeMutableCopy(params);
+				params = IPAIntSetUtil.makeMutableCopy(params);
 				((MutableIntSet)params).add(0);
 			}
 
 			if (invariantParameters != null) {
 				for(int i = 0; i < invariantParameters.length; i++) {
 					if (invariantParameters[i] != null) {
-						params = IntSetUtil.makeMutableCopy(params);
+						params = IPAIntSetUtil.makeMutableCopy(params);
 						((MutableIntSet)params).remove(i);
 					}
 				}
@@ -1406,17 +1408,17 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			}
 
 			InstanceKey[][] invariantParameters = invs.computeInvariantParameters(instruction);
-
+			
 			IntSet params = getBuilder().getContextSelector().getRelevantParameters(node, instruction.getCallSite());
 			if (!instruction.getCallSite().isStatic() && !params.contains(0) && (invariantParameters == null || invariantParameters[0] == null)) {
-				params = IntSetUtil.makeMutableCopy(params);
+				params = IPAIntSetUtil.makeMutableCopy(params);
 				((MutableIntSet)params).add(0);
 			}
 
 			if (invariantParameters != null) {
 				for(int i = 0; i < invariantParameters.length; i++) {
 					if (invariantParameters[i] != null) {
-						params = IntSetUtil.makeMutableCopy(params);
+						params = IPAIntSetUtil.makeMutableCopy(params);
 						((MutableIntSet)params).remove(i);
 					}
 				}
@@ -2098,12 +2100,12 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 			this.node = node;
 			this.constParams = constParams;
 			this.uniqueCatch = uniqueCatch;
-			this.dispatchIndices = IntSetUtil.toArray(dispatchIndices);
+			this.dispatchIndices = IPAIntSetUtil.toArray(dispatchIndices);
 			// we better always be interested in the receiver
 			// assert this.dispatchIndices[0] == 0;
 			previousPtrs = new MutableIntSet[dispatchIndices.size()];
 			for(int i = 0; i < previousPtrs.length; i++) {
-				previousPtrs[i] = IntSetUtil.getDefaultIntSetFactory().make();
+				previousPtrs[i] = IPAIntSetUtil.getDefaultIntSetFactory().make();
 			}
 		}
 
@@ -2113,8 +2115,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 				final int y = rhsIndex;
 				IntSet currentObjs = rhs[rhsIndex].getValue();
 				if (currentObjs != null) {
-					final IntSet oldObjs = previousPtrs[rhsIndex];
-					currentObjs.foreachExcluding(oldObjs, new IntSetAction() {//TODO: process multiple edges together for scc
+					IntSetAction action = new IntSetAction() {
 						@Override
 						public void act(final int x) {
 							new CrossProductRec(constParams, call, node,
@@ -2143,15 +2144,21 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 								@Override
 								protected IntSet getParamObjects(int paramVn, int rhsi) {
 									if (rhsi == y) {
-										return IntSetUtil.make(new int[]{ x });
+										return IPAIntSetUtil.make(new int[]{ x });
 									} else {
 										return previousPtrs[rhsi];
 									}
 								}
-							};
+							};							
 						}
-					});
-					previousPtrs[rhsIndex].addAll(currentObjs);
+					};
+					if(system.isChange) {
+						currentObjs.foreach(action);
+					}else {
+						final IntSet oldObjs = previousPtrs[rhsIndex];
+						currentObjs.foreachExcluding(oldObjs, action);
+						previousPtrs[rhsIndex].addAll(currentObjs);
+					}
 				}
 			}
 
@@ -2234,8 +2241,9 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 					removeObjs = rhs[rhsIndex].getChange();
 				}
 				if (removeObjs != null) {
-					final IntSet oldObjs = previousPtrs[rhsIndex];
-					removeObjs.foreachExcluding(oldObjs, new IntSetAction() {//TODO: process multiple edges together for scc
+//					final IntSet oldObjs = previousPtrs[rhsIndex];
+					removeObjs.foreach(new IntSetAction() {
+//					removeObjs.foreachExcluding(oldObjs, new IntSetAction() {//TODO: process multiple edges together for scc
 						@Override
 						public void act(final int x) {
 							new CrossProductRec(constParams, call, node,
@@ -2261,7 +2269,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 								@Override
 								protected IntSet getParamObjects(int paramVn, int rhsi) {
 									if (rhsi == y) {
-										return IntSetUtil.make(new int[]{ x });
+										return IPAIntSetUtil.make(new int[]{ x });
 									} else {
 										return previousPtrs[rhsi];
 									}
@@ -2269,12 +2277,12 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 							};
 						}
 					});
-					removeObjs.foreach(new IntSetAction() {
-						@Override
-						public void act(int x) {
-							previousPtrs[y].remove(x);
-						}
-					});
+//					removeObjs.foreach(new IntSetAction() {
+//						@Override
+//						public void act(int x) {
+//							previousPtrs[y].remove(x);
+//						}
+//					});
 				}
 			}
 
@@ -2442,7 +2450,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	private IntSet getRelevantParameters(final CGNode caller, final CallSiteReference site) throws UnimplementedError {
 		IntSet params = contextSelector.getRelevantParameters(caller, site);
 		if (!site.isStatic() && !params.contains(0)) {
-			params = IntSetUtil.makeMutableCopy(params);
+			params = IPAIntSetUtil.makeMutableCopy(params);
 			((MutableIntSet)params).add(0);
 		}
 		return params;

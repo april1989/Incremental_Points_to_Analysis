@@ -2,7 +2,7 @@ package edu.tamu.wala.increpta.ipa.callgraph.propagation;
 
 import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.fixpoint.IntSetVariable;
+//import com.ibm.wala.fixpoint.IntSetVariable;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
@@ -14,11 +14,16 @@ import com.ibm.wala.util.debug.Assertions;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableMapping;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
-import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
-import com.ibm.wala.util.intset.MutableSparseIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSet;
+//import com.ibm.wala.util.intset.MutableSharedBitVectorIntSetFactory;
+//import com.ibm.wala.util.intset.MutableSparseIntSet;
 
-public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariable>{
+import edu.tamu.wala.increpta.util.intset.IPAIntSetVariable;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSet;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSharedBitVectorIntSetFactory;
+import edu.tamu.wala.increpta.util.intset.IPAMutableSparseIntSet;
+
+public class IPAPointsToSetVariable extends IPAIntSetVariable<IPAPointsToSetVariable>{
 
 	/**
 	 * if set, emits a warning whenever a points-to set grows bigger than {@link #SIZE_THRESHOLD}
@@ -39,7 +44,7 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 	private PointerKey pointerKey;
 
 	//to mark to change (diff)
-	private MutableSharedBitVectorIntSet change;
+	private IPAMutableSharedBitVectorIntSet change;
 
 	public IPAPointsToSetVariable(PointerKey key) {
 		super();
@@ -47,7 +52,7 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 			throw new IllegalArgumentException("null key");
 		}
 		this.pointerKey = key;
-		this.change = new MutableSharedBitVectorIntSetFactory().make();
+		this.change = new IPAMutableSharedBitVectorIntSetFactory().make();
 	}
 
 
@@ -67,6 +72,15 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 		change.clear();//clear before each change set
 		change.addAll(set);
 	}
+	
+	/**
+	 * -> wcc
+	 * only add, no clear before
+	 * @param set
+	 */
+	public synchronized void addChange(MutableIntSet set){
+		change.addAll(set);
+	}
 
 	/**
 	 * clear after one stmt propagation
@@ -75,7 +89,7 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 		change.clear();
 	}
 
-	public synchronized MutableSharedBitVectorIntSet getChange(){
+	public synchronized IPAMutableSharedBitVectorIntSet getChange(){
 		return change;
 	}
 
@@ -102,14 +116,15 @@ public class IPAPointsToSetVariable extends IntSetVariable<IPAPointsToSetVariabl
 	}
 
 	@Override
-	public void add(int b) {
+	public boolean add(int b) {
 		if (PARANOID) {
-			MutableSparseIntSet m = MutableSparseIntSet.createMutableSparseIntSet(1);
+			IPAMutableSparseIntSet m = IPAMutableSparseIntSet.createMutableSparseIntSet(1);
 			m.add(b);
 			checkTypes(m);
 		}
-		super.add(b);
+		final boolean result = super.add(b);
 		cryIfTooBig();
+		return result;
 	}
 
 	@Override

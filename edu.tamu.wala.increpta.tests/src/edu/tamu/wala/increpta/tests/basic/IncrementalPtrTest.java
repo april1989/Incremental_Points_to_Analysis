@@ -38,7 +38,7 @@ public class IncrementalPtrTest extends IPAAbstractPtrTest{
    *
    */
   public IncrementalPtrTest() {
-    super(TestInfo.SCOPE_FILE);
+    super(TestInfo.SCOPE_FILE, "EclipseDefaultExclusions.txt");
   }
 
   @Test

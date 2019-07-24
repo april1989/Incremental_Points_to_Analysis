@@ -20,7 +20,7 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 public class IncrementalPtrTestForSCCTest extends IPAAbstractPtrTest{
 
   public IncrementalPtrTestForSCCTest() {
-    super(IPATestInfo.SCOPE_FILE8);
+    super(IPATestInfo.SCOPE_FILE8, "EclipseDefaultExclusions.txt");
   }
 
   @Test
