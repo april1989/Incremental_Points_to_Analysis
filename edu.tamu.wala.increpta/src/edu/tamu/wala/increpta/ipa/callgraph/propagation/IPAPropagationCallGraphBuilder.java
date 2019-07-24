@@ -2137,7 +2137,7 @@ public abstract class IPAPropagationCallGraphBuilder implements CallGraphBuilder
 //				continue;
 
 			total_inst++;
-			ISSABasicBlock bb = cfg.getBlockForInstruction(inst.iindex);
+			ISSABasicBlock bb = cfg.getBlockForInstruction(inst.iIndex());
 			//delete
 			try{
 				System.out.println("... Deleting SSAInstruction:      "+ inst.toString());

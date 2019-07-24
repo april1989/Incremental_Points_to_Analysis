@@ -2863,7 +2863,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	    //true -> Perform SSAInstruction Deletion
 	    this.setDelete(true);
 	    for (SSAInstruction delInst : delInsts) {
-	    	ISSABasicBlock basicBlock = cfg.getBlockForInstruction(delInst.iindex);
+	    	ISSABasicBlock basicBlock = cfg.getBlockForInstruction(delInst.iIndex());
 	        v.setBasicBlock(basicBlock);
 	        system.setFirstDel(true);
 	        delInst.visit(v);
@@ -2877,7 +2877,7 @@ public abstract class IPASSAPropagationCallGraphBuilder extends IPAPropagationCa
 	    //false -> Perform SSAInstruction Addition
 	    this.setDelete(false);
 	    for (SSAInstruction addInst : addInsts) {
-	    	ISSABasicBlock basicBlock = cfg.getBlockForInstruction(addInst.iindex);
+	    	ISSABasicBlock basicBlock = cfg.getBlockForInstruction(addInst.iIndex());
 	        v.setBasicBlock(basicBlock);
 	        addInst.visit(v);
 	        do{
