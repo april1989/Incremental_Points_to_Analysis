@@ -9,7 +9,7 @@ This is a repository of the implementations of incremental points-to analysis fo
 ````edu.tamu.wala.increpta.kobj```` (the implemented k-obj is at ````/src/edu/tamu/wala/newkobj/````)
 
 #### How to Use
-0. requires the following wala modules: 
+0. require the following wala modules: 
 ````
  com.ibm.wala.util,
  com.ibm.wala.core,
@@ -36,8 +36,9 @@ build:
 d4tasks: 
 
   - name: Do_Main // set a task name
-    which_main_class: MyGitHubRepoExample  // the main method you want to set as entry point
-    classes: /bin // the relative path of compiled class files
+    which_main_class: MyGitHubRepoExample  // the main method you want to set as entry point, e.g., org/apache/lucene/demo/IndexFiles
+    jar: xxx.jar // the relative path of compiled jar file if exists
+    classes: /bin // the relative path of all compiled class files
     exclusions:  // the list of libraries to exclude from this analysis
       java/applet/.*,
       java/awt/.*,
