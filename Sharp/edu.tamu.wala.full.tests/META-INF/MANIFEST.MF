@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Tests
+Bundle-SymbolicName: edu.tamu.wala.full.tests
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-15
+Automatic-Module-Name: edu.tamu.wala.increpta.tests
+Require-Bundle: com.ibm.wala.cast;bundle-version="1.5.2",
+ com.ibm.wala.cast.java;bundle-version="1.5.2",
+ com.ibm.wala.core;bundle-version="1.5.2",
+ com.ibm.wala.shrike;bundle-version="1.5.2",
+ com.ibm.wala.util;bundle-version="1.5.2",
+ edu.tamu.wala.increpta.kcfa;bundle-version="1.0.0",
+ edu.tamu.wala.increpta.kobj;bundle-version="1.0.0",
+ edu.tamu.wala.increpta.update;bundle-version="0.0.1"

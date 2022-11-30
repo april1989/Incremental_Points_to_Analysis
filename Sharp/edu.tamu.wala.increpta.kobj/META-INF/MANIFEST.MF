@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Kobj
+Bundle-SymbolicName: edu.tamu.wala.increpta.kobj
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-15
+Automatic-Module-Name: edu.tamu.wala.increpta.kobj
+Require-Bundle: edu.tamu.wala.increpta.update;bundle-version="0.0.1",
+ com.ibm.wala.core;bundle-version="1.5.2",
+ com.ibm.wala.shrike;bundle-version="1.5.2",
+ com.ibm.wala.util;bundle-version="1.5.2"
+Export-Package: edu.tamu.wala.increpta.util,
+ edu.tamu.wala.newkobj

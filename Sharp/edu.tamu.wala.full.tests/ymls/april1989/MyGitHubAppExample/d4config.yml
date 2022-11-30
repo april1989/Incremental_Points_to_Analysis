@@ -1,0 +1,30 @@
+name: MyGitHubAppExample
+branches: [ master ]
+build:
+    runs_on: java1.8
+    steps:
+
+      - name: Run  
+        run: |
+          mkdir bin
+          javac -source 1.8 -target 1.8 src/benchmarks/testcases/TestRace6.java -d bin
+
+d4tasks: 
+
+  - name: Do_Main
+    which_main_class: benchmarks/testcases/TestRace6
+    classes: /bin
+    exclusions: 
+      java/applet/.*,
+      java/awt/.*,
+      java/beans/.*,
+      java/io/.*,
+      java/math/.*,
+      java/net/.*,
+      java/nio/.*,
+      java/rmi/.*,
+      java/security/.*,
+      java/sql/.*,
+      java/text/.*,
+      java/util/.*   
+      

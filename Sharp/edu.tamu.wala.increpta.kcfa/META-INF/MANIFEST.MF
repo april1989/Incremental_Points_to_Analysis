@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Increpta_cs
+Bundle-SymbolicName: edu.tamu.wala.increpta.kcfa
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: edu.tamu.wala.increpta_cs.Activator
+Require-Bundle: com.ibm.wala.core;bundle-version="1.5.0",
+ com.ibm.wala.shrike;bundle-version="1.5.0",
+ com.ibm.wala.cast;bundle-version="1.5.0",
+ com.ibm.wala.cast.java;bundle-version="1.5.0",
+ edu.tamu.wala.increpta.update;bundle-version="0.0.1"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Export-Package: edu.tamu.wala.increpta.util
